@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Clima GPS</title>
+<style>
+  :root{
+    --sky-950:#0f1730;
+    --sky-800:#1c2a4f;
+    --sky-600:#33507f;
+    --sky-400:#7095c4;
+    --mist:#eef2f8;
+    --amber:#e2a33d;
+    --ink:#12203a;
+    --muted:#5c6c86;
+    --card:#ffffff;
+    --line:#dbe3ef;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --mist:#0b1120;
+      --card:#151f38;
+      --ink:#e8edf7;
+      --muted:#8b97b3;
+      --line:#26314f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --mist:#0b1120;
+    --card:#151f38;
+    --ink:#e8edf7;
+    --muted:#8b97b3;
+    --line:#26314f;
+  }
+
+  *{box-sizing:border-box;}
+  body{
+    margin:0;min-height:100vh;
+    background:var(--mist);
+    color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .card{
+    width:100%;max-width:380px;
+    background:var(--card);border:1px solid var(--line);
+    border-radius:16px;overflow:hidden;
+  }
+  .top{
+    background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
+    color:#fff;padding:28px 24px 32px;text-align:center;position:relative;
+  }
+  .place{font-size:0.85rem;opacity:0.85;letter-spacing:.01em;min-height:1.2em;}
+  .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
+  .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;line-height:1;}
+  .temp .tempF{font-size:1.5rem;font-weight:600;opacity:0.7;margin-left:8px;vertical-align:middle;}
+  .desc{font-size:1rem;opacity:0.92;}
+  .emoji{font-size:2rem;margin-bottom:2px;}
+
+  .precip-alerts{margin-top:10px;display:flex;flex-direction:column;gap:4px;align-items:center;}
+  .precip-alerts .chip{
+    font-size:0.78rem;background:rgba(255,255,255,0.14);
+    border-radius:20px;padding:4px 12px;display:inline-block;
+  }
+
+  .body{padding:20px 24px 24px;}
+  .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
+  .stat{text-align:center;background:var(--mist);border-radius:10px;padding:10px 6px;}
+  .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:3px;}
+  .stat .value{font-size:1rem;font-weight:600;}
+
+  button.btn{
+    width:100%;background:var(--sky-800);color:#fff;border:none;
+    padding:11px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:600;
+  }
+  button.btn:active{background:var(--sky-950);}
+
+  .status{
+    text-align:center;color:var(--muted);font-size:0.88rem;padding:36px 24px;
+  }
+  .status button{margin-top:14px;}
+
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;}
+
+  .hidden{display:none;}
+
+  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);}
+  nav.tabs button{
+    flex:1;background:transparent;border:none;color:rgba(255,255,255,0.6);
+    padding:10px 0 12px;font-size:0.82rem;cursor:pointer;font-weight:600;
+    border-bottom:2px solid transparent;
+  }
+  nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
+
+  .week-list{padding:6px 24px 20px;}
+  .day-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
+  .day-row:last-child{border-bottom:none;}
+  .day-row .day-name{flex:1;font-size:0.9rem;font-weight:600;text-transform:capitalize;}
+  .day-row .day-emoji{font-size:1.3rem;width:28px;text-align:center;}
+  .day-row .day-precip{font-size:0.75rem;color:var(--muted);width:44px;}
+  .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;}
+  .day-row .day-range b{color:var(--ink);}
+
+  .precip-chart-title{font-size:0.72rem;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+  .precip-chart{
+    position:relative;display:flex;align-items:flex-end;
+    height:96px;margin:0 0 18px;padding-top:20px;
+  }
+  .precip-chart::after{
+    content:'';position:absolute;left:0;right:0;bottom:22px;height:2px;background:var(--sky-400);opacity:0.5;
+  }
+  .precip-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;}
+  .precip-col .pct{position:absolute;top:-18px;font-size:0.72rem;font-weight:700;color:var(--sky-600);white-space:nowrap;}
+  .precip-col .bar{width:70%;max-width:26px;background:var(--sky-400);border-radius:2px 2px 0 0;margin-bottom:22px;transition:height .2s;}
+  .precip-col .hr{position:absolute;bottom:0;font-size:0.66rem;color:var(--muted);white-space:nowrap;}
+
+  .terminal{
+    margin:0 24px 20px;background:#0a0e14;border-radius:8px;
+    padding:10px 12px;height:120px;overflow-y:auto;
+    font-family:'SFMono-Regular',Menlo,Consolas,monospace;font-size:0.74rem;
+    color:#7ee787;line-height:1.5;
+  }
+  .terminal .line{white-space:pre-wrap;word-break:break-word;}
+  .terminal .line .t{color:#5c6c86;}
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div id="statusView" class="status">
+    <div style="font-size:2rem;margin-bottom:8px;">📍</div>
+    <p id="statusText">Necesito tu ubicación para mostrarte el clima donde estás.</p>
+    <button class="btn" id="btnUbicar" onclick="pedirUbicacion()">Usar mi ubicación</button>
+  </div>
+
+  <div id="weatherView" class="hidden">
+    <div class="top">
+      <div class="place" id="place">—</div>
+      <div class="emoji" id="emoji">🌤️</div>
+      <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
+      <div class="desc" id="desc">—</div>
+      <div class="precip-alerts" id="precipAlerts"></div>
+      <nav class="tabs">
+        <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
+        <button data-tab="semana" onclick="cambiarTab('semana')">Semana</button>
+      </nav>
+    </div>
+
+    <div class="body tab-panel active" id="tab-hoy">
+      <div class="precip-chart-title">Probabilidad de lluvia</div>
+      <div class="precip-chart" id="precipChart"></div>
+      <div class="stats">
+        <div class="stat"><div class="label">Sensación</div><div class="value" id="feels">--°</div></div>
+        <div class="stat"><div class="label">Humedad</div><div class="value" id="humidity">--%</div></div>
+        <div class="stat"><div class="label">Viento</div><div class="value" id="wind">-- km/h</div></div>
+        <div class="stat"><div class="label">Máx / Mín</div><div class="value" id="maxmin">--° / --°</div></div>
+        <div class="stat"><div class="label">Precipitación</div><div class="value" id="precip">-- mm</div></div>
+        <div class="stat"><div class="label">Presión</div><div class="value" id="pressure">-- hPa</div></div>
+        <div class="stat"><div class="label">Índice UV</div><div class="value" id="uv">--</div></div>
+        <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
+        <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
+      </div>
+      <button class="btn" onclick="pedirUbicacion()">Actualizar ubicación</button>
+    </div>
+
+    <div class="week-list tab-panel" id="tab-semana">
+      <div id="weekList"></div>
+      <button class="btn" onclick="pedirUbicacion()">Actualizar ubicación</button>
+    </div>
+
+    <div class="terminal" id="terminal"></div>
+  </div>
+
+</div>
+
+<script>
+const WEATHER_CODES = {
+  0:['Cielo despejado','☀️'], 1:['Mayormente despejado','🌤️'], 2:['Parcialmente nublado','⛅'], 3:['Nublado','☁️'],
+  45:['Neblina','🌫️'], 48:['Neblina con escarcha','🌫️'],
+  51:['Llovizna ligera','🌦️'], 53:['Llovizna','🌦️'], 55:['Llovizna intensa','🌧️'],
+  61:['Lluvia ligera','🌧️'], 63:['Lluvia','🌧️'], 65:['Lluvia intensa','🌧️'],
+  71:['Nevada ligera','🌨️'], 73:['Nevada','🌨️'], 75:['Nevada intensa','❄️'],
+  80:['Chubascos','🌦️'], 81:['Chubascos','🌧️'], 82:['Chubascos intensos','⛈️'],
+  95:['Tormenta','⛈️'], 96:['Tormenta con granizo','⛈️'], 99:['Tormenta con granizo','⛈️']
+};
+
+function log(msg){
+  const term = document.getElementById('terminal');
+  if(!term) return;
+  const now = new Date().toLocaleTimeString('es-AR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const div = document.createElement('div');
+  div.className = 'line';
+  div.innerHTML = `<span class="t">[${now}]</span> ${msg}`;
+  term.appendChild(div);
+  term.scrollTop = term.scrollHeight;
+}
+
+function cambiarTab(tab){
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  log(`&gt; cambiando a pestaña "${tab}"`);
+}
+
+function showStatus(text, showBtn){
+  document.getElementById('statusView').classList.remove('hidden');
+  document.getElementById('weatherView').classList.add('hidden');
+  document.getElementById('statusText').textContent = text;
+  document.getElementById('btnUbicar').style.display = showBtn ? 'inline-block' : 'none';
+}
+
+function pedirUbicacion(){
+  if(!navigator.geolocation){
+    log('&gt; error: geolocalización no soportada');
+    showStatus('Tu navegador no soporta geolocalización.', false);
+    return;
+  }
+  log('&gt; solicitando permiso de ubicación...');
+  showStatus('Buscando tu ubicación…', false);
+  navigator.geolocation.getCurrentPosition(onUbicacionOk, onUbicacionError, {
+    enableHighAccuracy:false, timeout:12000, maximumAge:300000
+  });
+}
+
+function onUbicacionError(err){
+  let msg = 'No pude obtener tu ubicación.';
+  if(err.code === err.PERMISSION_DENIED) msg = 'Necesito permiso de ubicación para mostrarte el clima. Habilitalo en el navegador e intentá de nuevo.';
+  log(`&gt; error de ubicación: ${err.message || err.code}`);
+  showStatus(msg, true);
+}
+
+async function onUbicacionOk(pos){
+  const { latitude, longitude } = pos.coords;
+  log(`&gt; ubicación obtenida (${latitude.toFixed(3)}, ${longitude.toFixed(3)})`);
+  showStatus('Cargando clima…', false);
+  try{
+    log('&gt; consultando Open-Meteo...');
+    log('&gt; consultando nombre del lugar (Nominatim)...');
+    const [weather, place] = await Promise.all([
+      fetchWeather(latitude, longitude),
+      fetchPlace(latitude, longitude)
+    ]);
+    log(`&gt; ubicación resuelta: ${place}`);
+    log('&gt; datos de clima recibidos, renderizando...');
+    renderWeather(weather, place);
+    log('&gt; listo ✓');
+  }catch(e){
+    log(`&gt; error al cargar clima: ${e.message}`);
+    showStatus('No pude cargar el clima. Probá de nuevo.', true);
+  }
+}
+
+async function fetchWeather(lat, lon){
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=weather_code,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,weather_code&timezone=auto`;
+  const res = await fetch(url);
+  if(!res.ok) throw new Error('weather failed');
+  return res.json();
+}
+
+function degToCompass(deg){
+  const dirs = ['N','NE','E','SE','S','SO','O','NO'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function fmtHora(iso){
+  if(!iso) return '--:--';
+  return iso.slice(11,16);
+}
+
+function fmtDiaSemana(dateStr, idx){
+  if(idx===0) return 'Hoy';
+  const date = new Date(dateStr + 'T12:00:00');
+  return date.toLocaleDateString('es-AR', { weekday:'short' });
+}
+
+async function fetchPlace(lat, lon){
+  try{
+    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=es`;
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('place failed');
+    const data = await res.json();
+    const a = data.address || {};
+    return a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Tu ubicación';
+  }catch(e){
+    return 'Tu ubicación';
+  }
+}
+
+const RAIN_CODES = [51,53,55,56,57,61,63,65,80,81,82,95,96,99];
+const SNOW_CODES = [71,73,75,77,85,86];
+const SLEET_CODES = [66,67];
+
+function renderPrecipAlerts(hourly, todayStr){
+  const el = document.getElementById('precipAlerts');
+  if(!el) return;
+  if(!hourly || !hourly.time){ el.innerHTML=''; return; }
+
+  let rainHour=null, snowHour=null, sleetHour=null;
+  for(let i=0;i<hourly.time.length;i++){
+    const t = hourly.time[i];
+    if(!t.startsWith(todayStr)) continue;
+    const code = hourly.weather_code[i];
+    if(rainHour===null && RAIN_CODES.includes(code)) rainHour = t;
+    if(snowHour===null && SNOW_CODES.includes(code)) snowHour = t;
+    if(sleetHour===null && SLEET_CODES.includes(code)) sleetHour = t;
+  }
+
+  const chips = [];
+  if(rainHour) chips.push(`🌧️ Lluvia a las ${fmtHora(rainHour)}`);
+  if(sleetHour) chips.push(`🌨️ Aguanieve a las ${fmtHora(sleetHour)}`);
+  if(snowHour) chips.push(`❄️ Nieve a las ${fmtHora(snowHour)}`);
+
+  el.innerHTML = chips.map(c=>`<span class="chip">${c}</span>`).join('');
+  log(chips.length ? `&gt; precipitación detectada hoy: ${chips.length} tipo(s)` : '&gt; sin lluvia, nieve ni aguanieve previstas hoy');
+}
+
+function renderPrecipChart(hourly){
+  const el = document.getElementById('precipChart');
+  if(!el) return;
+  if(!hourly || !hourly.time || !hourly.precipitation_probability){ el.innerHTML=''; return; }
+
+  const now = new Date();
+  let startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+  if(startIdx === -1) startIdx = 0;
+
+  const idxs = [];
+  for(let i=0; i<8; i++){
+    const idx = startIdx + i*1;
+    if(idx < hourly.time.length) idxs.push(idx);
+  }
+
+  const maxBarPx = 50;
+  el.innerHTML = idxs.map(idx=>{
+    const pct = hourly.precipitation_probability[idx];
+    const hr = fmtHora(hourly.time[idx]);
+    const h = Math.max(2, Math.round((pct/100) * maxBarPx));
+    return `<div class="precip-col">
+      <div class="pct">${pct}%</div>
+      <div class="bar" style="height:${h}px"></div>
+      <div class="hr">${hr}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderWeather(data, place){
+  const c = data.current;
+  const d = data.daily;
+  const [desc, emoji] = WEATHER_CODES[c.weather_code] || ['—','🌡️'];
+  document.getElementById('place').textContent = place;
+  document.getElementById('emoji').textContent = emoji;
+  document.getElementById('temp').textContent = Math.round(c.temperature_2m);
+  document.getElementById('tempF').textContent = Math.round(c.temperature_2m * 9/5 + 32) + '°F';
+  document.getElementById('desc').textContent = desc;
+  document.getElementById('feels').textContent = Math.round(c.apparent_temperature) + '°';
+  document.getElementById('humidity').textContent = Math.round(c.relative_humidity_2m) + '%';
+  document.getElementById('wind').textContent = Math.round(c.wind_speed_10m) + ' km/h ' + degToCompass(c.wind_direction_10m);
+  document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
+  if(d){
+    document.getElementById('maxmin').textContent = Math.round(d.temperature_2m_max[0]) + '° / ' + Math.round(d.temperature_2m_min[0]) + '°';
+    document.getElementById('precip').textContent = d.precipitation_sum[0] + ' mm';
+    document.getElementById('uv').textContent = Math.round(d.uv_index_max[0]);
+    document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
+    document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
+    renderWeek(d);
+    renderPrecipAlerts(data.hourly, d.time[0]);
+    renderPrecipChart(data.hourly);
+  }
+  document.getElementById('statusView').classList.add('hidden');
+  document.getElementById('weatherView').classList.remove('hidden');
+}
+
+function renderWeek(d){
+  const rows = d.time.map((dateStr, i)=>{
+    const [desc, emoji] = WEATHER_CODES[d.weather_code[i]] || ['—','🌡️'];
+    return `
+      <div class="day-row">
+        <div class="day-name">${fmtDiaSemana(dateStr, i)}</div>
+        <div class="day-emoji">${emoji}</div>
+        <div class="day-precip">${d.precipitation_sum[i]} mm</div>
+        <div class="day-range"><b>${Math.round(d.temperature_2m_max[i])}°</b> / ${Math.round(d.temperature_2m_min[i])}°</div>
+      </div>`;
+  }).join('');
+  document.getElementById('weekList').innerHTML = rows;
+}
+
+log('&gt; app iniciada');
+</script>
+</body>
+</html>
