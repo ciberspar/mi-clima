@@ -393,11 +393,11 @@ function renderWeek(d){
 log('&gt; app iniciada');
 </script>
 
-<!-- Contador de visitas: cambiá "tunombre" por tu código de GoatCounter -->
-<script data-goatcounter="https://tunombre.goatcounter.com/count"
+<!-- Contador de visitas: cambiá "gero" por tu código de GoatCounter -->
+<script data-goatcounter="https://gero.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <script>
-fetch("https://tunombre.goatcounter.com/counter/TOTAL.json")
+fetch("https://gero.goatcounter.com/counter/TOTAL.json")
   .then(r => r.json())
   .then(d => document.getElementById("visitas").textContent = d.count_unique)
   .catch(() => document.getElementById("visitas").textContent = "—");
