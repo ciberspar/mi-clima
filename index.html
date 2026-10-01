@@ -124,6 +124,9 @@
   }
   .terminal .line{white-space:pre-wrap;word-break:break-word;}
   .terminal .line .t{color:#5c6c86;}
+
+  .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 18px;}
+  .visitas b{color:var(--ink);}
 </style>
 </head>
 <body>
@@ -172,6 +175,8 @@
 
     <div class="terminal" id="terminal"></div>
   </div>
+
+  <div class="visitas">👀 Personas que visitaron esta página: <b id="visitas">…</b></div>
 
 </div>
 
@@ -386,6 +391,16 @@ function renderWeek(d){
 }
 
 log('&gt; app iniciada');
+</script>
+
+<!-- Contador de visitas: cambiá "tunombre" por tu código de GoatCounter -->
+<script data-goatcounter="https://tunombre.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+<script>
+fetch("https://tunombre.goatcounter.com/counter/TOTAL.json")
+  .then(r => r.json())
+  .then(d => document.getElementById("visitas").textContent = d.count_unique)
+  .catch(() => document.getElementById("visitas").textContent = "—");
 </script>
 </body>
 </html>
