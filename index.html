@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Clima GPS</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1c2a4f">
 <style>
   :root{
     --sky-950:#0f1730;
@@ -391,9 +393,15 @@ function renderWeek(d){
 }
 
 log('&gt; app iniciada');
+
+// Registrar Service Worker para permitir instalación
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
 </script>
 
-<!-- Contador de visitas: cambiá "gero" por tu código de GoatCounter -->
 <script data-goatcounter="https://gero.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 <script>
