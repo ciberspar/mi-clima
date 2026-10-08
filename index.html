@@ -61,7 +61,6 @@
   .desc{font-size:1rem;opacity:0.92;}
   .emoji{font-size:2rem;margin-bottom:2px;}
 
-  /* Panel unificado de ubicación con autocompletado y favoritos */
   .location-panel {
     background: rgba(0,0,0,0.15);
     padding: 10px 12px;
@@ -107,7 +106,6 @@
     flex: 1;
   }
   
-  /* Lista desplegable de sugerencias del buscador */
   #sugerencias-box {
     position: absolute;
     top: 100%;
@@ -255,7 +253,6 @@
   <div id="weatherView">
     <div class="top">
       
-      <!-- Panel unificado de ubicación, favoritos y buscador autocompletable -->
       <div class="location-panel">
         <div class="location-row">
           <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi GPS</button>
@@ -535,12 +532,21 @@ function renderPrecipAlerts(hourly, todayStr){
   if(!el) return;
   if(!hourly || !hourly.time){ el.innerHTML=''; return; }
 
+  const ahora = new Date();
+
   const generarIntervalosLimpios = (codesList, nombreEvento, emojiIcono) => {
     let horasIndices = [];
     for(let i=0; i<hourly.time.length; i++){
-      const t = hourly.time[i];
-      if(!t.startsWith(todayStr)) continue;
-      if(codesList.includes(hourly.weather_code[i])){
+      const tStr = hourly.time[i];
+      if(!tStr.startsWith(todayStr)) continue;
+      
+      const fechaHoraSlot = new Date(tStr);
+      if(fechaHoraSlot < ahora && i < hourly.time.length - 1) {
+        const siguienteSlot = new Date(hourly.time[i+1]);
+        if(siguienteSlot <= ahora) continue;
+      }
+
+      if(codesList.includes(hourly.weather_code[i]) || hourly.precipitation_probability[i] >= 50){
         horasIndices.push(i);
       }
     }
