@@ -255,7 +255,7 @@
       
       <div class="location-panel">
         <div class="location-row">
-          <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi GPS</button>
+          <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi Ubicación</button>
           <button onclick="agregarFavoritoActual()" title="Guardar ubicación actual en favoritos" style="background: var(--amber); color: #12203a;">⭐ Agregar</button>
           <select id="selector-manual" onchange="cambiarCiudadManual(this.value)">
             <option value="">Mis Favoritos...</option>
@@ -268,10 +268,10 @@
         </div>
       </div>
 
-      <div class="place" id="place">Solicitando ubicación...</div>
+      <div class="place" id="place">Detectando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
-      <div class="desc" id="desc">Esperando permiso del GPS</div>
+      <div class="desc" id="desc">Cargando datos del clima</div>
       <div class="precip-alerts" id="precipAlerts"></div>
       
       <nav class="tabs">
@@ -307,12 +307,12 @@
         <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
         <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
       </div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación GPS</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación GPS</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
     </div>
   </div>
 
@@ -366,22 +366,37 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function obtenerUbicacionActual(){
-  if(!navigator.geolocation){
-    alert("Tu navegador no soporta geolocalización.");
-    return;
+  document.getElementById('place').textContent = "Buscando ubicación...";
+
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        cargarClima(pos.coords.latitude, pos.coords.longitude, null);
+      },
+      (err) => {
+        // Si el usuario rechaza el GPS o da error, usamos el respaldo por IP
+        usarRespaldoIP();
+      },
+      { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
+    );
+  } else {
+    usarRespaldoIP();
   }
-  document.getElementById('place').textContent = "Buscando ubicación GPS...";
-  
-  navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      cargarClima(pos.coords.latitude, pos.coords.longitude, null);
-    },
-    (err) => {
-      alert("No se pudo obtener la ubicación. Puedes elegir una ciudad de tus favoritos o buscarla.");
-      document.getElementById('place').textContent = "Sin ubicación (usa tus favoritos)";
-    },
-    { enableHighAccuracy:false, timeout:12000, maximumAge:300000 }
-  );
+}
+
+async function usarRespaldoIP(){
+  try {
+    const res = await fetch('https://ipapi.co/json/');
+    const data = await res.json();
+    if(data.latitude && data.longitude){
+      const nombreLugar = `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`;
+      cargarClima(data.latitude, data.longitude, nombreLugar);
+    } else {
+      throw new Error('No IP data');
+    }
+  } catch(e) {
+    document.getElementById('place').textContent = "Sin ubicación (usa tus favoritos)";
+  }
 }
 
 function obtenerFavoritos() {
