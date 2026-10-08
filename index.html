@@ -18,6 +18,9 @@
     --muted:#5c6c86;
     --card:#ffffff;
     --line:#dbe3ef;
+    --alert-bg:#fee2e2;
+    --alert-border:#ef4444;
+    --alert-text:#991b1b;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -26,6 +29,9 @@
       --ink:#e8edf7;
       --muted:#8b97b3;
       --line:#26314f;
+      --alert-bg:#451a03;
+      --alert-border:#f59e0b;
+      --alert-text:#fde68a;
     }
   }
   :root[data-theme="dark"]{
@@ -34,6 +40,9 @@
     --ink:#e8edf7;
     --muted:#8b97b3;
     --line:#26314f;
+    --alert-bg:#451a03;
+    --alert-border:#f59e0b;
+    --alert-text:#fde68a;
   }
 
   *{box-sizing:border-box;}
@@ -60,6 +69,27 @@
   .temp .tempF{font-size:1.5rem;font-weight:600;opacity:0.7;margin-left:8px;vertical-align:middle;}
   .desc{font-size:1rem;opacity:0.92;}
   .emoji{font-size:2rem;margin-bottom:2px;}
+
+  /* Estilos para el panel de clima adverso */
+  .adverse-alerts {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    text-align: left;
+  }
+  .alert-box {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.6);
+    color: #f87171;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
 
   .location-panel {
     background: rgba(0,0,0,0.15);
@@ -131,12 +161,6 @@
   }
   .sugerencia-item:hover {
     background: var(--mist);
-  }
-
-  .precip-alerts{margin-top:10px;display:flex;flex-direction:column;gap:4px;align-items:center;}
-  .precip-alerts .chip{
-    font-size:0.78rem;background:rgba(255,255,255,0.14);
-    border-radius:20px;padding:4px 12px;display:inline-block;
   }
 
   .body{padding:20px 24px 24px;}
@@ -272,7 +296,9 @@
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
-      <div class="precip-alerts" id="precipAlerts"></div>
+      
+      <!-- Contenedor donde aparecerán las alertas adversas automáticas -->
+      <div class="adverse-alerts" id="adverseAlerts"></div>
       
       <nav class="tabs">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
@@ -537,75 +563,46 @@ async function fetchPlace(lat, lon){
   }
 }
 
-const RAIN_CODES = [51,53,55,56,57,61,63,65,80,81,82,95,96,99];
-const SNOW_CODES = [71,73,75,77,85,86];
-const SLEET_CODES = [66,67];
-
-function renderPrecipAlerts(hourly, todayStr){
-  const el = document.getElementById('precipAlerts');
+/* ======================================================= */
+/* NUEVA FUNCIÓN: SISTEMA DE ALERTAS DE CLIMA ADVERSO     */
+/* ======================================================= */
+function renderAdverseAlerts(hourly, todayStr){
+  const el = document.getElementById('adverseAlerts');
   if(!el) return;
   if(!hourly || !hourly.time){ el.innerHTML=''; return; }
 
   const ahora = new Date();
+  let alertas = [];
 
-  const generarIntervalosLimpios = (codesList, nombreEvento, emojiIcono, requiereFrio = false) => {
-    let horasIndices = [];
-    for(let i=0; i<hourly.time.length; i++){
-      const tStr = hourly.time[i];
-      if(!tStr.startsWith(todayStr)) continue;
-      
-      const fechaHoraSlot = new Date(tStr);
-      // Ocultar por completo si la hora del pronóstico ya pasó
-      if(fechaHoraSlot < ahora) continue;
+  for(let i = 0; i < hourly.time.length; i++){
+    const tStr = hourly.time[i];
+    if(!tStr.startsWith(todayStr)) continue;
+    
+    const fechaHoraSlot = new Date(tStr);
+    if(fechaHoraSlot < ahora) continue; // Solo evaluar desde ahora en adelante
 
-      const tempActual = hourly.temperature_2m[i];
-      // Si requiere frío (nieve/aguanieve) y la temperatura es mayor a 3°C, lo ignoramos por completo
-      if (requiereFrio && tempActual > 3) continue;
+    const code = hourly.weather_code[i];
+    const viento = hourly.wind_speed_10m[i];
+    const horaStr = fmtHora(tStr);
 
-      if(codesList.includes(hourly.weather_code[i]) || (!requiereFrio && hourly.precipitation_probability[i] >= 50)){
-        horasIndices.push(i);
-      }
+    // 1. Alerta por Tormentas Severas / Granizo (Códigos 95, 96, 99)
+    if([95, 96, 99].includes(code)) {
+      alertas.push(`⚠️ Alerta: Tormenta eléctrica prevista a las ${horaStr}`);
     }
-
-    if(horasIndices.length === 0) return [];
-
-    let bloques = [];
-    let inicioBloque = horasIndices[0];
-    let finBloque = horasIndices[0];
-
-    for(let i = 1; i < horasIndices.length; i++){
-      const idxActual = horasIndices[i];
-      if(idxActual === finBloque + 1){
-        finBloque = idxActual;
-      } else {
-        bloques.push({ inicio: inicioBloque, fin: finBloque });
-        inicioBloque = idxActual;
-        finBloque = idxActual;
-      }
+    // 2. Alerta por Vientos Fuertes (Más de 50 km/h)
+    else if(viento >= 50) {
+      alertas.push(`🌬️ Alerta: Vachas intensas (${Math.round(viento)} km/h) a las ${horaStr}`);
     }
-    bloques.push({ inicio: inicioBloque, fin: finBloque });
+  }
 
-    return bloques.map(b => {
-      const horaInicioStr = fmtHora(hourly.time[b.inicio]);
-      let dFin = new Date(hourly.time[b.fin]);
-      dFin.setHours(dFin.getHours() + 1);
-      const horaFinStr = dFin.toTimeString().slice(0,5);
+  // Filtrar duplicados o mostrar un máximo de 2 alertas relevantes para no saturar
+  const alertasUnicas = [...new Set(alertas)].slice(0, 2);
 
-      if(b.inicio === b.fin){
-        return `${emojiIcono} ${nombreEvento} a las ${horaInicioStr}`;
-      } else {
-        return `${emojiIcono} ${nombreEvento} de ${horaInicioStr} a ${horaFinStr}`;
-      }
-    });
-  };
-
-  const chips = [
-    ...generarIntervalosLimpios(RAIN_CODES, 'Lluvia', '🌧️', false),
-    ...generarIntervalosLimpios(SLEET_CODES, 'Aguanieve', '🌨️', true),
-    ...generarIntervalosLimpios(SNOW_CODES, 'Nieve', '❄️', true)
-  ];
-
-  el.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
+  if(alertasUnicas.length > 0) {
+    el.innerHTML = alertasUnicas.map(a => `<div class="alert-box">${a}</div>`).join('');
+  } else {
+    el.innerHTML = '';
+  }
 }
 
 function cambiarVistaHoraria(tipo, btn){
@@ -693,7 +690,7 @@ function renderWeather(data, place){
     document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
     document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
     renderWeek(d);
-    renderPrecipAlerts(data.hourly, d.time[0]);
+    renderAdverseAlerts(data.hourly, d.time[0]); // Activamos el escaneo de clima adverso
     renderHourly(data.hourly);
   }
 }
