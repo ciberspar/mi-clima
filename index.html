@@ -61,7 +61,7 @@
   .desc{font-size:1rem;opacity:0.92;}
   .emoji{font-size:2rem;margin-bottom:2px;}
 
-  /* Estilos para el panel de selección de ubicación unificado */
+  /* Panel unificado de ubicación con autocompletado y favoritos */
   .location-panel {
     background: rgba(0,0,0,0.15);
     padding: 10px 12px;
@@ -70,6 +70,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
+    position: relative;
   }
   .location-row {
     display: flex;
@@ -96,9 +97,42 @@
     border: 1px solid var(--line);
     flex: 1;
   }
-  .location-search-row {
+  .location-search-container {
+    position: relative;
     display: flex;
     gap: 6px;
+    width: 100%;
+  }
+  .location-search-container input {
+    flex: 1;
+  }
+  
+  /* Lista desplegable de sugerencias del buscador */
+  #sugerencias-box {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    margin-top: 4px;
+    max-height: 150px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
+  .sugerencia-item {
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: var(--ink);
+    text-align: left;
+    cursor: pointer;
+    border-bottom: 1px solid var(--line);
+  }
+  .sugerencia-item:hover {
+    background: var(--mist);
   }
 
   .precip-alerts{margin-top:10px;display:flex;flex-direction:column;gap:4px;align-items:center;}
@@ -221,20 +255,19 @@
   <div id="weatherView">
     <div class="top">
       
-      <!-- Panel unificado de ubicación (GPS, Menú y Buscador) -->
+      <!-- Panel unificado de ubicación, favoritos y buscador autocompletable -->
       <div class="location-panel">
         <div class="location-row">
           <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi GPS</button>
+          <button onclick="agregarFavoritoActual()" title="Guardar ubicación actual en favoritos" style="background: var(--amber); color: #12203a;">⭐ Agregar</button>
           <select id="selector-manual" onchange="cambiarCiudadManual(this.value)">
-            <option value="">Favoritos...</option>
-            <option value="-31.4135,-64.1810">Córdoba</option>
-            <option value="37.7749,-122.4194">San Francisco</option>
-            <option value="37.8651,-119.5383">Yosemite</option>
+            <option value="">Mis Favoritos...</option>
           </select>
         </div>
-        <div class="location-search-row">
-          <input type="text" id="input-busqueda" placeholder="Buscar ciudad (ej: Madrid)..." onkeydown="if(event.key==='Enter') buscarCiudadPorTexto()">
-          <button onclick="buscarCiudadPorTexto()">🔍</button>
+        <div class="location-search-container">
+          <input type="text" id="input-busqueda" placeholder="Buscar ciudad (escribe para sugerencias)..." oninput="buscarSugerencias(this.value)">
+          <button onclick="ejecutarBusquedaDirecta()">🔍</button>
+          <div id="sugerencias-box"></div>
         </div>
       </div>
 
@@ -288,7 +321,7 @@
 
   <div class="visitas">👀 Personas que visitaron esta página: <b id="visitas">…</b></div>
   <div class="contacto">
-    Por consultas, dudas o sugerencias hable al <a href="https://github.com/ciberspar/mi-clima" target="_blank">repositorio de GitHub en issues o dudas</a>
+    Por consultas, dudas o sugerencias hable al <a href="https://github.com/ciberspar/mi-clima" target="_blank">repositorio de GitHub</a>
   </div>
 
 </div>
@@ -306,6 +339,8 @@ const WEATHER_CODES = {
 
 let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
+let ubicacionActualNombre = "";
+let ubicacionActualCoords = null;
 
 function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
@@ -320,14 +355,17 @@ async function cargarClima(lat, lon, nombreLugar){
       nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
     datosClimaGlobal = weather;
+    ubicacionActualNombre = place;
+    ubicacionActualCoords = `${lat},${lon}`;
     renderWeather(weather, place);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
   }
 }
 
-// Al entrar a la web, dispara directamente la ventana nativa de permisos de ubicación del sistema operativo/navegador
+// Al cargar la página cargamos favoritos guardados y pedimos GPS
 window.addEventListener('DOMContentLoaded', () => {
+  cargarFavoritosEnSelect();
   obtenerUbicacionActual();
 });
 
@@ -343,46 +381,118 @@ function obtenerUbicacionActual(){
       cargarClima(pos.coords.latitude, pos.coords.longitude, null);
     },
     (err) => {
-      alert("No se pudo obtener la ubicación. Puedes elegir una ciudad del menú o buscarla.");
-      document.getElementById('place').textContent = "Sin ubicación (usa el menú)";
+      alert("No se pudo obtener la ubicación. Puedes elegir una ciudad de tus favoritos o buscarla.");
+      document.getElementById('place').textContent = "Sin ubicación (usa tus favoritos)";
     },
     { enableHighAccuracy:false, timeout:12000, maximumAge:300000 }
   );
 }
 
-// Opción 2: Menú desplegable manual
+// Lógica de Favoritos LocalStorage
+function obtenerFavoritos() {
+  try {
+    return JSON.parse(localStorage.getItem('clima_favoritos')) || [];
+  } catch(e) {
+    return [];
+  }
+}
+
+function cargarFavoritosEnSelect() {
+  const select = document.getElementById('selector-manual');
+  const favs = obtenerFavoritos();
+  
+  let html = '<option value="">Mis Favoritos...</option>';
+  favs.forEach(f => {
+    html += `<option value="${f.coords}">${f.nombre}</option>`;
+  });
+  select.innerHTML = html;
+}
+
+function agregarFavoritoActual() {
+  if (!ubicacionActualCoords || !ubicacionActualNombre) {
+    alert("Aún no hay una ubicación cargada para guardar.");
+    return;
+  }
+  let favs = obtenerFavoritos();
+  // Evitar duplicados exactos por coordenadas
+  if (!favs.some(f => f.coords === ubicacionActualCoords)) {
+    favs.push({ nombre: ubicacionActualNombre, coords: ubicacionActualCoords });
+    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+    cargarFavoritosEnSelect();
+    alert(`¡"${ubicacionActualNombre}" se guardó en tus favoritos! ⭐`);
+  } else {
+    alert("Esta ubicación ya está guardada en tus favoritos.");
+  }
+}
+
 function cambiarCiudadManual(coordenadas) {
   if (!coordenadas) return;
   const [lat, lon] = coordenadas.split(',');
   const select = document.getElementById('selector-manual');
   const nombreTexto = select.options[select.selectedIndex].text;
   cargarClima(parseFloat(lat), parseFloat(lon), nombreTexto);
-  select.value = ""; // Resetea el select
+  select.value = ""; 
 }
 
-// Opción 3: Buscador por texto libre con la API de Geocodificación de Open-Meteo
-async function buscarCiudadPorTexto() {
+// Buscador con autocompletado en tiempo real
+let timerSugerencias = null;
+async function buscarSugerencias(texto) {
+  clearTimeout(timerSugerencias);
+  const box = document.getElementById('sugerencias-box');
+  const query = texto.trim();
+  
+  if (query.length < 2) {
+    box.style.display = 'none';
+    box.innerHTML = '';
+    return;
+  }
+
+  timerSugerencias = setTimeout(async () => {
+    try {
+      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=es`);
+      const data = await res.json();
+      
+      if (data.results && data.results.length > 0) {
+        box.innerHTML = data.results.map(item => {
+          const nombreCompleto = `${item.name}${item.admin1 ? ', ' + item.admin1 : ''}, ${item.country || ''}`;
+          return `<div class="sugerencia-item" onclick="seleccionarSugerencia(${item.latitude}, ${item.longitude}, '${nombreCompleto.replace(/'/g, "")}')">📍 ${nombreCompleto}</div>`;
+        }).join('');
+        box.style.display = 'block';
+      } else {
+        box.style.display = 'none';
+      }
+    } catch(e) {
+      box.style.display = 'none';
+    }
+  }, 300);
+}
+
+function seleccionarSugerencia(lat, lon, nombre) {
+  document.getElementById('sugerencias-box').style.display = 'none';
+  document.getElementById('input-busqueda').value = '';
+  cargarClima(lat, lon, nombre);
+}
+
+function ejecutarBusquedaDirecta() {
   const input = document.getElementById('input-busqueda');
   const nombre = input.value.trim();
   if (!nombre) return;
   
-  document.getElementById('place').textContent = "Buscando ciudad...";
-  try {
-    const respuesta = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nombre)}&count=1&language=es`);
-    const datos = await respuesta.json();
-    
-    if (datos.results && datos.results.length > 0) {
-      const { latitude, longitude, name, country } = datos.results[0];
-      input.value = "";
-      cargarClima(latitude, longitude, `${name}, ${country}`);
-    } else {
-      alert("No se encontró la ciudad ingresada.");
-      document.getElementById('place').textContent = "Ciudad no encontrada";
-    }
-  } catch (error) {
-    console.error("Error al buscar la ciudad:", error);
-    alert("Hubo un error al conectar con el servicio de búsqueda.");
-  }
+  // Realiza una búsqueda rápida del primer resultado directo
+  fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nombre)}&count=1&language=es`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.results && data.results.length > 0) {
+        const item = data.results[0];
+        const nombreCompleto = `${item.name}${item.admin1 ? ', ' + item.admin1 : ''}, ${item.country || ''}`;
+        document.getElementById('sugerencias-box').style.display = 'none';
+        input.value = '';
+        cargarClima(item.latitude, item.longitude, nombreCompleto);
+      } else {
+        alert("No se encontró la ubicación ingresada.");
+      }
+    })
+    .catch(() => alert("Error al buscar la ubicación."));
 }
 
 async function fetchWeather(lat, lon){
