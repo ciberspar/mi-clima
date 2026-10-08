@@ -363,7 +363,6 @@ async function cargarClima(lat, lon, nombreLugar){
   }
 }
 
-// Al cargar la página cargamos favoritos guardados y pedimos GPS
 window.addEventListener('DOMContentLoaded', () => {
   cargarFavoritosEnSelect();
   obtenerUbicacionActual();
@@ -388,7 +387,6 @@ function obtenerUbicacionActual(){
   );
 }
 
-// Lógica de Favoritos LocalStorage
 function obtenerFavoritos() {
   try {
     return JSON.parse(localStorage.getItem('clima_favoritos')) || [];
@@ -414,7 +412,6 @@ function agregarFavoritoActual() {
     return;
   }
   let favs = obtenerFavoritos();
-  // Evitar duplicados exactos por coordenadas
   if (!favs.some(f => f.coords === ubicacionActualCoords)) {
     favs.push({ nombre: ubicacionActualNombre, coords: ubicacionActualCoords });
     localStorage.setItem('clima_favoritos', JSON.stringify(favs));
@@ -434,7 +431,6 @@ function cambiarCiudadManual(coordenadas) {
   select.value = ""; 
 }
 
-// Buscador con autocompletado en tiempo real
 let timerSugerencias = null;
 async function buscarSugerencias(texto) {
   clearTimeout(timerSugerencias);
@@ -478,7 +474,6 @@ function ejecutarBusquedaDirecta() {
   const nombre = input.value.trim();
   if (!nombre) return;
   
-  // Realiza una búsqueda rápida del primer resultado directo
   fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nombre)}&count=1&language=es`)
     .then(r => r.json())
     .then(data => {
@@ -540,20 +535,53 @@ function renderPrecipAlerts(hourly, todayStr){
   if(!el) return;
   if(!hourly || !hourly.time){ el.innerHTML=''; return; }
 
-  let rainHour=null, snowHour=null, sleetHour=null;
-  for(let i=0;i<hourly.time.length;i++){
-    const t = hourly.time[i];
-    if(!t.startsWith(todayStr)) continue;
-    const code = hourly.weather_code[i];
-    if(rainHour===null && RAIN_CODES.includes(code)) rainHour = t;
-    if(snowHour===null && SNOW_CODES.includes(code)) snowHour = t;
-    if(sleetHour===null && SLEET_CODES.includes(code)) sleetHour = t;
-  }
+  // Buscamos bloques de tiempo continuo para lluvia, nieve y aguanieve
+  const generarChipsIntervalo = (codesList, nombreEvento, emojiIcono) => {
+    let chipsResult = [];
+    let inicio = null;
+    let fin = null;
 
-  const chips = [];
-  if(rainHour) chips.push(`🌧️ Lluvia a las ${fmtHora(rainHour)}`);
-  if(sleetHour) chips.push(`🌨️ Aguanieve a las ${fmtHora(sleetHour)}`);
-  if(snowHour) chips.push(`❄️ Nieve a las ${fmtHora(snowHour)}`);
+    for(let i=0; i<hourly.time.length; i++){
+      const t = hourly.time[i];
+      if(!t.startsWith(todayStr)) continue;
+      const code = hourly.weather_code[i];
+
+      if(codesList.includes(code)){
+        if(!inicio) inicio = t;
+        fin = t; // actualizamos el fin con la última hora consecutiva
+      } else {
+        if(inicio){
+          chipsResult.push(formatearChipTexto(inicio, fin, nombreEvento, emojiIcono));
+          inicio = null;
+          fin = null;
+        }
+      }
+    }
+    if(inicio){
+      chipsResult.push(formatearChipTexto(inicio, fin, nombreEvento, emojiIcono));
+    }
+    return chipsResult;
+  };
+
+  const formatearChipTexto = (inicioIso, finIso, nombre, emoji) => {
+    const horaInicio = fmtHora(inicioIso);
+    // Para saber cuándo finaliza, sumamos 1 hora a la última hora del bloque (ya que el reporte es por hora exacta)
+    let dFin = new Date(finIso);
+    dFin.setHours(dFin.getHours() + 1);
+    const horaFin = dFin.toTimeString().slice(0,5);
+
+    if(horaInicio === horaFin || inicioIso === finIso) {
+      return `${emoji} ${nombre} a las ${horaInicio}`;
+    } else {
+      return `${emoji} ${nombre} de ${horaInicio} a ${horaFin}`;
+    }
+  };
+
+  const chips = [
+    ...generarChipsIntervalo(RAIN_CODES, 'Lluvia', '🌧️'),
+    ...generarChipsIntervalo(SLEET_CODES, 'Aguanieve', '🌨️'),
+    ...generarChipsIntervalo(SNOW_CODES, 'Nieve', '❄️')
+  ];
 
   el.innerHTML = chips.map(c=>`<span class="chip">${c}</span>`).join('');
 }
