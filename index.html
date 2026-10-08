@@ -374,7 +374,6 @@ function obtenerUbicacionActual(){
         cargarClima(pos.coords.latitude, pos.coords.longitude, null);
       },
       (err) => {
-        // Si el usuario rechaza el GPS o da error, usamos el respaldo por IP
         usarRespaldoIP();
       },
       { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
@@ -549,7 +548,7 @@ function renderPrecipAlerts(hourly, todayStr){
 
   const ahora = new Date();
 
-  const generarIntervalosLimpios = (codesList, nombreEvento, emojiIcono) => {
+  const generarIntervalosLimpios = (codesList, nombreEvento, emojiIcono, requiereFrio = false) => {
     let horasIndices = [];
     for(let i=0; i<hourly.time.length; i++){
       const tStr = hourly.time[i];
@@ -561,7 +560,11 @@ function renderPrecipAlerts(hourly, todayStr){
         if(siguienteSlot <= ahora) continue;
       }
 
-      if(codesList.includes(hourly.weather_code[i]) || hourly.precipitation_probability[i] >= 50){
+      const tempActual = hourly.temperature_2m[i];
+      // Si requiere frío (nieve/aguanieve) y la temperatura es mayor a 3°C, lo ignoramos por completo
+      if (requiereFrio && tempActual > 3) continue;
+
+      if(codesList.includes(hourly.weather_code[i]) || (!requiereFrio && hourly.precipitation_probability[i] >= 50)){
         horasIndices.push(i);
       }
     }
@@ -599,9 +602,9 @@ function renderPrecipAlerts(hourly, todayStr){
   };
 
   const chips = [
-    ...generarIntervalosLimpios(RAIN_CODES, 'Lluvia', '🌧️'),
-    ...generarIntervalosLimpios(SLEET_CODES, 'Aguanieve', '🌨️'),
-    ...generarIntervalosLimpios(SNOW_CODES, 'Nieve', '❄️')
+    ...generarIntervalosLimpios(RAIN_CODES, 'Lluvia', '🌧️', false),
+    ...generarIntervalosLimpios(SLEET_CODES, 'Aguanieve', '🌨️', true),
+    ...generarIntervalosLimpios(SNOW_CODES, 'Nieve', '❄️', true)
   ];
 
   el.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
