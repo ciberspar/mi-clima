@@ -207,6 +207,12 @@
   .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 10px;}
   .visitas b{color:var(--ink);}
   .contacto{text-align:center;font-size:0.75rem;color:var(--muted);padding:0 24px 18px;}
+  .contacto a{color:var(--sky-600);text-decoration:none;font-weight:600;}
+  .contacto a:hover{text-decoration:underline;}
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]) .contacto a{color:var(--sky-400);}
+  }
+  :root[data-theme="dark"] .contacto a{color:var(--sky-400);}
 </style>
 </head>
 <body>
@@ -281,7 +287,9 @@
   </div>
 
   <div class="visitas">👀 Personas que visitaron esta página: <b id="visitas">…</b></div>
-  <div class="contacto">Para consultas, dudas o sugerencias hable al número 3515295919</div>
+  <div class="contacto">
+    <a href="https://github.com/ciberspar/mi-clima" target="_blank">💻 Ver código fuente en GitHub</a>
+  </div>
 
 </div>
 
