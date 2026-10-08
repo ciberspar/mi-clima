@@ -555,10 +555,8 @@ function renderPrecipAlerts(hourly, todayStr){
       if(!tStr.startsWith(todayStr)) continue;
       
       const fechaHoraSlot = new Date(tStr);
-      if(fechaHoraSlot < ahora && i < hourly.time.length - 1) {
-        const siguienteSlot = new Date(hourly.time[i+1]);
-        if(siguienteSlot <= ahora) continue;
-      }
+      // Ocultar por completo si la hora del pronóstico ya pasó
+      if(fechaHoraSlot < ahora) continue;
 
       const tempActual = hourly.temperature_2m[i];
       // Si requiere frío (nieve/aguanieve) y la temperatura es mayor a 3°C, lo ignoramos por completo
