@@ -535,55 +535,55 @@ function renderPrecipAlerts(hourly, todayStr){
   if(!el) return;
   if(!hourly || !hourly.time){ el.innerHTML=''; return; }
 
-  // Buscamos bloques de tiempo continuo para lluvia, nieve y aguanieve
-  const generarChipsIntervalo = (codesList, nombreEvento, emojiIcono) => {
-    let chipsResult = [];
-    let inicio = null;
-    let fin = null;
-
+  const generarIntervalosLimpios = (codesList, nombreEvento, emojiIcono) => {
+    let horasIndices = [];
     for(let i=0; i<hourly.time.length; i++){
       const t = hourly.time[i];
       if(!t.startsWith(todayStr)) continue;
-      const code = hourly.weather_code[i];
-
-      if(codesList.includes(code)){
-        if(!inicio) inicio = t;
-        fin = t; // actualizamos el fin con la última hora consecutiva
-      } else {
-        if(inicio){
-          chipsResult.push(formatearChipTexto(inicio, fin, nombreEvento, emojiIcono));
-          inicio = null;
-          fin = null;
-        }
+      if(codesList.includes(hourly.weather_code[i])){
+        horasIndices.push(i);
       }
     }
-    if(inicio){
-      chipsResult.push(formatearChipTexto(inicio, fin, nombreEvento, emojiIcono));
-    }
-    return chipsResult;
-  };
 
-  const formatearChipTexto = (inicioIso, finIso, nombre, emoji) => {
-    const horaInicio = fmtHora(inicioIso);
-    // Para saber cuándo finaliza, sumamos 1 hora a la última hora del bloque (ya que el reporte es por hora exacta)
-    let dFin = new Date(finIso);
-    dFin.setHours(dFin.getHours() + 1);
-    const horaFin = dFin.toTimeString().slice(0,5);
+    if(horasIndices.length === 0) return [];
 
-    if(horaInicio === horaFin || inicioIso === finIso) {
-      return `${emoji} ${nombre} a las ${horaInicio}`;
-    } else {
-      return `${emoji} ${nombre} de ${horaInicio} a ${horaFin}`;
+    let bloques = [];
+    let inicioBloque = horasIndices[0];
+    let finBloque = horasIndices[0];
+
+    for(let i = 1; i < horasIndices.length; i++){
+      const idxActual = horasIndices[i];
+      if(idxActual === finBloque + 1){
+        finBloque = idxActual;
+      } else {
+        bloques.push({ inicio: inicioBloque, fin: finBloque });
+        inicioBloque = idxActual;
+        finBloque = idxActual;
+      }
     }
+    bloques.push({ inicio: inicioBloque, fin: finBloque });
+
+    return bloques.map(b => {
+      const horaInicioStr = fmtHora(hourly.time[b.inicio]);
+      let dFin = new Date(hourly.time[b.fin]);
+      dFin.setHours(dFin.getHours() + 1);
+      const horaFinStr = dFin.toTimeString().slice(0,5);
+
+      if(b.inicio === b.fin){
+        return `${emojiIcono} ${nombreEvento} a las ${horaInicioStr}`;
+      } else {
+        return `${emojiIcono} ${nombreEvento} de ${horaInicioStr} a ${horaFinStr}`;
+      }
+    });
   };
 
   const chips = [
-    ...generarChipsIntervalo(RAIN_CODES, 'Lluvia', '🌧️'),
-    ...generarChipsIntervalo(SLEET_CODES, 'Aguanieve', '🌨️'),
-    ...generarChipsIntervalo(SNOW_CODES, 'Nieve', '❄️')
+    ...generarIntervalosLimpios(RAIN_CODES, 'Lluvia', '🌧️'),
+    ...generarIntervalosLimpios(SLEET_CODES, 'Aguanieve', '🌨️'),
+    ...generarIntervalosLimpios(SNOW_CODES, 'Nieve', '❄️')
   ];
 
-  el.innerHTML = chips.map(c=>`<span class="chip">${c}</span>`).join('');
+  el.innerHTML = chips.map(c => `<span class="chip">${c}</span>`).join('');
 }
 
 function cambiarVistaHoraria(tipo, btn){
