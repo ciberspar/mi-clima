@@ -73,7 +73,6 @@
   .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:3px;}
   .stat .value{font-size:1rem;font-weight:600;}
 
-  /* Estilos para el bloque deslizante por horas con pestañas internas */
   .hourly-card {
     background: var(--mist);
     border-radius: 12px;
@@ -135,7 +134,7 @@
     gap: 6px;
   }
   .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
-  .hour-icon { font-size: 1.1rem; min-height: 22px; }
+  .hour-icon { font-size: 1.1rem; min-height: 22px; display: flex; align-items: center; justify-content: center; }
   .hour-val { font-size: 0.82rem; font-weight: 600; }
 
   button.btn{
@@ -186,7 +185,6 @@
     </div>
 
     <div class="body tab-panel active" id="tab-hoy">
-      <!-- Panel deslizante por horas combinable (Clima, Lluvia, Viento) -->
       <div class="hourly-card">
         <div class="hourly-header">
           <div>
@@ -381,20 +379,27 @@ function renderHourly(hourly){
     const timeStr = hourly.time[idx];
     const horaLabel = (i === 0) ? 'Ahora' : timeStr.slice(11, 16);
     const code = hourly.weather_code[idx];
-    const [desc, emoji] = WEATHER_CODES[code] || ['—','🌡️'];
     
+    let iconoHTML = '';
     let valorTexto = '';
+
     if(vistaHorariaActual === 'temp') {
+      const [desc, emoji] = WEATHER_CODES[code] || ['—','🌡️'];
+      iconoHTML = emoji;
       valorTexto = Math.round(hourly.temperature_2m[idx]) + '°';
     } else if(vistaHorariaActual === 'lluvia') {
-      valorTexto = hourly.precipitation_probability[idx] + '%';
+      const prob = hourly.precipitation_probability[idx];
+      // Muestra la gotita de lluvia solo si hay un 30% o más de probabilidad
+      iconoHTML = prob >= 30 ? '🌧️' : '';
+      valorTexto = prob + '%';
     } else if(vistaHorariaActual === 'viento') {
+      iconoHTML = ''; // Sin emojis en la pestaña de viento
       valorTexto = Math.round(hourly.wind_speed_10m[idx]) + ' km/h';
     }
 
     return `<div class="hour-col">
       <div class="hour-time">${horaLabel}</div>
-      <div class="hour-icon">${emoji}</div>
+      <div class="hour-icon">${iconoHTML}</div>
       <div class="hour-val">${valorTexto}</div>
     </div>`;
   }).join('');
