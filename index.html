@@ -173,10 +173,10 @@
 
   <div id="weatherView">
     <div class="top">
-      <div class="place" id="place">Cargando clima...</div>
+      <div class="place" id="place">Solicitando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
-      <div class="desc" id="desc">Pronóstico en tiempo real</div>
+      <div class="desc" id="desc">Esperando permiso del GPS</div>
       <div class="precip-alerts" id="precipAlerts"></div>
       <nav class="tabs">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
@@ -211,12 +211,12 @@
         <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
         <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
       </div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Usar mi ubicación GPS</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación GPS</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Usar mi ubicación GPS</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación GPS</button>
     </div>
   </div>
 
@@ -235,8 +235,6 @@ const WEATHER_CODES = {
   95:['Tormenta','⛈️'], 96:['Tormenta con granizo','⛈️'], 99:['Tormenta con granizo','⛈️']
 };
 
-const CORDOBA_LAT = -31.4135;
-const CORDOBA_LON = -64.1810;
 let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
 
@@ -259,8 +257,9 @@ async function cargarClima(lat, lon, nombreLugar){
   }
 }
 
+// Al entrar a la web, dispara directamente la ventana nativa de permisos de ubicación del sistema operativo/navegador
 window.addEventListener('DOMContentLoaded', () => {
-  cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina");
+  obtenerUbicacionActual();
 });
 
 function obtenerUbicacionActual(){
@@ -268,11 +267,18 @@ function obtenerUbicacionActual(){
     alert("Tu navegador no soporta geolocalización.");
     return;
   }
-  document.getElementById('place').textContent = "Buscando ubicación...";
+  document.getElementById('place').textContent = "Buscando ubicación GPS...";
+  
+  // Aquí salta el cartel oficial del celular/computadora sin pantallas intermedias falsas
   navigator.geolocation.getCurrentPosition(
-    (pos) => { cargarClima(pos.coords.latitude, pos.coords.longitude, null); },
-    (err) => { alert("No se pudo obtener la ubicación. Manteniendo Córdoba."); cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina"); },
-    { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
+    (pos) => {
+      cargarClima(pos.coords.latitude, pos.coords.longitude, null);
+    },
+    (err) => {
+      alert("No se pudo obtener la ubicación. Asegúrate de dar permisos de GPS en tu navegador.");
+      document.getElementById('place').textContent = "Sin ubicación";
+    },
+    { enableHighAccuracy:false, timeout:12000, maximumAge:300000 }
   );
 }
 
@@ -389,11 +395,10 @@ function renderHourly(hourly){
       valorTexto = Math.round(hourly.temperature_2m[idx]) + '°';
     } else if(vistaHorariaActual === 'lluvia') {
       const prob = hourly.precipitation_probability[idx];
-      // Muestra la gotita de lluvia solo si hay un 30% o más de probabilidad
       iconoHTML = prob >= 30 ? '🌧️' : '';
       valorTexto = prob + '%';
     } else if(vistaHorariaActual === 'viento') {
-      iconoHTML = ''; // Sin emojis en la pestaña de viento
+      iconoHTML = '';
       valorTexto = Math.round(hourly.wind_speed_10m[idx]) + ' km/h';
     }
 
