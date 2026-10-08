@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Clima GPS</title>
+<title>Clima G - El tiempo en vivo</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1c2a4f">
 <style>
@@ -48,6 +48,7 @@
     width:100%;max-width:380px;
     background:var(--card);border:1px solid var(--line);
     border-radius:16px;overflow:hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
   }
   .top{
     background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
@@ -75,13 +76,9 @@
   button.btn{
     width:100%;background:var(--sky-800);color:#fff;border:none;
     padding:11px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:600;
+    transition: background 0.2s;
   }
   button.btn:active{background:var(--sky-950);}
-
-  .status{
-    text-align:center;color:var(--muted);font-size:0.88rem;padding:36px 24px;
-  }
-  .status button{margin-top:14px;}
 
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
@@ -125,18 +122,13 @@
 <body>
 <div class="card">
 
-  <div id="statusView" class="status">
-    <div style="font-size:2rem;margin-bottom:8px;">📍</div>
-    <p id="statusText">Necesito tu ubicación para mostrarte el clima donde estás.</p>
-    <button class="btn" id="btnUbicar" onclick="pedirUbicacion()">Usar mi ubicación</button>
-  </div>
-
-  <div id="weatherView" class="hidden">
+  <!-- Vista principal del clima cargada al instante sin pantallas intermedias -->
+  <div id="weatherView">
     <div class="top">
-      <div class="place" id="place">—</div>
+      <div class="place" id="place">Cargando clima...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
-      <div class="desc" id="desc">—</div>
+      <div class="desc" id="desc">Pronóstico en tiempo real</div>
       <div class="precip-alerts" id="precipAlerts"></div>
       <nav class="tabs">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
@@ -158,12 +150,12 @@
         <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
         <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
       </div>
-      <button class="btn" onclick="pedirUbicacion()">Actualizar ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Usar mi ubicación GPS</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="pedirUbicacion()">Actualizar ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Usar mi ubicación GPS</button>
     </div>
   </div>
 
@@ -182,48 +174,50 @@ const WEATHER_CODES = {
   95:['Tormenta','⛈️'], 96:['Tormenta con granizo','⛈️'], 99:['Tormenta con granizo','⛈️']
 };
 
+const CORDOBA_LAT = -31.4135;
+const CORDOBA_LON = -64.1810;
+
 function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
 }
 
-function showStatus(text, showBtn){
-  document.getElementById('statusView').classList.remove('hidden');
-  document.getElementById('weatherView').classList.add('hidden');
-  document.getElementById('statusText').textContent = text;
-  document.getElementById('btnUbicar').style.display = showBtn ? 'inline-block' : 'none';
-}
-
-function pedirUbicacion(){
-  if(!navigator.geolocation){
-    showStatus('Tu navegador no soporta geolocalización.', false);
-    return;
-  }
-  showStatus('Buscando tu ubicación…', false);
-  navigator.geolocation.getCurrentPosition(onUbicacionOk, onUbicacionError, {
-    enableHighAccuracy:false, timeout:12000, maximumAge:300000
-  });
-}
-
-function onUbicacionError(err){
-  let msg = 'No pude obtener tu ubicación.';
-  if(err.code === err.PERMISSION_DENIED) msg = 'Necesito permiso de ubicación para mostrarte el clima. Habilitalo en el navegador e intentá de nuevo.';
-  showStatus(msg, true);
-}
-
-async function onUbicacionOk(pos){
-  const { latitude, longitude } = pos.coords;
-  showStatus('Cargando clima…', false);
+async function cargarClima(lat, lon, nombreLugar){
   try{
     const [weather, place] = await Promise.all([
-      fetchWeather(latitude, longitude),
-      fetchPlace(latitude, longitude)
+      fetchWeather(lat, lon),
+      nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
     renderWeather(weather, place);
   }catch(e){
-    showStatus('No pude cargar el clima. Probá de nuevo.', true);
+    document.getElementById('place').textContent = "Error al cargar";
   }
+}
+
+// Al entrar a la web, carga Córdoba automáticamente de inmediato
+window.addEventListener('DOMContentLoaded', () => {
+  cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina");
+});
+
+function obtenerUbicacionActual(){
+  if(!navigator.geolocation){
+    alert("Tu navegador no soporta geolocalización.");
+    return;
+  }
+  document.getElementById('place').textContent = "Buscando ubicación...";
+  
+  // Aquí salta directamente la ventana nativa del sistema operativo/navegador
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      cargarClima(pos.coords.latitude, pos.coords.longitude, null);
+    },
+    (err) => {
+      alert("No se pudo obtener la ubicación. Manteniendo Córdoba.");
+      cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina");
+    },
+    { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
+  );
 }
 
 async function fetchWeather(lat, lon){
@@ -256,9 +250,9 @@ async function fetchPlace(lat, lon){
     if(!res.ok) throw new Error('place failed');
     const data = await res.json();
     const a = data.address || {};
-    return a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Tu ubicación';
+    return a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Mi ubicación';
   }catch(e){
-    return 'Tu ubicación';
+    return 'Mi ubicación';
   }
 }
 
@@ -340,8 +334,6 @@ function renderWeather(data, place){
     renderPrecipAlerts(data.hourly, d.time[0]);
     renderPrecipChart(data.hourly);
   }
-  document.getElementById('statusView').classList.add('hidden');
-  document.getElementById('weatherView').classList.remove('hidden');
 }
 
 function renderWeek(d){
