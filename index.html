@@ -61,6 +61,46 @@
   .desc{font-size:1rem;opacity:0.92;}
   .emoji{font-size:2rem;margin-bottom:2px;}
 
+  /* Estilos para el panel de selección de ubicación unificado */
+  .location-panel {
+    background: rgba(0,0,0,0.15);
+    padding: 10px 12px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .location-row {
+    display: flex;
+    gap: 6px;
+    width: 100%;
+  }
+  .location-panel button, .location-panel select, .location-panel input {
+    font-size: 0.8rem;
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    outline: none;
+    font-family: inherit;
+  }
+  .location-panel button {
+    background: var(--sky-800);
+    color: #fff;
+    cursor: pointer;
+    font-weight: 600;
+  }
+  .location-panel select, .location-panel input {
+    background: var(--card);
+    color: var(--ink);
+    border: 1px solid var(--line);
+    flex: 1;
+  }
+  .location-search-row {
+    display: flex;
+    gap: 6px;
+  }
+
   .precip-alerts{margin-top:10px;display:flex;flex-direction:column;gap:4px;align-items:center;}
   .precip-alerts .chip{
     font-size:0.78rem;background:rgba(255,255,255,0.14);
@@ -147,7 +187,7 @@
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
-  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);}
+  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);margin-top:14px;}
   nav.tabs button{
     flex:1;background:transparent;border:none;color:rgba(255,255,255,0.6);
     padding:10px 0 12px;font-size:0.82rem;cursor:pointer;font-weight:600;
@@ -173,11 +213,30 @@
 
   <div id="weatherView">
     <div class="top">
+      
+      <!-- Panel unificado de ubicación (GPS, Menú y Buscador) -->
+      <div class="location-panel">
+        <div class="location-row">
+          <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi GPS</button>
+          <select id="selector-manual" onchange="cambiarCiudadManual(this.value)">
+            <option value="">Favoritos...</option>
+            <option value="-31.4135,-64.1810">Córdoba</option>
+            <option value="37.7749,-122.4194">San Francisco</option>
+            <option value="37.8651,-119.5383">Yosemite</option>
+          </select>
+        </div>
+        <div class="location-search-row">
+          <input type="text" id="input-busqueda" placeholder="Buscar ciudad (ej: Madrid)..." onkeydown="if(event.key==='Enter') buscarCiudadPorTexto()">
+          <button onclick="buscarCiudadPorTexto()">🔍</button>
+        </div>
+      </div>
+
       <div class="place" id="place">Solicitando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
       <div class="desc" id="desc">Esperando permiso del GPS</div>
       <div class="precip-alerts" id="precipAlerts"></div>
+      
       <nav class="tabs">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
         <button data-tab="semana" onclick="cambiarTab('semana')">Semana</button>
@@ -269,17 +328,51 @@ function obtenerUbicacionActual(){
   }
   document.getElementById('place').textContent = "Buscando ubicación GPS...";
   
-  // Aquí salta el cartel oficial del celular/computadora sin pantallas intermedias falsas
   navigator.geolocation.getCurrentPosition(
     (pos) => {
       cargarClima(pos.coords.latitude, pos.coords.longitude, null);
     },
     (err) => {
-      alert("No se pudo obtener la ubicación. Asegúrate de dar permisos de GPS en tu navegador.");
-      document.getElementById('place').textContent = "Sin ubicación";
+      alert("No se pudo obtener la ubicación. Puedes elegir una ciudad del menú o buscarla.");
+      document.getElementById('place').textContent = "Sin ubicación (usa el menú)";
     },
     { enableHighAccuracy:false, timeout:12000, maximumAge:300000 }
   );
+}
+
+// Opción 2: Menú desplegable manual
+function cambiarCiudadManual(coordenadas) {
+  if (!coordenadas) return;
+  const [lat, lon] = coordenadas.split(',');
+  const select = document.getElementById('selector-manual');
+  const nombreTexto = select.options[select.selectedIndex].text;
+  cargarClima(parseFloat(lat), parseFloat(lon), nombreTexto);
+  select.value = ""; // Resetea el select
+}
+
+// Opción 3: Buscador por texto libre con la API de Geocodificación de Open-Meteo
+async function buscarCiudadPorTexto() {
+  const input = document.getElementById('input-busqueda');
+  const nombre = input.value.trim();
+  if (!nombre) return;
+  
+  document.getElementById('place').textContent = "Buscando ciudad...";
+  try {
+    const respuesta = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nombre)}&count=1&language=es`);
+    const datos = await respuesta.json();
+    
+    if (datos.results && datos.results.length > 0) {
+      const { latitude, longitude, name, country } = datos.results[0];
+      input.value = "";
+      cargarClima(latitude, longitude, `${name}, ${country}`);
+    } else {
+      alert("No se encontró la ciudad ingresada.");
+      document.getElementById('place').textContent = "Ciudad no encontrada";
+    }
+  } catch (error) {
+    console.error("Error al buscar la ciudad:", error);
+    alert("Hubo un error al conectar con el servicio de búsqueda.");
+  }
 }
 
 async function fetchWeather(lat, lon){
