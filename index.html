@@ -45,7 +45,7 @@
     display:flex;align-items:center;justify-content:center;padding:24px;
   }
   .card{
-    width:100%;max-width:380px;
+    width:100%;max-width:390px;
     background:var(--card);border:1px solid var(--line);
     border-radius:16px;overflow:hidden;
     box-shadow: 0 10px 25px rgba(0,0,0,0.05);
@@ -73,6 +73,71 @@
   .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:3px;}
   .stat .value{font-size:1rem;font-weight:600;}
 
+  /* Estilos para el bloque deslizante por horas con pestañas internas */
+  .hourly-card {
+    background: var(--mist);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 18px;
+  }
+  .hourly-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .hourly-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+  }
+  .hourly-sub {
+    font-size: 0.7rem;
+    color: var(--muted);
+  }
+  .hourly-toggles {
+    display: flex;
+    background: var(--card);
+    border-radius: 20px;
+    padding: 2px;
+    gap: 2px;
+    border: 1px solid var(--line);
+  }
+  .hourly-toggles button {
+    background: transparent;
+    border: none;
+    border-radius: 16px;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    color: var(--muted);
+  }
+  .hourly-toggles button.active {
+    background: var(--sky-800);
+    color: #fff;
+  }
+  .hourly-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 16px;
+    padding-bottom: 6px;
+    scrollbar-width: none;
+  }
+  .hourly-scroll::-webkit-scrollbar { display: none; }
+  .hour-col {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 44px;
+    text-align: center;
+    gap: 6px;
+  }
+  .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  .hour-icon { font-size: 1.1rem; min-height: 22px; }
+  .hour-val { font-size: 0.82rem; font-weight: 600; }
+
   button.btn{
     width:100%;background:var(--sky-800);color:#fff;border:none;
     padding:11px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:600;
@@ -82,8 +147,6 @@
 
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
-
-  .hidden{display:none;}
 
   nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);}
   nav.tabs button{
@@ -102,19 +165,6 @@
   .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;}
   .day-row .day-range b{color:var(--ink);}
 
-  .precip-chart-title{font-size:0.72rem;color:var(--muted);margin:2px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
-  .precip-chart{
-    position:relative;display:flex;align-items:flex-end;
-    height:96px;margin:0 0 18px;padding-top:20px;
-  }
-  .precip-chart::after{
-    content:'';position:absolute;left:0;right:0;bottom:22px;height:2px;background:var(--sky-400);opacity:0.5;
-  }
-  .precip-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;position:relative;}
-  .precip-col .pct{position:absolute;top:-18px;font-size:0.72rem;font-weight:700;color:var(--sky-600);white-space:nowrap;}
-  .precip-col .bar{width:70%;max-width:26px;background:var(--sky-400);border-radius:2px 2px 0 0;margin-bottom:22px;transition:height .2s;}
-  .precip-col .hr{position:absolute;bottom:0;font-size:0.66rem;color:var(--muted);white-space:nowrap;}
-
   .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 18px;}
   .visitas b{color:var(--ink);}
 </style>
@@ -122,7 +172,6 @@
 <body>
 <div class="card">
 
-  <!-- Vista principal del clima cargada al instante sin pantallas intermedias -->
   <div id="weatherView">
     <div class="top">
       <div class="place" id="place">Cargando clima...</div>
@@ -137,8 +186,22 @@
     </div>
 
     <div class="body tab-panel active" id="tab-hoy">
-      <div class="precip-chart-title">Probabilidad de lluvia</div>
-      <div class="precip-chart" id="precipChart"></div>
+      <!-- Panel deslizante por horas combinable (Clima, Lluvia, Viento) -->
+      <div class="hourly-card">
+        <div class="hourly-header">
+          <div>
+            <div class="hourly-title" id="hourlyTitle">Estado del clima</div>
+            <div class="hourly-sub" id="hourlySub">Temperatura (°C)</div>
+          </div>
+          <div class="hourly-toggles">
+            <button class="active" onclick="cambiarVistaHoraria('temp', this)">☁️</button>
+            <button onclick="cambiarVistaHoraria('lluvia', this)">💧</button>
+            <button onclick="cambiarVistaHoraria('viento', this)">🌬️</button>
+          </div>
+        </div>
+        <div class="hourly-scroll" id="hourlyScroll"></div>
+      </div>
+
       <div class="stats">
         <div class="stat"><div class="label">Sensación</div><div class="value" id="feels">--°</div></div>
         <div class="stat"><div class="label">Humedad</div><div class="value" id="humidity">--%</div></div>
@@ -176,6 +239,8 @@ const WEATHER_CODES = {
 
 const CORDOBA_LAT = -31.4135;
 const CORDOBA_LON = -64.1810;
+let datosClimaGlobal = null;
+let vistaHorariaActual = 'temp';
 
 function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
@@ -189,13 +254,13 @@ async function cargarClima(lat, lon, nombreLugar){
       fetchWeather(lat, lon),
       nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
+    datosClimaGlobal = weather;
     renderWeather(weather, place);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
   }
 }
 
-// Al entrar a la web, carga Córdoba automáticamente de inmediato
 window.addEventListener('DOMContentLoaded', () => {
   cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina");
 });
@@ -206,22 +271,15 @@ function obtenerUbicacionActual(){
     return;
   }
   document.getElementById('place').textContent = "Buscando ubicación...";
-  
-  // Aquí salta directamente la ventana nativa del sistema operativo/navegador
   navigator.geolocation.getCurrentPosition(
-    (pos) => {
-      cargarClima(pos.coords.latitude, pos.coords.longitude, null);
-    },
-    (err) => {
-      alert("No se pudo obtener la ubicación. Manteniendo Córdoba.");
-      cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina");
-    },
+    (pos) => { cargarClima(pos.coords.latitude, pos.coords.longitude, null); },
+    (err) => { alert("No se pudo obtener la ubicación. Manteniendo Córdoba."); cargarClima(CORDOBA_LAT, CORDOBA_LON, "Córdoba, Argentina"); },
     { enableHighAccuracy:false, timeout:10000, maximumAge:300000 }
   );
 }
 
 async function fetchWeather(lat, lon){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=weather_code,precipitation_probability&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,weather_code&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,weather_code&timezone=auto`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('weather failed');
   return res.json();
@@ -283,30 +341,61 @@ function renderPrecipAlerts(hourly, todayStr){
   el.innerHTML = chips.map(c=>`<span class="chip">${c}</span>`).join('');
 }
 
-function renderPrecipChart(hourly){
-  const el = document.getElementById('precipChart');
-  if(!el) return;
-  if(!hourly || !hourly.time || !hourly.precipitation_probability){ el.innerHTML=''; return; }
+function cambiarVistaHoraria(tipo, btn){
+  document.querySelectorAll('.hourly-toggles button').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  vistaHorariaActual = tipo;
+  
+  const titleEl = document.getElementById('hourlyTitle');
+  const subEl = document.getElementById('hourlySub');
+  
+  if(tipo === 'temp') {
+    titleEl.textContent = "Estado del clima";
+    subEl.textContent = "Temperatura (°C)";
+  } else if(tipo === 'lluvia') {
+    titleEl.textContent = "Precipitación";
+    subEl.textContent = "Prob. de lluvia (%)";
+  } else if(tipo === 'viento') {
+    titleEl.textContent = "Viento";
+    subEl.textContent = "Velocidad (km/h)";
+  }
+  
+  if(datosClimaGlobal) renderHourly(datosClimaGlobal.hourly);
+}
+
+function renderHourly(hourly){
+  const el = document.getElementById('hourlyScroll');
+  if(!el || !hourly || !hourly.time) return;
 
   const now = new Date();
   let startIdx = hourly.time.findIndex(t => new Date(t) >= now);
   if(startIdx === -1) startIdx = 0;
 
   const idxs = [];
-  for(let i=0; i<8; i++){
-    const idx = startIdx + i*1;
+  for(let i=0; i<24; i++){
+    const idx = startIdx + i;
     if(idx < hourly.time.length) idxs.push(idx);
   }
 
-  const maxBarPx = 50;
-  el.innerHTML = idxs.map(idx=>{
-    const pct = hourly.precipitation_probability[idx];
-    const hr = fmtHora(hourly.time[idx]);
-    const h = Math.max(2, Math.round((pct/100) * maxBarPx));
-    return `<div class="precip-col">
-      <div class="pct">${pct}%</div>
-      <div class="bar" style="height:${h}px"></div>
-      <div class="hr">${hr}</div>
+  el.innerHTML = idxs.map((idx, i)=>{
+    const timeStr = hourly.time[idx];
+    const horaLabel = (i === 0) ? 'Ahora' : timeStr.slice(11, 16);
+    const code = hourly.weather_code[idx];
+    const [desc, emoji] = WEATHER_CODES[code] || ['—','🌡️'];
+    
+    let valorTexto = '';
+    if(vistaHorariaActual === 'temp') {
+      valorTexto = Math.round(hourly.temperature_2m[idx]) + '°';
+    } else if(vistaHorariaActual === 'lluvia') {
+      valorTexto = hourly.precipitation_probability[idx] + '%';
+    } else if(vistaHorariaActual === 'viento') {
+      valorTexto = Math.round(hourly.wind_speed_10m[idx]) + ' km/h';
+    }
+
+    return `<div class="hour-col">
+      <div class="hour-time">${horaLabel}</div>
+      <div class="hour-icon">${emoji}</div>
+      <div class="hour-val">${valorTexto}</div>
     </div>`;
   }).join('');
 }
@@ -332,7 +421,7 @@ function renderWeather(data, place){
     document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
     renderWeek(d);
     renderPrecipAlerts(data.hourly, d.time[0]);
-    renderPrecipChart(data.hourly);
+    renderHourly(data.hourly);
   }
 }
 
