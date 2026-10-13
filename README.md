@@ -26,11 +26,6 @@
 * **OpenStreetMap (Nominatim):** Geocodificación inversa para la autodetección del nombre de la localidad.
 * **GitHub Pages:** Alojamiento y despliegue continuo del sitio web.
 
----
-
-## 📱 Capturas o Vista Previa
-
-*(Puedes agregar aquí una captura de pantalla de tu app corriendo en tu teléfono o PC si lo deseas)*
 
 ---
 
