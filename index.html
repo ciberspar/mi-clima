@@ -80,7 +80,7 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.3); }
 
-  /* Menú emergente de Configuración (oculto por defecto) */
+  /* Menú emergente de Configuración */
   .menu-dropdown {
     display: none;
     position: absolute;
@@ -226,7 +226,6 @@
   .desc{font-size:0.95rem;opacity:0.9;}
   .emoji{font-size:2.2rem;margin-top:4px;}
   
-  /* Etiqueta de comparación con ayer */
   .yesterday-badge {
     display: inline-block;
     margin-top: 8px;
@@ -237,6 +236,91 @@
     font-size: 0.78rem;
     font-weight: 500;
     color: #eef2f8;
+  }
+
+  /* --- VENTANA CLIMÁTICA ANIMADA (ESTILO iOS) --- */
+  .weather-window {
+    position: relative;
+    width: 100%;
+    height: 90px;
+    margin-top: 14px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 16px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+  }
+  .window-content {
+    position: relative;
+    z-index: 3;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #fff;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .window-sub { font-size: 0.72rem; opacity: 0.85; font-weight: 400; }
+
+  /* Animación de Gotas de Lluvia */
+  .rain-drop {
+    position: absolute;
+    background: linear-gradient(transparent, rgba(255,255,255,0.7));
+    width: 2px;
+    height: 16px;
+    opacity: 0.7;
+    animation: fall linear infinite;
+    z-index: 2;
+  }
+  @keyframes fall {
+    0% { transform: translateY(-20px); }
+    100% { transform: translateY(110px); }
+  }
+
+  /* Animación de Nubes Flotantes */
+  .moving-cloud {
+    position: absolute;
+    font-size: 1.6rem;
+    opacity: 0.45;
+    animation: drift linear infinite;
+    z-index: 1;
+  }
+  @keyframes drift {
+    0% { transform: translateX(-50px); }
+    100% { transform: translateX(360px); }
+  }
+
+  /* Animación de Rayos de Sol / Destellos */
+  .sun-glow {
+    position: absolute;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle, rgba(255,220,100,0.6) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: pulseGlow 3s ease-in-out infinite;
+    z-index: 1;
+  }
+  @keyframes pulseGlow {
+    0%, 100% { transform: scale(1); opacity: 0.6; }
+    50% { transform: scale(1.3); opacity: 0.9; }
+  }
+
+  /* Animación de Tormenta (Destellos) */
+  .storm-flash {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0);
+    animation: flashFx 4s infinite;
+    z-index: 2;
+  }
+  @keyframes flashFx {
+    0%, 90%, 94%, 100% { background: rgba(255,255,255,0); }
+    92%, 96% { background: rgba(255,255,255,0.35); }
   }
 
   /* Alertas adversas */
@@ -320,7 +404,7 @@
     <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración">•••</button>
   </div>
 
-  <!-- Menú emergente de Configuración (oculto por defecto) -->
+  <!-- Menú emergente de Configuración -->
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()">
       <span>✏️ Editar lista</span>
@@ -345,9 +429,7 @@
       <button class="icon-btn" onclick="cerrarListaCiudades()">✕</button>
     </div>
 
-    <div class="cities-list" id="citiesList">
-      <!-- Se llena dinámicamente con la ubicación GPS actual + guardados -->
-    </div>
+    <div class="cities-list" id="citiesList"></div>
 
     <div class="search-bottom-bar">
       <div id="sugerencias-box"></div>
@@ -366,6 +448,14 @@
       <div class="temp"><span id="temp">--</span><span class="unit" id="unitLabel">°C</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
       <div class="yesterday-badge" id="yesterdayDiff" style="display:none;"></div>
+
+      <!-- Ventana Animada Interactiva del Clima -->
+      <div class="weather-window" id="weatherWindow">
+        <div class="window-content" id="windowText">
+          <span>Cargando entorno...</span>
+          <span class="window-sub">Tiempo en vivo</span>
+        </div>
+      </div>
       
       <div class="adverse-alerts" id="adverseAlerts"></div>
       
@@ -468,7 +558,6 @@ function toggleMenuConfig(e) {
   menu.classList.toggle('active');
 }
 
-// Cerrar menú si hace clic fuera de él
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('menuConfig');
   const btn = document.getElementById('btnConfig');
@@ -590,7 +679,6 @@ async function renderCiudadesGuardadas() {
   const favs = obtenerFavoritos();
   let cards = [];
 
-  // 1. Tarjeta de la ubicación por GPS
   if (ubicacionGPSData) {
     const tempGPS = convertirTemp(ubicacionGPSData.weather.current.temperature_2m);
     const [descGPS, emojiGPS] = WEATHER_CODES[ubicacionGPSData.weather.current.weather_code] || ['—','🌡️'];
@@ -605,7 +693,6 @@ async function renderCiudadesGuardadas() {
     `);
   }
 
-  // 2. Tarjetas de favoritos guardados
   for (let i = 0; i < favs.length; i++) {
     const f = favs[i];
     try {
@@ -679,7 +766,6 @@ function seleccionarSugerencia(lat, lon, nombre) {
 }
 
 async function fetchWeather(lat, lon){
-  // Agregado &past_days=1 para obtener los datos de ayer
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&past_days=1&timezone=auto`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('weather failed');
@@ -700,9 +786,7 @@ function fmtDiaSemana(dateStr, idx){
 
 function calcularDatosLuna(val) {
   if (val === undefined || val === null) return { nombre: '—', emoji: '🌑', ilum: 0 };
-  
   const ilum = Math.round((1 - Math.abs((val - 0.5) * 2)) * 100);
-
   if (val < 0.03 || val > 0.97) return { nombre: 'Luna Nueva', emoji: '🌑', ilum };
   if (val < 0.22) return { nombre: 'Luna Creciente', emoji: '🌒', ilum };
   if (val < 0.28) return { nombre: 'Cuarto Creciente', emoji: '🌓', ilum };
@@ -719,14 +803,11 @@ function calcularDiferenciaAyer(hourly, currentTemp) {
     el.style.display = 'none';
     return;
   }
-
   const now = new Date();
-  // Buscamos la hora exacta de ayer (-24 hs)
   const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  
   let targetIdx = hourly.time.findIndex(t => {
     const itemDate = new Date(t);
-    return Math.abs(itemDate - past24h) < 30 * 60 * 1000; // Margen de 30 minutos
+    return Math.abs(itemDate - past24h) < 30 * 60 * 1000;
   });
 
   if (targetIdx !== -1) {
@@ -744,6 +825,79 @@ function calcularDiferenciaAyer(hourly, currentTemp) {
     el.style.display = 'inline-block';
   } else {
     el.style.display = 'none';
+  }
+}
+
+/* --- LOGICA DE ANIMACIÓN DE LA VENTANA CLIMÁTICA --- */
+function actualizarVentanaClima(code) {
+  const windowEl = document.getElementById('weatherWindow');
+  const textEl = document.getElementById('windowText');
+  
+  // Limpiamos elementos animados previos dentro de la ventana
+  const elemsPrevios = windowEl.querySelectorAll('.rain-drop, .moving-cloud, .sun-glow, .storm-flash');
+  elemsPrevios.forEach(el => el.remove());
+
+  let tipoAnimacion = 'despejado';
+  let mensajePrincipal = 'Cielo despejado en este momento';
+  let mensajeSub = 'Condiciones estables';
+
+  // Clasificación según WMO codes de Open-Meteo
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) {
+    tipoAnimacion = 'lluvia';
+    mensajePrincipal = 'Precipitaciones detectadas';
+    mensajeSub = 'Llevá paraguas si salís';
+  } else if ([2, 3, 45, 48].includes(code)) {
+    tipoAnimacion = 'nublado';
+    mensajePrincipal = 'Cielo cubierto o neblina';
+    mensajeSub = 'Ambiente nuboso';
+  } else if ([95, 96, 99].includes(code)) {
+    tipoAnimacion = 'tormenta';
+    mensajePrincipal = 'Actividad eléctrica activa';
+    mensajeSub = 'Precaución al aire libre';
+  } else {
+    tipoAnimacion = 'sol';
+    mensajePrincipal = 'Buen tiempo predominante';
+    mensajeSub = 'Ideal para actividades afuera';
+  }
+
+  textEl.innerHTML = `<span>${mensajePrincipal}</span><span class="window-sub">${mensajeSub}</span>`;
+
+  // Inyectar animaciones dinámicas según el tipo
+  if (tipoAnimacion === 'lluvia') {
+    for (let i = 0; i < 12; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'rain-drop';
+      drop.style.left = `${Math.random() * 100}%`;
+      drop.style.animationDuration = `${0.5 + Math.random() * 0.5}s`;
+      drop.style.animationDelay = `${Math.random() * 1}s`;
+      windowEl.appendChild(drop);
+    }
+  } else if (tipoAnimacion === 'nublado') {
+    for (let i = 0; i < 2; i++) {
+      const cloud = document.createElement('div');
+      cloud.className = 'moving-cloud';
+      cloud.textContent = '☁️';
+      cloud.style.top = `${10 + i * 35}px`;
+      cloud.style.animationDuration = `${12 + i * 6}s`;
+      cloud.style.animationDelay = `${i * -6}s`;
+      windowEl.appendChild(cloud);
+    }
+  } else if (tipoAnimacion === 'tormenta') {
+    const flash = document.createElement('div');
+    flash.className = 'storm-flash';
+    windowEl.appendChild(flash);
+    for (let i = 0; i < 10; i++) {
+      const drop = document.createElement('div');
+      drop.className = 'rain-drop';
+      drop.style.left = `${Math.random() * 100}%`;
+      drop.style.animationDuration = `0.4s`;
+      drop.style.animationDelay = `${Math.random() * 0.5}s`;
+      windowEl.appendChild(drop);
+    }
+  } else {
+    const sun = document.createElement('div');
+    sun.className = 'sun-glow';
+    windowEl.appendChild(sun);
   }
 }
 
@@ -841,7 +995,9 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // Comparativa con la temperatura de ayer a la misma hora
+  // Actualizar ventana animada en vivo según código actual
+  actualizarVentanaClima(c.weather_code);
+
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
 
   document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
@@ -850,7 +1006,6 @@ function renderWeather(data, place){
   document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
   
   if(d){
-    // Filtramos para obtener el día de hoy ya que traemos past_days=1
     const todayStr = new Date().toISOString().slice(0, 10);
     let todayIdx = d.time.findIndex(t => t === todayStr);
     if (todayIdx === -1) todayIdx = d.time.length > 1 ? 1 : 0;
@@ -859,7 +1014,6 @@ function renderWeather(data, place){
     document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
     document.getElementById('uv').textContent = Math.round(d.uv_index_max[todayIdx]);
     
-    // Render astronómico
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
     document.getElementById('moonEmoji').textContent = luna.emoji;
@@ -877,9 +1031,7 @@ function renderWeather(data, place){
 }
 
 function renderWeek(d, todayIdx = 0){
-  // Mostramos los días a partir de hoy (descartando el día pasado de past_days)
   const futureDays = d.time.slice(todayIdx);
-  
   const rows = futureDays.map((dateStr, i)=>{
     const actualIdx = todayIdx + i;
     const [desc, emoji] = WEATHER_CODES[d.weather_code[actualIdx]] || ['—','🌡️'];
