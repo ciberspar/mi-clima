@@ -377,6 +377,28 @@
         <div class="hourly-scroll" id="hourlyScroll"></div>
       </div>
 
+      <!-- Cuadro de Astronomía y Ciclo Lunar -->
+      <div class="hourly-card">
+        <div class="hourly-header" style="margin-bottom: 8px;">
+          <div class="hourly-title">Astronomía</div>
+          <div class="hourly-sub" id="moonPhaseName">--</div>
+        </div>
+        <div class="stats" style="grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0;">
+          <div class="stat" style="grid-column: span 2; display: flex; align-items: center; justify-content: space-around; padding: 10px;">
+            <span id="moonEmoji" style="font-size: 2.2rem;">🌑</span>
+            <div style="text-align: left;">
+              <div class="label">Iluminación aprox.</div>
+              <div class="value" id="moonIllum">--%</div>
+            </div>
+          </div>
+          <div class="stat"><div class="label">🌙 Salida Luna</div><div class="value" id="moonrise">--:--</div></div>
+          <div class="stat"><div class="label">🌘 Puesta Luna</div><div class="value" id="moonset">--:--</div></div>
+          <div class="stat"><div class="label">☀️ Salida Sol</div><div class="value" id="sunrise">--:--</div></div>
+          <div class="stat"><div class="label">🌅 Puesta Sol</div><div class="value" id="sunset">--:--</div></div>
+        </div>
+      </div>
+
+      <!-- Estadísticas generales -->
       <div class="stats">
         <div class="stat"><div class="label">Sensación</div><div class="value" id="feels">--°</div></div>
         <div class="stat"><div class="label">Humedad</div><div class="value" id="humidity">--%</div></div>
@@ -384,9 +406,7 @@
         <div class="stat"><div class="label">Máx / Mín</div><div class="value" id="maxmin">--° / --°</div></div>
         <div class="stat"><div class="label">Precipitación</div><div class="value" id="precip">-- mm</div></div>
         <div class="stat"><div class="label">Presión</div><div class="value" id="pressure">-- hPa</div></div>
-        <div class="stat"><div class="label">Índice UV</div><div class="value" id="uv">--</div></div>
-        <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
-        <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
+        <div class="stat" style="grid-column: span 3;"><div class="label">Índice UV</div><div class="value" id="uv">--</div></div>
       </div>
       <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
@@ -645,7 +665,7 @@ function seleccionarSugerencia(lat, lon, nombre) {
 }
 
 async function fetchWeather(lat, lon){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,weather_code&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&timezone=auto`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('weather failed');
   return res.json();
@@ -661,6 +681,21 @@ function fmtHora(iso){ return iso ? iso.slice(11,16) : '--:--'; }
 function fmtDiaSemana(dateStr, idx){
   if(idx===0) return 'Hoy';
   return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-AR', { weekday:'short' });
+}
+
+function calcularDatosLuna(val) {
+  if (val === undefined || val === null) return { nombre: '—', emoji: '🌑', ilum: 0 };
+  
+  const ilum = Math.round((1 - Math.abs((val - 0.5) * 2)) * 100);
+
+  if (val < 0.03 || val > 0.97) return { nombre: 'Luna Nueva', emoji: '🌑', ilum };
+  if (val < 0.22) return { nombre: 'Luna Creciente', emoji: '🌒', ilum };
+  if (val < 0.28) return { nombre: 'Cuarto Creciente', emoji: '🌓', ilum };
+  if (val < 0.47) return { nombre: 'Gibosa Creciente', emoji: '🌔', ilum };
+  if (val < 0.53) return { nombre: 'Luna Llena', emoji: '🌕', ilum };
+  if (val < 0.72) return { nombre: 'Gibosa Menguante', emoji: '🌖', ilum };
+  if (val < 0.78) return { nombre: 'Cuarto Menguante', emoji: '🌗', ilum };
+  return { nombre: 'Luna Menguante', emoji: '🌘', ilum };
 }
 
 async function fetchPlace(lat, lon){
@@ -765,8 +800,18 @@ function renderWeather(data, place){
     document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[0]) + '° / ' + convertirTemp(d.temperature_2m_min[0]) + '°';
     document.getElementById('precip').textContent = d.precipitation_sum[0] + ' mm';
     document.getElementById('uv').textContent = Math.round(d.uv_index_max[0]);
+    
+    // Render astronómico
+    const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[0] : null);
+    document.getElementById('moonPhaseName').textContent = luna.nombre;
+    document.getElementById('moonEmoji').textContent = luna.emoji;
+    document.getElementById('moonIllum').textContent = luna.ilum + '%';
+    
+    document.getElementById('moonrise').textContent = fmtHora(d.moonrise ? d.moonrise[0] : null);
+    document.getElementById('moonset').textContent = fmtHora(d.moonset ? d.moonset[0] : null);
     document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
     document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
+
     renderWeek(d);
     renderAdverseAlerts(data.hourly, d.time[0]);
     renderHourly(data.hourly);
