@@ -225,6 +225,19 @@
   .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;}
   .desc{font-size:0.95rem;opacity:0.9;}
   .emoji{font-size:2.2rem;margin-top:4px;}
+  
+  /* Etiqueta de comparación con ayer */
+  .yesterday-badge {
+    display: inline-block;
+    margin-top: 8px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+    border-radius: 12px;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: #eef2f8;
+  }
 
   /* Alertas adversas */
   .adverse-alerts {
@@ -352,6 +365,7 @@
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit" id="unitLabel">°C</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
+      <div class="yesterday-badge" id="yesterdayDiff" style="display:none;"></div>
       
       <div class="adverse-alerts" id="adverseAlerts"></div>
       
@@ -665,7 +679,8 @@ function seleccionarSugerencia(lat, lon, nombre) {
 }
 
 async function fetchWeather(lat, lon){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&timezone=auto`;
+  // Agregado &past_days=1 para obtener los datos de ayer
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&past_days=1&timezone=auto`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('weather failed');
   return res.json();
@@ -696,6 +711,40 @@ function calcularDatosLuna(val) {
   if (val < 0.72) return { nombre: 'Gibosa Menguante', emoji: '🌖', ilum };
   if (val < 0.78) return { nombre: 'Cuarto Menguante', emoji: '🌗', ilum };
   return { nombre: 'Luna Menguante', emoji: '🌘', ilum };
+}
+
+function calcularDiferenciaAyer(hourly, currentTemp) {
+  const el = document.getElementById('yesterdayDiff');
+  if (!hourly || !hourly.time || !hourly.temperature_2m) {
+    el.style.display = 'none';
+    return;
+  }
+
+  const now = new Date();
+  // Buscamos la hora exacta de ayer (-24 hs)
+  const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  
+  let targetIdx = hourly.time.findIndex(t => {
+    const itemDate = new Date(t);
+    return Math.abs(itemDate - past24h) < 30 * 60 * 1000; // Margen de 30 minutos
+  });
+
+  if (targetIdx !== -1) {
+    const tempAyer = hourly.temperature_2m[targetIdx];
+    const diffActual = currentTemp - tempAyer;
+    const diffAbs = Math.abs(convertirTemp(currentTemp) - convertirTemp(tempAyer));
+
+    if (diffAbs === 0) {
+      el.textContent = `🌡️ Temperatura similar a la de ayer`;
+    } else if (diffActual > 0) {
+      el.textContent = `🔥 ${diffAbs}° más caluroso que ayer`;
+    } else {
+      el.textContent = `❄️ ${diffAbs}° más fresco que ayer`;
+    }
+    el.style.display = 'inline-block';
+  } else {
+    el.style.display = 'none';
+  }
 }
 
 async function fetchPlace(lat, lon){
@@ -791,42 +840,55 @@ function renderWeather(data, place){
   document.getElementById('emoji').textContent = emoji;
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
+  
+  // Comparativa con la temperatura de ayer a la misma hora
+  calcularDiferenciaAyer(data.hourly, c.temperature_2m);
+
   document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
   document.getElementById('humidity').textContent = Math.round(c.relative_humidity_2m) + '%';
   document.getElementById('wind').textContent = Math.round(c.wind_speed_10m) + ' km/h ' + degToCompass(c.wind_direction_10m);
   document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
   
   if(d){
-    document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[0]) + '° / ' + convertirTemp(d.temperature_2m_min[0]) + '°';
-    document.getElementById('precip').textContent = d.precipitation_sum[0] + ' mm';
-    document.getElementById('uv').textContent = Math.round(d.uv_index_max[0]);
+    // Filtramos para obtener el día de hoy ya que traemos past_days=1
+    const todayStr = new Date().toISOString().slice(0, 10);
+    let todayIdx = d.time.findIndex(t => t === todayStr);
+    if (todayIdx === -1) todayIdx = d.time.length > 1 ? 1 : 0;
+
+    document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[todayIdx]) + '° / ' + convertirTemp(d.temperature_2m_min[todayIdx]) + '°';
+    document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
+    document.getElementById('uv').textContent = Math.round(d.uv_index_max[todayIdx]);
     
     // Render astronómico
-    const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[0] : null);
+    const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
     document.getElementById('moonEmoji').textContent = luna.emoji;
     document.getElementById('moonIllum').textContent = luna.ilum + '%';
     
-    document.getElementById('moonrise').textContent = fmtHora(d.moonrise ? d.moonrise[0] : null);
-    document.getElementById('moonset').textContent = fmtHora(d.moonset ? d.moonset[0] : null);
-    document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
-    document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
+    document.getElementById('moonrise').textContent = fmtHora(d.moonrise ? d.moonrise[todayIdx] : null);
+    document.getElementById('moonset').textContent = fmtHora(d.moonset ? d.moonset[todayIdx] : null);
+    document.getElementById('sunrise').textContent = fmtHora(d.sunrise[todayIdx]);
+    document.getElementById('sunset').textContent = fmtHora(d.sunset[todayIdx]);
 
-    renderWeek(d);
-    renderAdverseAlerts(data.hourly, d.time[0]);
+    renderWeek(d, todayIdx);
+    renderAdverseAlerts(data.hourly, d.time[todayIdx]);
     renderHourly(data.hourly);
   }
 }
 
-function renderWeek(d){
-  const rows = d.time.map((dateStr, i)=>{
-    const [desc, emoji] = WEATHER_CODES[d.weather_code[i]] || ['—','🌡️'];
+function renderWeek(d, todayIdx = 0){
+  // Mostramos los días a partir de hoy (descartando el día pasado de past_days)
+  const futureDays = d.time.slice(todayIdx);
+  
+  const rows = futureDays.map((dateStr, i)=>{
+    const actualIdx = todayIdx + i;
+    const [desc, emoji] = WEATHER_CODES[d.weather_code[actualIdx]] || ['—','🌡️'];
     return `
       <div class="day-row">
         <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
         <div class="day-emoji">${emoji}</div>
-        <div class="day-precip">${d.precipitation_sum[i]} mm</div>
-        <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[i])}°</b> / ${convertirTemp(d.temperature_2m_min[i])}°</div>
+        <div class="day-precip">${d.precipitation_sum[actualIdx]} mm</div>
+        <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[actualIdx])}°</b> / ${convertirTemp(d.temperature_2m_min[actualIdx])}°</div>
       </div>`;
   }).join('');
   document.getElementById('weekList').innerHTML = rows;
