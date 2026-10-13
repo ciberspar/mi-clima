@@ -307,7 +307,7 @@
     <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración">•••</button>
   </div>
 
-  <!-- Menú emergente de Configuración (Foto 1) -->
+  <!-- Menú emergente de Configuración (oculto por defecto) -->
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()">
       <span>✏️ Editar lista</span>
@@ -325,7 +325,7 @@
     </div>
   </div>
 
-  <!-- Pantalla de Lista de Ciudades y Buscador (Foto 2) -->
+  <!-- Pantalla de Lista de Ciudades y Buscador -->
   <div class="cities-view" id="citiesView">
     <div class="cities-header">
       <h2 class="cities-title">Clima</h2>
@@ -426,18 +426,19 @@ let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
 let unidadActual = localStorage.getItem('clima_unidad') || 'C';
 let editandoLista = false;
-let ubicacionGPSData = null; // Guardará la ubicación por GPS
+let ubicacionGPSData = null;
 
 function toggleMenuConfig(e) {
   if (e) e.stopPropagation();
-  document.getElementById('menuConfig').classList.toggle('active');
+  const menu = document.getElementById('menuConfig');
+  menu.classList.toggle('active');
 }
 
-// Cerrar menú si hace clic en cualquier otro lado
+// Cerrar menú si hace clic fuera de él
 document.addEventListener('click', (e) => {
   const menu = document.getElementById('menuConfig');
   const btn = document.getElementById('btnConfig');
-  if (menu.classList.contains('active') && !menu.contains(e.target) && !btn.contains(e.target)) {
+  if (menu && menu.classList.contains('active') && !menu.contains(e.target) && !btn.contains(e.target)) {
     menu.classList.remove('active');
   }
 });
@@ -462,6 +463,7 @@ function convertirTemp(celsius) {
 }
 
 function abrirListaCiudades() {
+  document.getElementById('menuConfig').classList.remove('active');
   document.getElementById('citiesView').classList.add('active');
   renderCiudadesGuardadas();
 }
@@ -552,13 +554,13 @@ function eliminarFavorito(idx, event) {
 async function renderCiudadesGuardadas() {
   const container = document.getElementById('citiesList');
   const favs = obtenerFavoritos();
-  let cardsHTML = [];
+  let cards = [];
 
-  // 1. Tarjeta superior de la ubicación actual por GPS
+  // 1. Tarjeta de la ubicación por GPS
   if (ubicacionGPSData) {
     const tempGPS = convertirTemp(ubicacionGPSData.weather.current.temperature_2m);
     const [descGPS, emojiGPS] = WEATHER_CODES[ubicacionGPSData.weather.current.weather_code] || ['—','🌡️'];
-    cardsHTML.push(`
+    cards.push(`
       <div class="city-card-item gps-card" onclick="seleccionarCiudadGuardada(${ubicacionGPSData.lat}, ${ubicacionGPSData.lon}, '${escapeHTML(ubicacionGPSData.nombre)}')">
         <div class="city-card-info">
           <h4>📍 Mi ubicación</h4>
@@ -569,32 +571,34 @@ async function renderCiudadesGuardadas() {
     `);
   }
 
-  // 2. Tarjetas de las ciudades favoritas guardadas
-  const favCards = await Promise.all(favs.map(async (f, idx) => {
+  // 2. Tarjetas de favoritos guardados
+  for (let i = 0; i < favs.length; i++) {
+    const f = favs[i];
     try {
       const weather = await fetchWeather(f.lat, f.lon);
       const tempVal = convertirTemp(weather.current.temperature_2m);
       const [desc, emoji] = WEATHER_CODES[weather.current.weather_code] || ['—','🌡️'];
-
-      return `
+      cards.push(`
         <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
           <div class="city-card-info">
             <h4>${escapeHTML(f.nombre)}</h4>
             <p>${emoji} ${escapeHTML(desc)}</p>
           </div>
           <div class="city-card-temp">${tempVal}°${unidadActual}</div>
-          <button class="btn-delete-city" onclick="eliminarFavorito(${idx}, event)">🗑️ Borrar</button>
-        </div>`;
+          <button class="btn-delete-city" onclick="eliminarFavorito(${i}, event)">🗑️ Borrar</button>
+        </div>
+      `);
     } catch(e) {
-      return `
+      cards.push(`
         <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
           <div class="city-card-info"><h4>${escapeHTML(f.nombre)}</h4></div>
-          <button class="btn-delete-city" onclick="eliminarFavorito(${idx}, event)">🗑️ Borrar</button>
-        </div>`;
+          <button class="btn-delete-city" onclick="eliminarFavorito(${i}, event)">🗑️ Borrar</button>
+        </div>
+      `);
     }
-  }));
+  }
 
-  container.innerHTML = cardsHTML.concat(favCards).join('');
+  container.innerHTML = cards.join('');
 }
 
 function seleccionarCiudadGuardada(lat, lon, nombre) {
