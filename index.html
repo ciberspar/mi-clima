@@ -55,7 +55,7 @@
     color:#fff;padding:28px 20px 20px;text-align:center;position:relative;
   }
 
-  /* Botones superiores de la interfaz */
+  /* Botones superiores */
   .header-actions {
     position: absolute;
     top: 16px;
@@ -80,7 +80,7 @@
   }
   .icon-btn:hover { background: rgba(255,255,255,0.3); }
 
-  /* Menú emergente de Configuración (Foto 1) */
+  /* Menú emergente de Configuración (oculto por defecto) */
   .menu-dropdown {
     display: none;
     position: absolute;
@@ -113,7 +113,7 @@
   .menu-item:hover { background: rgba(255,255,255,0.1); }
   .menu-item .check { font-weight: bold; color: var(--amber); }
 
-  /* Vista de Lista de Lugares y Buscador (Foto 2) */
+  /* Vista de Lista de Lugares */
   .cities-view {
     display: none;
     position: absolute;
@@ -151,6 +151,10 @@
     cursor: pointer;
     position: relative;
   }
+  .city-card-item.gps-card {
+    background: linear-gradient(135deg, #1e3a8a, var(--sky-800));
+    border: 1px solid rgba(255,255,255,0.2);
+  }
   .city-card-info h4 { margin: 0 0 4px; font-size: 1rem; }
   .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.8; }
   .city-card-temp { font-size: 1.8rem; font-weight: 700; }
@@ -166,7 +170,7 @@
   }
   .editing .btn-delete-city { display: block; }
 
-  /* Buscador estilo iOS abajo */
+  /* Buscador abajo */
   .search-bottom-bar {
     position: absolute;
     bottom: 16px;
@@ -215,7 +219,7 @@
   }
   .sugerencia-item:hover { background: var(--mist); }
 
-  /* Textos principales estilo iOS */
+  /* Textos principales */
   .place{font-size:1.1rem;font-weight:600;min-height:1.2em;margin-top: 14px;}
   .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
   .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;}
@@ -300,7 +304,7 @@
   <!-- Botones de Acción Superiores -->
   <div class="header-actions">
     <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades">📋</button>
-    <button class="icon-btn" onclick="toggleMenuConfig()" title="Configuración">•••</button>
+    <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración">•••</button>
   </div>
 
   <!-- Menú emergente de Configuración (Foto 1) -->
@@ -329,7 +333,7 @@
     </div>
 
     <div class="cities-list" id="citiesList">
-      <!-- Se llenará dinámicamente con los lugares guardados/buscados -->
+      <!-- Se llena dinámicamente con la ubicación GPS actual + guardados -->
     </div>
 
     <div class="search-bottom-bar">
@@ -422,10 +426,21 @@ let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
 let unidadActual = localStorage.getItem('clima_unidad') || 'C';
 let editandoLista = false;
+let ubicacionGPSData = null; // Guardará la ubicación por GPS
 
-function toggleMenuConfig() {
+function toggleMenuConfig(e) {
+  if (e) e.stopPropagation();
   document.getElementById('menuConfig').classList.toggle('active');
 }
+
+// Cerrar menú si hace clic en cualquier otro lado
+document.addEventListener('click', (e) => {
+  const menu = document.getElementById('menuConfig');
+  const btn = document.getElementById('btnConfig');
+  if (menu.classList.contains('active') && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.classList.remove('active');
+  }
+});
 
 function cambiarUnidad(unidad) {
   unidadActual = unidad;
@@ -433,7 +448,7 @@ function cambiarUnidad(unidad) {
   document.getElementById('checkC').style.display = unidad === 'C' ? 'inline' : 'none';
   document.getElementById('checkF').style.display = unidad === 'F' ? 'inline' : 'none';
   document.getElementById('unitLabel').textContent = '°' + unidad;
-  toggleMenuConfig();
+  document.getElementById('menuConfig').classList.remove('active');
   if (datosClimaGlobal) {
     renderWeather(datosClimaGlobal, document.getElementById('place').textContent);
   }
@@ -458,7 +473,7 @@ function cerrarListaCiudades() {
 }
 
 function modoEdicionLista() {
-  toggleMenuConfig();
+  document.getElementById('menuConfig').classList.remove('active');
   abrirListaCiudades();
   editandoLista = true;
   document.getElementById('citiesList').classList.add('editing');
@@ -470,13 +485,16 @@ function cambiarTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
 }
 
-async function cargarClima(lat, lon, nombreLugar){
+async function cargarClima(lat, lon, nombreLugar, esGPS = false){
   try{
     const [weather, place] = await Promise.all([
       fetchWeather(lat, lon),
       nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
     datosClimaGlobal = weather;
+    if (esGPS) {
+      ubicacionGPSData = { lat, lon, nombre: place, weather };
+    }
     renderWeather(weather, place);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
@@ -492,7 +510,7 @@ function obtenerUbicacionActual(){
   document.getElementById('place').textContent = "Buscando ubicación...";
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null),
+      (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null, true),
       () => usarRespaldoIP(),
       { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
     );
@@ -504,12 +522,11 @@ async function usarRespaldoIP(){
     const res = await fetch('https://ipapi.co/json/');
     const data = await res.json();
     if(data.latitude && data.longitude){
-      cargarClima(data.latitude, data.longitude, `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`);
+      cargarClima(data.latitude, data.longitude, `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`, true);
     }
   } catch(e) { document.getElementById('place').textContent = "Ubicación no disponible"; }
 }
 
-/* Guardar búsquedas en la lista de favoritos */
 function obtenerFavoritos() {
   try { return JSON.parse(localStorage.getItem('clima_favoritos')) || []; } 
   catch(e) { return []; }
@@ -535,15 +552,25 @@ function eliminarFavorito(idx, event) {
 async function renderCiudadesGuardadas() {
   const container = document.getElementById('citiesList');
   const favs = obtenerFavoritos();
+  let cardsHTML = [];
 
-  if (favs.length === 0) {
-    container.innerHTML = '<div style="font-size:0.85rem; color:rgba(255,255,255,0.5); text-align:center; padding: 20px;">No tienes ciudades guardadas.<br>Busca una ciudad abajo para agregarla.</div>';
-    return;
+  // 1. Tarjeta superior de la ubicación actual por GPS
+  if (ubicacionGPSData) {
+    const tempGPS = convertirTemp(ubicacionGPSData.weather.current.temperature_2m);
+    const [descGPS, emojiGPS] = WEATHER_CODES[ubicacionGPSData.weather.current.weather_code] || ['—','🌡️'];
+    cardsHTML.push(`
+      <div class="city-card-item gps-card" onclick="seleccionarCiudadGuardada(${ubicacionGPSData.lat}, ${ubicacionGPSData.lon}, '${escapeHTML(ubicacionGPSData.nombre)}')">
+        <div class="city-card-info">
+          <h4>📍 Mi ubicación</h4>
+          <p>${escapeHTML(ubicacionGPSData.nombre)} • ${emojiGPS} ${escapeHTML(descGPS)}</p>
+        </div>
+        <div class="city-card-temp">${tempGPS}°${unidadActual}</div>
+      </div>
+    `);
   }
 
-  container.innerHTML = 'Cargando lista...';
-
-  const cardsHTML = await Promise.all(favs.map(async (f, idx) => {
+  // 2. Tarjetas de las ciudades favoritas guardadas
+  const favCards = await Promise.all(favs.map(async (f, idx) => {
     try {
       const weather = await fetchWeather(f.lat, f.lon);
       const tempVal = convertirTemp(weather.current.temperature_2m);
@@ -567,7 +594,7 @@ async function renderCiudadesGuardadas() {
     }
   }));
 
-  container.innerHTML = cardsHTML.join('');
+  container.innerHTML = cardsHTML.concat(favCards).join('');
 }
 
 function seleccionarCiudadGuardada(lat, lon, nombre) {
@@ -608,7 +635,6 @@ function seleccionarSugerencia(lat, lon, nombre) {
   document.getElementById('sugerencias-box').style.display = 'none';
   document.getElementById('input-busqueda').value = '';
   
-  /* Guardar automáticamente la búsqueda */
   guardarEnFavoritos(nombre, lat, lon);
   cargarClima(lat, lon, nombre);
   cerrarListaCiudades();
