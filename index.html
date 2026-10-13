@@ -20,7 +20,6 @@
     --line:#dbe3ef;
     --alert-bg:#fee2e2;
     --alert-border:#ef4444;
-    --alert-text:#991b1b;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -31,18 +30,7 @@
       --line:#26314f;
       --alert-bg:#451a03;
       --alert-border:#f59e0b;
-      --alert-text:#fde68a;
     }
-  }
-  :root[data-theme="dark"]{
-    --mist:#0b1120;
-    --card:#151f38;
-    --ink:#e8edf7;
-    --muted:#8b97b3;
-    --line:#26314f;
-    --alert-bg:#451a03;
-    --alert-border:#f59e0b;
-    --alert-text:#fde68a;
   }
 
   *{box-sizing:border-box;}
@@ -51,106 +39,193 @@
     background:var(--mist);
     color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-    display:flex;align-items:center;justify-content:center;padding:24px;
+    display:flex;align-items:center;justify-content:center;padding:16px;
   }
   .card{
     width:100%;max-width:390px;
     background:var(--card);border:1px solid var(--line);
-    border-radius:16px;overflow:hidden;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    border-radius:24px;overflow:hidden;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
     position: relative;
-  }
-  .top{
-    background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
-    color:#fff;padding:28px 24px 32px;text-align:center;position:relative;
-  }
-
-  .location-panel {
-    background: rgba(0,0,0,0.15);
-    padding: 10px 12px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    position: relative;
-  }
-  .location-row {
-    display: flex;
-    gap: 6px;
-    width: 100%;
-  }
-  .location-panel button, .location-panel select, .location-panel input {
-    font-size: 0.8rem;
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: none;
-    outline: none;
-    font-family: inherit;
-  }
-  .location-panel button {
-    background: var(--sky-800);
-    color: #fff;
-    cursor: pointer;
-    font-weight: 600;
-  }
-  .location-panel select, .location-panel input {
-    background: var(--card);
-    color: var(--ink);
-    border: 1px solid var(--line);
-    flex: 1;
-  }
-  .location-search-container {
-    position: relative;
-    display: flex;
-    gap: 6px;
-    width: 100%;
-  }
-  .location-search-container input {
-    flex: 1;
+    min-height: 640px;
   }
   
+  .top{
+    background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
+    color:#fff;padding:28px 20px 20px;text-align:center;position:relative;
+  }
+
+  /* Botones superiores de la interfaz */
+  .header-actions {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    right: 16px;
+    display: flex;
+    justify-content: space-between;
+    z-index: 20;
+  }
+  .icon-btn {
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px);
+    transition: background 0.2s;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.3); }
+
+  /* Menú emergente de Configuración (Foto 1) */
+  .menu-dropdown {
+    display: none;
+    position: absolute;
+    top: 58px;
+    right: 16px;
+    background: rgba(21, 31, 56, 0.95);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 16px;
+    width: 220px;
+    z-index: 100;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    overflow: hidden;
+    color: #fff;
+    animation: fadeIn 0.15s ease-out;
+  }
+  .menu-dropdown.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
+
+  .menu-item {
+    padding: 12px 16px;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .menu-item:last-child { border-bottom: none; }
+  .menu-item:hover { background: rgba(255,255,255,0.1); }
+  .menu-item .check { font-weight: bold; color: var(--amber); }
+
+  /* Vista de Lista de Lugares y Buscador (Foto 2) */
+  .cities-view {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--sky-950);
+    color: #fff;
+    z-index: 80;
+    padding: 20px;
+    flex-direction: column;
+  }
+  .cities-view.active { display: flex; }
+  .cities-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .cities-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
+  
+  .cities-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-bottom: 70px;
+  }
+  .city-card-item {
+    background: linear-gradient(135deg, var(--sky-800), var(--sky-600));
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .city-card-info h4 { margin: 0 0 4px; font-size: 1rem; }
+  .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.8; }
+  .city-card-temp { font-size: 1.8rem; font-weight: 700; }
+  .btn-delete-city {
+    background: rgba(239, 68, 68, 0.3);
+    border: none;
+    color: #ef4444;
+    padding: 6px 10px;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    display: none;
+  }
+  .editing .btn-delete-city { display: block; }
+
+  /* Buscador estilo iOS abajo */
+  .search-bottom-bar {
+    position: absolute;
+    bottom: 16px;
+    left: 16px;
+    right: 16px;
+  }
+  .search-input-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .search-input-box input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 20px;
+    padding: 10px 16px 10px 38px;
+    color: #fff;
+    font-size: 0.85rem;
+    outline: none;
+    backdrop-filter: blur(10px);
+  }
+  .search-input-box input::placeholder { color: rgba(255,255,255,0.6); }
+  .search-icon { position: absolute; left: 14px; font-size: 0.9rem; opacity: 0.7; }
+
   #sugerencias-box {
     position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
+    bottom: 100%; left: 0; right: 0;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 6px;
-    margin-top: 4px;
-    max-height: 150px;
+    border-radius: 12px;
+    margin-bottom: 8px;
+    max-height: 180px;
     overflow-y: auto;
     z-index: 100;
     display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   }
   .sugerencia-item {
-    padding: 8px 10px;
-    font-size: 0.78rem;
+    padding: 10px 14px;
+    font-size: 0.82rem;
     color: var(--ink);
     text-align: left;
     cursor: pointer;
     border-bottom: 1px solid var(--line);
   }
-  .sugerencia-item:hover {
-    background: var(--mist);
-  }
+  .sugerencia-item:hover { background: var(--mist); }
 
-  .place{font-size:0.85rem;opacity:0.85;letter-spacing:.01em;min-height:1.2em;}
+  /* Textos principales estilo iOS */
+  .place{font-size:1.1rem;font-weight:600;min-height:1.2em;margin-top: 14px;}
   .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
-  .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;line-height:1;}
-  .temp .tempF{font-size:1.5rem;font-weight:600;opacity:0.7;margin-left:8px;vertical-align:middle;}
-  .desc{font-size:1rem;opacity:0.92;}
-  .emoji{font-size:2rem;margin-bottom:2px;}
+  .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;}
+  .desc{font-size:0.95rem;opacity:0.9;}
+  .emoji{font-size:2.2rem;margin-top:4px;}
 
   /* Alertas adversas */
   .adverse-alerts {
-    margin-top: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    text-align: left;
+    margin-top: 12px;
+    display: flex; flex-direction: column; gap: 6px; text-align: left;
   }
   .alert-box {
     background: rgba(239, 68, 68, 0.2);
@@ -160,92 +235,46 @@
     border-radius: 8px;
     font-size: 0.78rem;
     font-weight: 600;
-    display: flex;
-    align-items: center;
-    gap: 8px;
   }
 
   .body{padding:20px 24px 24px;}
   .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
-  .stat{text-align:center;background:var(--mist);border-radius:10px;padding:10px 6px;}
-  .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:3px;}
-  .stat .value{font-size:1rem;font-weight:600;}
+  .stat{text-align:center;background:var(--mist);border-radius:12px;padding:12px 6px;}
+  .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:4px;text-transform: uppercase;}
+  .stat .value{font-size:0.95rem;font-weight:600;}
 
   .hourly-card {
     background: var(--mist);
-    border-radius: 12px;
+    border-radius: 16px;
     padding: 14px;
     margin-bottom: 18px;
   }
-  .hourly-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-  }
-  .hourly-title {
-    font-size: 0.8rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    color: var(--muted);
-  }
+  .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+  .hourly-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
   .hourly-sub { font-size: 0.7rem; color: var(--muted); }
-  .hourly-toggles {
-    display: flex;
-    background: var(--card);
-    border-radius: 20px;
-    padding: 2px;
-    gap: 2px;
-    border: 1px solid var(--line);
-  }
-  .hourly-toggles button {
-    background: transparent;
-    border: none;
-    border-radius: 16px;
-    padding: 4px 8px;
-    font-size: 0.75rem;
-    cursor: pointer;
-    color: var(--muted);
-  }
-  .hourly-toggles button.active {
-    background: var(--sky-800);
-    color: #fff;
-  }
-  .hourly-scroll {
-    display: flex;
-    overflow-x: auto;
-    gap: 16px;
-    padding-bottom: 6px;
-    scrollbar-width: none;
-  }
+  .hourly-toggles { display: flex; background: var(--card); border-radius: 20px; padding: 2px; gap: 2px; border: 1px solid var(--line); }
+  .hourly-toggles button { background: transparent; border: none; border-radius: 16px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--muted); }
+  .hourly-toggles button.active { background: var(--sky-800); color: #fff; }
+  
+  .hourly-scroll { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 6px; scrollbar-width: none; }
   .hourly-scroll::-webkit-scrollbar { display: none; }
-  .hour-col {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    min-width: 44px;
-    text-align: center;
-    gap: 6px;
-  }
+  .hour-col { display: flex; flex-direction: column; align-items: center; min-width: 44px; text-align: center; gap: 6px; }
   .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
   .hour-icon { font-size: 1.1rem; min-height: 22px; display: flex; align-items: center; justify-content: center; }
   .hour-val { font-size: 0.82rem; font-weight: 600; }
 
   button.btn{
     width:100%;background:var(--sky-800);color:#fff;border:none;
-    padding:11px;border-radius:8px;font-size:0.9rem;cursor:pointer;font-weight:600;
-    transition: background 0.2s;
+    padding:12px;border-radius:12px;font-size:0.9rem;cursor:pointer;font-weight:600;
   }
-  button.btn:active{background:var(--sky-950);}
 
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
-  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);margin-top:14px;}
+  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);margin-top:18px;}
   nav.tabs button{
     flex:1;background:transparent;border:none;color:rgba(255,255,255,0.6);
-    padding:10px 0 12px;font-size:0.82rem;cursor:pointer;font-weight:600;
+    padding:12px 0;font-size:0.85rem;cursor:pointer;font-weight:600;
     border-bottom:2px solid transparent;
   }
   nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
@@ -263,41 +292,63 @@
   .visitas b{color:var(--ink);}
   .contacto{text-align:center;font-size:0.75rem;color:var(--muted);padding:0 24px 18px;}
   .contacto a{color:var(--sky-600);text-decoration:none;font-weight:600;}
-  .contacto a:hover{text-decoration:underline;}
-  @media (prefers-color-scheme: dark){
-    :root:not([data-theme="light"]) .contacto a{color:var(--sky-400);}
-  }
-  :root[data-theme="dark"] .contacto a{color:var(--sky-400);}
 </style>
 </head>
 <body>
 <div class="card">
 
+  <!-- Botones de Acción Superiores -->
+  <div class="header-actions">
+    <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades">📋</button>
+    <button class="icon-btn" onclick="toggleMenuConfig()" title="Configuración">•••</button>
+  </div>
+
+  <!-- Menú emergente de Configuración (Foto 1) -->
+  <div class="menu-dropdown" id="menuConfig">
+    <div class="menu-item" onclick="modoEdicionLista()">
+      <span>✏️ Editar lista</span>
+    </div>
+    <div class="menu-item" onclick="cambiarUnidad('C')">
+      <span>°C Celsius</span>
+      <span class="check" id="checkC">✓</span>
+    </div>
+    <div class="menu-item" onclick="cambiarUnidad('F')">
+      <span>°F Fahrenheit</span>
+      <span class="check" id="checkF" style="display:none;">✓</span>
+    </div>
+    <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')">
+      <span>💬 Reportar un problema</span>
+    </div>
+  </div>
+
+  <!-- Pantalla de Lista de Ciudades y Buscador (Foto 2) -->
+  <div class="cities-view" id="citiesView">
+    <div class="cities-header">
+      <h2 class="cities-title">Clima</h2>
+      <button class="icon-btn" onclick="cerrarListaCiudades()">✕</button>
+    </div>
+
+    <div class="cities-list" id="citiesList">
+      <!-- Se llenará dinámicamente con los lugares guardados/buscados -->
+    </div>
+
+    <div class="search-bottom-bar">
+      <div id="sugerencias-box"></div>
+      <div class="search-input-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="input-busqueda" placeholder="Buscar ciudad o aeropuerto" oninput="buscarSugerencias(this.value)">
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista Principal del Clima -->
   <div id="weatherView">
     <div class="top">
-      
-      <!-- Panel de Ubicación y Favoritos Superior -->
-      <div class="location-panel">
-        <div class="location-row">
-          <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi Ubicación</button>
-          <button onclick="agregarFavoritoActual()" title="Guardar ubicación actual en favoritos" style="background: var(--amber); color: #12203a;">⭐ Agregar</button>
-          <select id="selector-manual" onchange="cambiarCiudadManual(this.value)">
-            <option value="">Mis Favoritos...</option>
-          </select>
-        </div>
-        <div class="location-search-container">
-          <input type="text" id="input-busqueda" placeholder="Buscar ciudad (escribe para sugerencias)..." oninput="buscarSugerencias(this.value)">
-          <button onclick="ejecutarBusquedaDirecta()">🔍</button>
-          <div id="sugerencias-box"></div>
-        </div>
-      </div>
-
       <div class="place" id="place">Detectando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
-      <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
+      <div class="temp"><span id="temp">--</span><span class="unit" id="unitLabel">°C</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
       
-      <!-- Contenedor donde aparecerán las alertas adversas automáticas -->
       <div class="adverse-alerts" id="adverseAlerts"></div>
       
       <nav class="tabs">
@@ -311,7 +362,7 @@
         <div class="hourly-header">
           <div>
             <div class="hourly-title" id="hourlyTitle">Estado del clima</div>
-            <div class="hourly-sub" id="hourlySub">Temperatura (°C)</div>
+            <div class="hourly-sub" id="hourlySub">Temperatura</div>
           </div>
           <div class="hourly-toggles">
             <button class="active" onclick="cambiarVistaHoraria('temp', this)">☁️</button>
@@ -333,24 +384,23 @@
         <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
         <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
       </div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
   </div>
 
-  <div class="visitas">👀 Personas que visitaron esta página: <b id="visitas">…</b></div>
+  <div class="visitas">👀 Visitas: <b id="visitas">…</b></div>
   <div class="contacto">
-    Por consultas, dudas o sugerencias hable al <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
+    Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
 
 </div>
 
 <script>
-// Función sanitizadora para seguridad (Evita XSS)
 function escapeHTML(str) {
   if (typeof str !== 'string') return str;
   return str.replace(/[&<>'"]/g, 
@@ -370,8 +420,49 @@ const WEATHER_CODES = {
 
 let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
-let ubicacionActualNombre = "";
-let ubicacionActualCoords = null;
+let unidadActual = localStorage.getItem('clima_unidad') || 'C';
+let editandoLista = false;
+
+function toggleMenuConfig() {
+  document.getElementById('menuConfig').classList.toggle('active');
+}
+
+function cambiarUnidad(unidad) {
+  unidadActual = unidad;
+  localStorage.setItem('clima_unidad', unidad);
+  document.getElementById('checkC').style.display = unidad === 'C' ? 'inline' : 'none';
+  document.getElementById('checkF').style.display = unidad === 'F' ? 'inline' : 'none';
+  document.getElementById('unitLabel').textContent = '°' + unidad;
+  toggleMenuConfig();
+  if (datosClimaGlobal) {
+    renderWeather(datosClimaGlobal, document.getElementById('place').textContent);
+  }
+}
+
+function convertirTemp(celsius) {
+  if (unidadActual === 'F') {
+    return Math.round(celsius * 9/5 + 32);
+  }
+  return Math.round(celsius);
+}
+
+function abrirListaCiudades() {
+  document.getElementById('citiesView').classList.add('active');
+  renderCiudadesGuardadas();
+}
+
+function cerrarListaCiudades() {
+  document.getElementById('citiesView').classList.remove('active');
+  editandoLista = false;
+  document.getElementById('citiesList').classList.remove('editing');
+}
+
+function modoEdicionLista() {
+  toggleMenuConfig();
+  abrirListaCiudades();
+  editandoLista = true;
+  document.getElementById('citiesList').classList.add('editing');
+}
 
 function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
@@ -386,8 +477,6 @@ async function cargarClima(lat, lon, nombreLugar){
       nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
     datosClimaGlobal = weather;
-    ubicacionActualNombre = place;
-    ubicacionActualCoords = `${lat},${lon}`;
     renderWeather(weather, place);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
@@ -395,26 +484,19 @@ async function cargarClima(lat, lon, nombreLugar){
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  cargarFavoritosEnSelect();
+  cambiarUnidad(unidadActual);
   obtenerUbicacionActual();
 });
 
 function obtenerUbicacionActual(){
   document.getElementById('place').textContent = "Buscando ubicación...";
-
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        cargarClima(pos.coords.latitude, pos.coords.longitude, null);
-      },
-      (err) => {
-        usarRespaldoIP();
-      },
+      (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null),
+      () => usarRespaldoIP(),
       { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
     );
-  } else {
-    usarRespaldoIP();
-  }
+  } else { usarRespaldoIP(); }
 }
 
 async function usarRespaldoIP(){
@@ -422,58 +504,76 @@ async function usarRespaldoIP(){
     const res = await fetch('https://ipapi.co/json/');
     const data = await res.json();
     if(data.latitude && data.longitude){
-      const nombreLugar = `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`;
-      cargarClima(data.latitude, data.longitude, nombreLugar);
-    } else {
-      throw new Error('No IP data');
+      cargarClima(data.latitude, data.longitude, `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`);
     }
-  } catch(e) {
-    document.getElementById('place').textContent = "Sin ubicación (usa tus favoritos)";
-  }
+  } catch(e) { document.getElementById('place').textContent = "Ubicación no disponible"; }
 }
 
+/* Guardar búsquedas en la lista de favoritos */
 function obtenerFavoritos() {
-  try {
-    return JSON.parse(localStorage.getItem('clima_favoritos')) || [];
-  } catch(e) {
-    return [];
+  try { return JSON.parse(localStorage.getItem('clima_favoritos')) || []; } 
+  catch(e) { return []; }
+}
+
+function guardarEnFavoritos(nombre, lat, lon) {
+  let favs = obtenerFavoritos();
+  const coords = `${lat},${lon}`;
+  if (!favs.some(f => f.coords === coords)) {
+    favs.push({ nombre, coords, lat, lon });
+    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
   }
 }
 
-function cargarFavoritosEnSelect() {
-  const select = document.getElementById('selector-manual');
-  const favs = obtenerFavoritos();
-  
-  let html = '<option value="">Mis Favoritos...</option>';
-  favs.forEach(f => {
-    html += `<option value="${escapeHTML(f.coords)}">${escapeHTML(f.nombre)}</option>`;
-  });
-  select.innerHTML = html;
+function eliminarFavorito(idx, event) {
+  event.stopPropagation();
+  let favs = obtenerFavoritos();
+  favs.splice(idx, 1);
+  localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+  renderCiudadesGuardadas();
 }
 
-function agregarFavoritoActual() {
-  if (!ubicacionActualCoords || !ubicacionActualNombre) {
-    alert("Aún no hay una ubicación cargada para guardar.");
+async function renderCiudadesGuardadas() {
+  const container = document.getElementById('citiesList');
+  const favs = obtenerFavoritos();
+
+  if (favs.length === 0) {
+    container.innerHTML = '<div style="font-size:0.85rem; color:rgba(255,255,255,0.5); text-align:center; padding: 20px;">No tienes ciudades guardadas.<br>Busca una ciudad abajo para agregarla.</div>';
     return;
   }
-  let favs = obtenerFavoritos();
-  if (!favs.some(f => f.coords === ubicacionActualCoords)) {
-    favs.push({ nombre: ubicacionActualNombre, coords: ubicacionActualCoords });
-    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
-    cargarFavoritosEnSelect();
-    alert(`¡"${ubicacionActualNombre}" se guardó en tus favoritos! ⭐`);
-  } else {
-    alert("Esta ubicación ya está guardada en tus favoritos.");
-  }
+
+  container.innerHTML = 'Cargando lista...';
+
+  const cardsHTML = await Promise.all(favs.map(async (f, idx) => {
+    try {
+      const weather = await fetchWeather(f.lat, f.lon);
+      const tempVal = convertirTemp(weather.current.temperature_2m);
+      const [desc, emoji] = WEATHER_CODES[weather.current.weather_code] || ['—','🌡️'];
+
+      return `
+        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
+          <div class="city-card-info">
+            <h4>${escapeHTML(f.nombre)}</h4>
+            <p>${emoji} ${escapeHTML(desc)}</p>
+          </div>
+          <div class="city-card-temp">${tempVal}°${unidadActual}</div>
+          <button class="btn-delete-city" onclick="eliminarFavorito(${idx}, event)">🗑️ Borrar</button>
+        </div>`;
+    } catch(e) {
+      return `
+        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
+          <div class="city-card-info"><h4>${escapeHTML(f.nombre)}</h4></div>
+          <button class="btn-delete-city" onclick="eliminarFavorito(${idx}, event)">🗑️ Borrar</button>
+        </div>`;
+    }
+  }));
+
+  container.innerHTML = cardsHTML.join('');
 }
 
-function cambiarCiudadManual(coordenadas) {
-  if (!coordenadas) return;
-  const [lat, lon] = coordenadas.split(',');
-  const select = document.getElementById('selector-manual');
-  const nombreTexto = select.options[select.selectedIndex].text;
-  cargarClima(parseFloat(lat), parseFloat(lon), nombreTexto);
-  select.value = ""; 
+function seleccionarCiudadGuardada(lat, lon, nombre) {
+  if (editandoLista) return;
+  cargarClima(lat, lon, nombre);
+  cerrarListaCiudades();
 }
 
 let timerSugerencias = null;
@@ -499,40 +599,19 @@ async function buscarSugerencias(texto) {
           return `<div class="sugerencia-item" onclick="seleccionarSugerencia(${item.latitude}, ${item.longitude}, '${escapeHTML(nombreCompleto)}')">📍 ${escapeHTML(nombreCompleto)}</div>`;
         }).join('');
         box.style.display = 'block';
-      } else {
-        box.style.display = 'none';
-      }
-    } catch(e) {
-      box.style.display = 'none';
-    }
+      } else { box.style.display = 'none'; }
+    } catch(e) { box.style.display = 'none'; }
   }, 300);
 }
 
 function seleccionarSugerencia(lat, lon, nombre) {
   document.getElementById('sugerencias-box').style.display = 'none';
   document.getElementById('input-busqueda').value = '';
-  cargarClima(lat, lon, nombre);
-}
-
-function ejecutarBusquedaDirecta() {
-  const input = document.getElementById('input-busqueda');
-  const nombre = input.value.trim();
-  if (!nombre) return;
   
-  fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(nombre)}&count=1&language=es`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.results && data.results.length > 0) {
-        const item = data.results[0];
-        const nombreCompleto = `${item.name}${item.admin1 ? ', ' + item.admin1 : ''}, ${item.country || ''}`;
-        document.getElementById('sugerencias-box').style.display = 'none';
-        input.value = '';
-        cargarClima(item.latitude, item.longitude, nombreCompleto);
-      } else {
-        alert("No se encontró la ubicación ingresada.");
-      }
-    })
-    .catch(() => alert("Error al buscar la ubicación."));
+  /* Guardar automáticamente la búsqueda */
+  guardarEnFavoritos(nombre, lat, lon);
+  cargarClima(lat, lon, nombre);
+  cerrarListaCiudades();
 }
 
 async function fetchWeather(lat, lon){
@@ -547,35 +626,25 @@ function degToCompass(deg){
   return dirs[Math.round(deg / 45) % 8];
 }
 
-function fmtHora(iso){
-  if(!iso) return '--:--';
-  return iso.slice(11,16);
-}
+function fmtHora(iso){ return iso ? iso.slice(11,16) : '--:--'; }
 
 function fmtDiaSemana(dateStr, idx){
   if(idx===0) return 'Hoy';
-  const date = new Date(dateStr + 'T12:00:00');
-  return date.toLocaleDateString('es-AR', { weekday:'short' });
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('es-AR', { weekday:'short' });
 }
 
 async function fetchPlace(lat, lon){
   try{
-    const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=es`;
-    const res = await fetch(url);
-    if(!res.ok) throw new Error('place failed');
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=10&accept-language=es`);
     const data = await res.json();
     const a = data.address || {};
-    const nombre = a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Mi ubicación';
-    return escapeHTML(nombre);
-  }catch(e){
-    return 'Mi ubicación';
-  }
+    return escapeHTML(a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Mi ubicación');
+  }catch(e){ return 'Mi ubicación'; }
 }
 
 function renderAdverseAlerts(hourly, todayStr){
   const el = document.getElementById('adverseAlerts');
-  if(!el) return;
-  if(!hourly || !hourly.time){ el.innerHTML=''; return; }
+  if(!el || !hourly || !hourly.time){ if(el) el.innerHTML=''; return; }
 
   const ahora = new Date();
   let alertas = [];
@@ -583,29 +652,18 @@ function renderAdverseAlerts(hourly, todayStr){
   for(let i = 0; i < hourly.time.length; i++){
     const tStr = hourly.time[i];
     if(!tStr.startsWith(todayStr)) continue;
-    
-    const fechaHoraSlot = new Date(tStr);
-    if(fechaHoraSlot < ahora) continue;
+    if(new Date(tStr) < ahora) continue;
 
     const code = hourly.weather_code[i];
     const viento = hourly.wind_speed_10m[i];
     const horaStr = fmtHora(tStr);
 
-    if([95, 96, 99].includes(code)) {
-      alertas.push(`⚠️ Alerta: Tormenta eléctrica prevista a las ${horaStr}`);
-    }
-    else if(viento >= 50) {
-      alertas.push(`🌬️ Alerta: Rachas intensas (${Math.round(viento)} km/h) a las ${horaStr}`);
-    }
+    if([95, 96, 99].includes(code)) alertas.push(`⚠️ Alerta: Tormenta eléctrica a las ${horaStr}`);
+    else if(viento >= 50) alertas.push(`🌬️ Alerta: Vientos fuertes (${Math.round(viento)} km/h) a las ${horaStr}`);
   }
 
   const alertasUnicas = [...new Set(alertas)].slice(0, 2);
-
-  if(alertasUnicas.length > 0) {
-    el.innerHTML = alertasUnicas.map(a => `<div class="alert-box">${escapeHTML(a)}</div>`).join('');
-  } else {
-    el.innerHTML = '';
-  }
+  el.innerHTML = alertasUnicas.length > 0 ? alertasUnicas.map(a => `<div class="alert-box">${escapeHTML(a)}</div>`).join('') : '';
 }
 
 function cambiarVistaHoraria(tipo, btn){
@@ -613,19 +671,8 @@ function cambiarVistaHoraria(tipo, btn){
   btn.classList.add('active');
   vistaHorariaActual = tipo;
   
-  const titleEl = document.getElementById('hourlyTitle');
-  const subEl = document.getElementById('hourlySub');
-  
-  if(tipo === 'temp') {
-    titleEl.textContent = "Estado del clima";
-    subEl.textContent = "Temperatura (°C)";
-  } else if(tipo === 'lluvia') {
-    titleEl.textContent = "Precipitación";
-    subEl.textContent = "Prob. de lluvia (%)";
-  } else if(tipo === 'viento') {
-    titleEl.textContent = "Viento";
-    subEl.textContent = "Velocidad (km/h)";
-  }
+  document.getElementById('hourlyTitle').textContent = tipo === 'temp' ? "Estado del clima" : tipo === 'lluvia' ? "Precipitación" : "Viento";
+  document.getElementById('hourlySub').textContent = tipo === 'temp' ? `Temperatura (°${unidadActual})` : tipo === 'lluvia' ? "Prob. de lluvia (%)" : "Velocidad (km/h)";
   
   if(datosClimaGlobal) renderHourly(datosClimaGlobal.hourly);
 }
@@ -640,8 +687,7 @@ function renderHourly(hourly){
 
   const idxs = [];
   for(let i=0; i<24; i++){
-    const idx = startIdx + i;
-    if(idx < hourly.time.length) idxs.push(idx);
+    if(startIdx + i < hourly.time.length) idxs.push(startIdx + i);
   }
 
   el.innerHTML = idxs.map((idx, i)=>{
@@ -655,13 +701,11 @@ function renderHourly(hourly){
     if(vistaHorariaActual === 'temp') {
       const [desc, emoji] = WEATHER_CODES[code] || ['—','🌡️'];
       iconoHTML = emoji;
-      valorTexto = Math.round(hourly.temperature_2m[idx]) + '°';
+      valorTexto = convertirTemp(hourly.temperature_2m[idx]) + '°';
     } else if(vistaHorariaActual === 'lluvia') {
-      const prob = hourly.precipitation_probability[idx];
-      iconoHTML = prob >= 30 ? '🌧️' : '';
-      valorTexto = prob + '%';
+      iconoHTML = hourly.precipitation_probability[idx] >= 30 ? '🌧️' : '';
+      valorTexto = hourly.precipitation_probability[idx] + '%';
     } else if(vistaHorariaActual === 'viento') {
-      iconoHTML = '';
       valorTexto = Math.round(hourly.wind_speed_10m[idx]) + ' km/h';
     }
 
@@ -677,17 +721,18 @@ function renderWeather(data, place){
   const c = data.current;
   const d = data.daily;
   const [desc, emoji] = WEATHER_CODES[c.weather_code] || ['—','🌡️'];
+  
   document.getElementById('place').textContent = place;
   document.getElementById('emoji').textContent = emoji;
-  document.getElementById('temp').textContent = Math.round(c.temperature_2m);
-  document.getElementById('tempF').textContent = Math.round(c.temperature_2m * 9/5 + 32) + '°F';
+  document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
-  document.getElementById('feels').textContent = Math.round(c.apparent_temperature) + '°';
+  document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
   document.getElementById('humidity').textContent = Math.round(c.relative_humidity_2m) + '%';
   document.getElementById('wind').textContent = Math.round(c.wind_speed_10m) + ' km/h ' + degToCompass(c.wind_direction_10m);
   document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
+  
   if(d){
-    document.getElementById('maxmin').textContent = Math.round(d.temperature_2m_max[0]) + '° / ' + Math.round(d.temperature_2m_min[0]) + '°';
+    document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[0]) + '° / ' + convertirTemp(d.temperature_2m_min[0]) + '°';
     document.getElementById('precip').textContent = d.precipitation_sum[0] + ' mm';
     document.getElementById('uv').textContent = Math.round(d.uv_index_max[0]);
     document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
@@ -706,7 +751,7 @@ function renderWeek(d){
         <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
         <div class="day-emoji">${emoji}</div>
         <div class="day-precip">${d.precipitation_sum[i]} mm</div>
-        <div class="day-range"><b>${Math.round(d.temperature_2m_max[i])}°</b> / ${Math.round(d.temperature_2m_min[i])}°</div>
+        <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[i])}°</b> / ${convertirTemp(d.temperature_2m_min[i])}°</div>
       </div>`;
   }).join('');
   document.getElementById('weekList').innerHTML = rows;
