@@ -58,19 +58,73 @@
     background:var(--card);border:1px solid var(--line);
     border-radius:16px;overflow:hidden;
     box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+    position: relative;
   }
   .top{
     background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
     color:#fff;padding:28px 24px 32px;text-align:center;position:relative;
   }
-  .place{font-size:0.85rem;opacity:0.85;letter-spacing:.01em;min-height:1.2em;}
+  
+  /* Botón de Configuración */
+  .settings-btn {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: rgba(255,255,255,0.15);
+    border: none;
+    color: #fff;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+    z-index: 10;
+  }
+  .settings-btn:hover { background: rgba(255,255,255,0.3); }
+
+  /* Panel / Modal de Configuración */
+  .config-panel {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--card);
+    z-index: 50;
+    padding: 24px;
+    overflow-y: auto;
+    animation: fadeIn 0.2s ease-in-out;
+  }
+  .config-panel.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+  .config-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+  }
+  .config-header h3 { margin: 0; font-size: 1.1rem; color: var(--ink); }
+  .close-btn {
+    background: transparent; border: none; font-size: 1.3rem;
+    color: var(--muted); cursor: pointer;
+  }
+
+  .config-section { margin-bottom: 20px; }
+  .config-section h4 { font-size: 0.85rem; color: var(--muted); text-transform: uppercase; margin: 0 0 10px; }
+
+  .place{font-size:0.85rem;opacity:0.85;letter-spacing:.01em;min-height:1.2em;margin-top: 10px;}
   .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
   .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;line-height:1;}
   .temp .tempF{font-size:1.5rem;font-weight:600;opacity:0.7;margin-left:8px;vertical-align:middle;}
   .desc{font-size:1rem;opacity:0.92;}
-  .emoji{font-size:2rem;margin-bottom:2px;}
+  .emoji{font-size:2.2rem;margin-bottom:2px;}
 
-  /* Estilos para el panel de clima adverso */
+  /* Alertas adversas */
   .adverse-alerts {
     margin-top: 14px;
     display: flex;
@@ -91,76 +145,96 @@
     gap: 8px;
   }
 
-  .location-panel {
-    background: rgba(0,0,0,0.15);
-    padding: 10px 12px;
-    border-radius: 12px;
-    margin-bottom: 16px;
+  .location-controls {
     display: flex;
     flex-direction: column;
-    gap: 8px;
-    position: relative;
+    gap: 10px;
   }
   .location-row {
     display: flex;
     gap: 6px;
     width: 100%;
   }
-  .location-panel button, .location-panel select, .location-panel input {
-    font-size: 0.8rem;
-    padding: 6px 10px;
-    border-radius: 6px;
-    border: none;
+  .location-controls button, .location-controls select, .location-controls input {
+    font-size: 0.85rem;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
     outline: none;
     font-family: inherit;
   }
-  .location-panel button {
+  .location-controls button {
     background: var(--sky-800);
     color: #fff;
     cursor: pointer;
     font-weight: 600;
+    border: none;
   }
-  .location-panel select, .location-panel input {
-    background: var(--card);
+  .location-controls select, .location-controls input {
+    background: var(--mist);
     color: var(--ink);
-    border: 1px solid var(--line);
     flex: 1;
   }
+
   .location-search-container {
     position: relative;
     display: flex;
     gap: 6px;
     width: 100%;
   }
-  .location-search-container input {
-    flex: 1;
-  }
   
   #sugerencias-box {
     position: absolute;
     top: 100%;
-    left: 0;
-    right: 0;
+    left: 0; right: 0;
     background: var(--card);
     border: 1px solid var(--line);
-    border-radius: 6px;
+    border-radius: 8px;
     margin-top: 4px;
-    max-height: 150px;
+    max-height: 160px;
     overflow-y: auto;
     z-index: 100;
     display: none;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
   }
   .sugerencia-item {
-    padding: 8px 10px;
-    font-size: 0.78rem;
+    padding: 10px 12px;
+    font-size: 0.8rem;
     color: var(--ink);
     text-align: left;
     cursor: pointer;
     border-bottom: 1px solid var(--line);
   }
-  .sugerencia-item:hover {
+  .sugerencia-item:hover { background: var(--mist); }
+
+  .fav-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+  }
+  .fav-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     background: var(--mist);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.82rem;
+  }
+  .fav-item-name {
+    cursor: pointer;
+    flex: 1;
+    font-weight: 500;
+  }
+  .fav-delete-btn {
+    background: transparent;
+    border: none;
+    color: var(--alert-border);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 2px 6px;
   }
 
   .body{padding:20px 24px 24px;}
@@ -188,10 +262,7 @@
     letter-spacing: 0.03em;
     color: var(--muted);
   }
-  .hourly-sub {
-    font-size: 0.7rem;
-    color: var(--muted);
-  }
+  .hourly-sub { font-size: 0.7rem; color: var(--muted); }
   .hourly-toggles {
     display: flex;
     background: var(--card);
@@ -274,30 +345,45 @@
 <body>
 <div class="card">
 
-  <div id="weatherView">
-    <div class="top">
-      
-      <div class="location-panel">
-        <div class="location-row">
-          <button onclick="obtenerUbicacionActual()" style="flex: 1;">📍 Mi Ubicación</button>
-          <button onclick="agregarFavoritoActual()" title="Guardar ubicación actual en favoritos" style="background: var(--amber); color: #12203a;">⭐ Agregar</button>
-          <select id="selector-manual" onchange="cambiarCiudadManual(this.value)">
-            <option value="">Mis Favoritos...</option>
-          </select>
-        </div>
+  <!-- Botón de Configuración -->
+  <button class="settings-btn" onclick="toggleConfiguracion()" title="Configuración de ubicación">⚙️</button>
+
+  <!-- Panel de Configuración Oculto -->
+  <div class="config-panel" id="configPanel">
+    <div class="config-header">
+      <h3>⚙️ Ubicación y Favoritos</h3>
+      <button class="close-btn" onclick="toggleConfiguracion()">✕</button>
+    </div>
+
+    <div class="config-section">
+      <h4>📍 Cambiar Ubicación</h4>
+      <div class="location-controls">
+        <button onclick="obtenerUbicacionGPS(); toggleConfiguracion();">🎯 Usar mi ubicación GPS</button>
+        
         <div class="location-search-container">
-          <input type="text" id="input-busqueda" placeholder="Buscar ciudad (escribe para sugerencias)..." oninput="buscarSugerencias(this.value)">
+          <input type="text" id="input-busqueda" placeholder="Buscar ciudad..." oninput="buscarSugerencias(this.value)">
           <button onclick="ejecutarBusquedaDirecta()">🔍</button>
           <div id="sugerencias-box"></div>
         </div>
       </div>
+    </div>
 
+    <div class="config-section">
+      <h4>⭐ Mis Favoritos</h4>
+      <button onclick="agregarFavoritoActual()" style="background: var(--amber); color: #12203a; width: 100%; margin-bottom: 10px;">⭐ Guardar ubicación actual</button>
+      <div class="fav-list" id="favList"></div>
+    </div>
+  </div>
+
+  <!-- Vista Principal del Clima -->
+  <div id="weatherView">
+    <div class="top">
       <div class="place" id="place">Detectando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit">°C</span><span class="tempF" id="tempF">--°F</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
       
-      <!-- Contenedor donde aparecerán las alertas adversas automáticas -->
+      <!-- Alertas adversas -->
       <div class="adverse-alerts" id="adverseAlerts"></div>
       
       <nav class="tabs">
@@ -333,23 +419,31 @@
         <div class="stat"><div class="label">Amanecer</div><div class="value" id="sunrise">--:--</div></div>
         <div class="stat"><div class="label">Atardecer</div><div class="value" id="sunset">--:--</div></div>
       </div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar mi ubicación</button>
+      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
   </div>
 
   <div class="visitas">👀 Personas que visitaron esta página: <b id="visitas">…</b></div>
   <div class="contacto">
-    Por consultas, dudas o sugerencias hable al <a href="https://github.com/ciberspar/mi-clima" target="_blank">repositorio de GitHub</a>
+    Por consultas, dudas o sugerencias hable al <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
 
 </div>
 
 <script>
+// Función de sanitización para prevenir XSS
+function escapeHTML(str) {
+  if (typeof str !== 'string') return str;
+  return str.replace(/[&<>'"]/g, 
+    tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+  );
+}
+
 const WEATHER_CODES = {
   0:['Cielo despejado','☀️'], 1:['Mayormente despejado','🌤️'], 2:['Parcialmente nublado','⛅'], 3:['Nublado','☁️'],
   45:['Neblina','🌫️'], 48:['Neblina con escarcha','🌫️'],
@@ -364,6 +458,14 @@ let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
 let ubicacionActualNombre = "";
 let ubicacionActualCoords = null;
+
+function toggleConfiguracion() {
+  const panel = document.getElementById('configPanel');
+  panel.classList.toggle('active');
+  if (panel.classList.contains('active')) {
+    renderFavoritosList();
+  }
+}
 
 function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
@@ -382,26 +484,26 @@ async function cargarClima(lat, lon, nombreLugar){
     ubicacionActualCoords = `${lat},${lon}`;
     renderWeather(weather, place);
   }catch(e){
-    document.getElementById('place').textContent = "Error al cargar";
+    document.getElementById('place').textContent = "Error al cargar datos";
   }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  cargarFavoritosEnSelect();
   obtenerUbicacionActual();
 });
 
 function obtenerUbicacionActual(){
   document.getElementById('place').textContent = "Buscando ubicación...";
+  obtenerUbicacionGPS();
+}
 
+function obtenerUbicacionGPS(){
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         cargarClima(pos.coords.latitude, pos.coords.longitude, null);
       },
-      (err) => {
-        usarRespaldoIP();
-      },
+      () => { usarRespaldoIP(); },
       { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
     );
   } else {
@@ -420,7 +522,7 @@ async function usarRespaldoIP(){
       throw new Error('No IP data');
     }
   } catch(e) {
-    document.getElementById('place').textContent = "Sin ubicación (usa tus favoritos)";
+    document.getElementById('place').textContent = "Ubicación no encontrada";
   }
 }
 
@@ -432,15 +534,27 @@ function obtenerFavoritos() {
   }
 }
 
-function cargarFavoritosEnSelect() {
-  const select = document.getElementById('selector-manual');
+function renderFavoritosList() {
+  const container = document.getElementById('favList');
   const favs = obtenerFavoritos();
   
-  let html = '<option value="">Mis Favoritos...</option>';
-  favs.forEach(f => {
-    html += `<option value="${f.coords}">${f.nombre}</option>`;
-  });
-  select.innerHTML = html;
+  if (favs.length === 0) {
+    container.innerHTML = '<div style="font-size:0.8rem; color:var(--muted); text-align:center;">No tienes favoritos guardados.</div>';
+    return;
+  }
+
+  container.innerHTML = favs.map((f, idx) => `
+    <div class="fav-item">
+      <span class="fav-item-name" onclick="seleccionarFavorito('${escapeHTML(f.coords)}', '${escapeHTML(f.nombre)}')">📍 ${escapeHTML(f.nombre)}</span>
+      <button class="fav-delete-btn" onclick="eliminarFavorito(${idx})">🗑️</button>
+    </div>
+  `).join('');
+}
+
+function seleccionarFavorito(coords, nombre) {
+  const [lat, lon] = coords.split(',');
+  cargarClima(parseFloat(lat), parseFloat(lon), nombre);
+  toggleConfiguracion();
 }
 
 function agregarFavoritoActual() {
@@ -452,20 +566,18 @@ function agregarFavoritoActual() {
   if (!favs.some(f => f.coords === ubicacionActualCoords)) {
     favs.push({ nombre: ubicacionActualNombre, coords: ubicacionActualCoords });
     localStorage.setItem('clima_favoritos', JSON.stringify(favs));
-    cargarFavoritosEnSelect();
-    alert(`¡"${ubicacionActualNombre}" se guardó en tus favoritos! ⭐`);
+    renderFavoritosList();
+    alert(`¡"${ubicacionActualNombre}" guardado en favoritos! ⭐`);
   } else {
-    alert("Esta ubicación ya está guardada en tus favoritos.");
+    alert("Esta ubicación ya está en tus favoritos.");
   }
 }
 
-function cambiarCiudadManual(coordenadas) {
-  if (!coordenadas) return;
-  const [lat, lon] = coordenadas.split(',');
-  const select = document.getElementById('selector-manual');
-  const nombreTexto = select.options[select.selectedIndex].text;
-  cargarClima(parseFloat(lat), parseFloat(lon), nombreTexto);
-  select.value = ""; 
+function eliminarFavorito(idx) {
+  let favs = obtenerFavoritos();
+  favs.splice(idx, 1);
+  localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+  renderFavoritosList();
 }
 
 let timerSugerencias = null;
@@ -488,7 +600,7 @@ async function buscarSugerencias(texto) {
       if (data.results && data.results.length > 0) {
         box.innerHTML = data.results.map(item => {
           const nombreCompleto = `${item.name}${item.admin1 ? ', ' + item.admin1 : ''}, ${item.country || ''}`;
-          return `<div class="sugerencia-item" onclick="seleccionarSugerencia(${item.latitude}, ${item.longitude}, '${nombreCompleto.replace(/'/g, "")}')">📍 ${nombreCompleto}</div>`;
+          return `<div class="sugerencia-item" onclick="seleccionarSugerencia(${item.latitude}, ${item.longitude}, '${escapeHTML(nombreCompleto)}')">📍 ${escapeHTML(nombreCompleto)}</div>`;
         }).join('');
         box.style.display = 'block';
       } else {
@@ -504,6 +616,7 @@ function seleccionarSugerencia(lat, lon, nombre) {
   document.getElementById('sugerencias-box').style.display = 'none';
   document.getElementById('input-busqueda').value = '';
   cargarClima(lat, lon, nombre);
+  toggleConfiguracion();
 }
 
 function ejecutarBusquedaDirecta() {
@@ -520,6 +633,7 @@ function ejecutarBusquedaDirecta() {
         document.getElementById('sugerencias-box').style.display = 'none';
         input.value = '';
         cargarClima(item.latitude, item.longitude, nombreCompleto);
+        toggleConfiguracion();
       } else {
         alert("No se encontró la ubicación ingresada.");
       }
@@ -557,15 +671,13 @@ async function fetchPlace(lat, lon){
     if(!res.ok) throw new Error('place failed');
     const data = await res.json();
     const a = data.address || {};
-    return a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Mi ubicación';
+    const nombre = a.city || a.town || a.village || a.suburb || a.county || data.display_name || 'Mi ubicación';
+    return escapeHTML(nombre);
   }catch(e){
     return 'Mi ubicación';
   }
 }
 
-/* ======================================================= */
-/* NUEVA FUNCIÓN: SISTEMA DE ALERTAS DE CLIMA ADVERSO     */
-/* ======================================================= */
 function renderAdverseAlerts(hourly, todayStr){
   const el = document.getElementById('adverseAlerts');
   if(!el) return;
@@ -579,27 +691,24 @@ function renderAdverseAlerts(hourly, todayStr){
     if(!tStr.startsWith(todayStr)) continue;
     
     const fechaHoraSlot = new Date(tStr);
-    if(fechaHoraSlot < ahora) continue; // Solo evaluar desde ahora en adelante
+    if(fechaHoraSlot < ahora) continue;
 
     const code = hourly.weather_code[i];
     const viento = hourly.wind_speed_10m[i];
     const horaStr = fmtHora(tStr);
 
-    // 1. Alerta por Tormentas Severas / Granizo (Códigos 95, 96, 99)
     if([95, 96, 99].includes(code)) {
       alertas.push(`⚠️ Alerta: Tormenta eléctrica prevista a las ${horaStr}`);
     }
-    // 2. Alerta por Vientos Fuertes (Más de 50 km/h)
     else if(viento >= 50) {
-      alertas.push(`🌬️ Alerta: Vachas intensas (${Math.round(viento)} km/h) a las ${horaStr}`);
+      alertas.push(`🌬️ Alerta: Rachas intensas (${Math.round(viento)} km/h) a las ${horaStr}`);
     }
   }
 
-  // Filtrar duplicados o mostrar un máximo de 2 alertas relevantes para no saturar
   const alertasUnicas = [...new Set(alertas)].slice(0, 2);
 
   if(alertasUnicas.length > 0) {
-    el.innerHTML = alertasUnicas.map(a => `<div class="alert-box">${a}</div>`).join('');
+    el.innerHTML = alertasUnicas.map(a => `<div class="alert-box">${escapeHTML(a)}</div>`).join('');
   } else {
     el.innerHTML = '';
   }
@@ -663,9 +772,9 @@ function renderHourly(hourly){
     }
 
     return `<div class="hour-col">
-      <div class="hour-time">${horaLabel}</div>
+      <div class="hour-time">${escapeHTML(horaLabel)}</div>
       <div class="hour-icon">${iconoHTML}</div>
-      <div class="hour-val">${valorTexto}</div>
+      <div class="hour-val">${escapeHTML(valorTexto)}</div>
     </div>`;
   }).join('');
 }
@@ -690,7 +799,7 @@ function renderWeather(data, place){
     document.getElementById('sunrise').textContent = fmtHora(d.sunrise[0]);
     document.getElementById('sunset').textContent = fmtHora(d.sunset[0]);
     renderWeek(d);
-    renderAdverseAlerts(data.hourly, d.time[0]); // Activamos el escaneo de clima adverso
+    renderAdverseAlerts(data.hourly, d.time[0]);
     renderHourly(data.hourly);
   }
 }
@@ -700,7 +809,7 @@ function renderWeek(d){
     const [desc, emoji] = WEATHER_CODES[d.weather_code[i]] || ['—','🌡️'];
     return `
       <div class="day-row">
-        <div class="day-name">${fmtDiaSemana(dateStr, i)}</div>
+        <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
         <div class="day-emoji">${emoji}</div>
         <div class="day-precip">${d.precipitation_sum[i]} mm</div>
         <div class="day-range"><b>${Math.round(d.temperature_2m_max[i])}°</b> / ${Math.round(d.temperature_2m_min[i])}°</div>
@@ -716,12 +825,11 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<script data-goatcounter="https://gero.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
+<script data-goatcounter="https://gero.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>
 fetch("https://gero.goatcounter.com/counter/TOTAL.json")
   .then(r => r.json())
-  .then(d => document.getElementById("visitas").textContent = d.count_unique)
+  .then(d => document.getElementById("visitas").textContent = escapeHTML(String(d.count_unique)))
   .catch(() => document.getElementById("visitas").textContent = "—");
 </script>
 </body>
