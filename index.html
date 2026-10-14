@@ -18,8 +18,6 @@
     --muted:#5c6c86;
     --card:#ffffff;
     --line:#dbe3ef;
-    --alert-bg:#fee2e2;
-    --alert-border:#ef4444;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
@@ -28,8 +26,6 @@
       --ink:#e8edf7;
       --muted:#8b97b3;
       --line:#26314f;
-      --alert-bg:#451a03;
-      --alert-border:#f59e0b;
     }
   }
 
@@ -50,106 +46,64 @@
     min-height: 640px;
   }
   
+  /* Panel superior dinámico según entorno */
   .top{
-    background:linear-gradient(160deg,var(--sky-950),var(--sky-600));
+    background: linear-gradient(160deg, var(--sky-950), var(--sky-600));
     color:#fff;padding:28px 20px 20px;text-align:center;position:relative;
+    transition: background 1s ease;
   }
 
   /* Botones superiores */
   .header-actions {
     position: absolute;
-    top: 16px;
-    left: 16px;
-    right: 16px;
-    display: flex;
-    justify-content: space-between;
-    z-index: 20;
+    top: 16px; left: 16px; right: 16px;
+    display: flex; justify-content: space-between; z-index: 20;
   }
   .icon-btn {
     background: rgba(255,255,255,0.2);
-    border: none;
-    color: #fff;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    font-size: 1.1rem;
-    cursor: pointer;
+    border: none; color: #fff; width: 36px; height: 36px;
+    border-radius: 50%; font-size: 1.1rem; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(8px);
-    transition: background 0.2s;
+    backdrop-filter: blur(8px); transition: background 0.2s;
   }
   .icon-btn:hover { background: rgba(255,255,255,0.3); }
 
-  /* Menú emergente de Configuración */
+  /* Menú de Configuración */
   .menu-dropdown {
-    display: none;
-    position: absolute;
-    top: 58px;
-    right: 16px;
-    background: rgba(21, 31, 56, 0.95);
-    backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 16px;
-    width: 220px;
-    z-index: 100;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-    overflow: hidden;
-    color: #fff;
-    animation: fadeIn 0.15s ease-out;
+    display: none; position: absolute; top: 58px; right: 16px;
+    background: rgba(21, 31, 56, 0.95); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+    width: 220px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    overflow: hidden; color: #fff; animation: fadeIn 0.15s ease-out;
   }
   .menu-dropdown.active { display: block; }
   @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
 
   .menu-item {
-    padding: 12px 16px;
-    font-size: 0.88rem;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    cursor: pointer;
+    padding: 12px 16px; font-size: 0.88rem; display: flex;
+    align-items: center; justify-content: space-between; cursor: pointer;
     border-bottom: 1px solid rgba(255,255,255,0.08);
   }
   .menu-item:last-child { border-bottom: none; }
   .menu-item:hover { background: rgba(255,255,255,0.1); }
   .menu-item .check { font-weight: bold; color: var(--amber); }
 
-  /* Vista de Lista de Lugares */
+  /* Lista de Ciudades */
   .cities-view {
-    display: none;
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: var(--sky-950);
-    color: #fff;
-    z-index: 80;
-    padding: 20px;
-    flex-direction: column;
+    display: none; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: var(--sky-950); color: #fff; z-index: 80; padding: 20px; flex-direction: column;
   }
   .cities-view.active { display: flex; }
-  .cities-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
+  .cities-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
   .cities-title { font-size: 1.8rem; font-weight: 700; margin: 0; }
   
   .cities-list {
-    flex: 1;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding-bottom: 70px;
+    flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 70px;
   }
   .city-card-item {
     background: linear-gradient(135deg, var(--sky-800), var(--sky-600));
-    border-radius: 16px;
-    padding: 14px 16px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    position: relative;
+    border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between;
+    align-items: center; cursor: pointer; position: relative;
   }
   .city-card-item.gps-card {
     background: linear-gradient(135deg, #1e3a8a, var(--sky-800));
@@ -159,63 +113,29 @@
   .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.8; }
   .city-card-temp { font-size: 1.8rem; font-weight: 700; }
   .btn-delete-city {
-    background: rgba(239, 68, 68, 0.3);
-    border: none;
-    color: #ef4444;
-    padding: 6px 10px;
-    border-radius: 8px;
-    font-size: 0.8rem;
-    cursor: pointer;
-    display: none;
+    background: rgba(239, 68, 68, 0.3); border: none; color: #ef4444;
+    padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; display: none;
   }
   .editing .btn-delete-city { display: block; }
 
-  /* Buscador abajo */
-  .search-bottom-bar {
-    position: absolute;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
-  }
-  .search-input-box {
-    position: relative;
-    display: flex;
-    align-items: center;
-  }
+  /* Buscador */
+  .search-bottom-bar { position: absolute; bottom: 16px; left: 16px; right: 16px; }
+  .search-input-box { position: relative; display: flex; align-items: center; }
   .search-input-box input {
-    width: 100%;
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 20px;
-    padding: 10px 16px 10px 38px;
-    color: #fff;
-    font-size: 0.85rem;
-    outline: none;
-    backdrop-filter: blur(10px);
+    width: 100%; background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px;
+    padding: 10px 16px 10px 38px; color: #fff; font-size: 0.85rem; outline: none; backdrop-filter: blur(10px);
   }
   .search-input-box input::placeholder { color: rgba(255,255,255,0.6); }
   .search-icon { position: absolute; left: 14px; font-size: 0.9rem; opacity: 0.7; }
 
   #sugerencias-box {
-    position: absolute;
-    bottom: 100%; left: 0; right: 0;
-    background: var(--card);
-    border: 1px solid var(--line);
-    border-radius: 12px;
-    margin-bottom: 8px;
-    max-height: 180px;
-    overflow-y: auto;
-    z-index: 100;
-    display: none;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    position: absolute; bottom: 100%; left: 0; right: 0; background: var(--card);
+    border: 1px solid var(--line); border-radius: 12px; margin-bottom: 8px;
+    max-height: 180px; overflow-y: auto; z-index: 100; display: none; box-shadow: 0 8px 24px rgba(0,0,0,0.4);
   }
   .sugerencia-item {
-    padding: 10px 14px;
-    font-size: 0.82rem;
-    color: var(--ink);
-    text-align: left;
-    cursor: pointer;
-    border-bottom: 1px solid var(--line);
+    padding: 10px 14px; font-size: 0.82rem; color: var(--ink); text-align: left; cursor: pointer; border-bottom: 1px solid var(--line);
   }
   .sugerencia-item:hover { background: var(--mist); }
 
@@ -227,114 +147,87 @@
   .emoji{font-size:2.2rem;margin-top:4px;}
   
   .yesterday-badge {
-    display: inline-block;
-    margin-top: 8px;
-    padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(8px);
-    border-radius: 12px;
-    font-size: 0.78rem;
-    font-weight: 500;
-    color: #eef2f8;
+    display: inline-block; margin-top: 8px; padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px);
+    border-radius: 12px; font-size: 0.78rem; font-weight: 500; color: #fff;
   }
 
-  /* --- VENTANA CLIMÁTICA ANIMADA --- */
+  /* --- VENTANA CLIMÁTICA HIPERREALISTA --- */
   .weather-window {
-    position: relative;
-    width: 100%;
-    min-height: 95px;
-    margin-top: 14px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1px solid rgba(255, 255, 255, 0.22);
-    border-radius: 16px;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    backdrop-filter: blur(10px);
+    position: relative; width: 100%; min-height: 105px; margin-top: 14px; padding: 14px;
+    background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(12px); box-shadow: inset 0 2px 8px rgba(0,0,0,0.3);
   }
   .window-content {
-    position: relative;
-    z-index: 3;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: #fff;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
+    position: relative; z-index: 4; font-size: 0.88rem; font-weight: 600; color: #fff;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
   .window-sub { font-size: 0.72rem; opacity: 0.85; font-weight: 400; }
-  .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; }
+  .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 
-  /* Animaciones */
-  .rain-drop {
-    position: absolute;
-    background: linear-gradient(transparent, rgba(255,255,255,0.7));
-    width: 2px;
-    height: 16px;
-    opacity: 0.7;
-    animation: fall linear infinite;
-    z-index: 2;
-  }
-  @keyframes fall {
-    0% { transform: translateY(-20px); }
-    100% { transform: translateY(110px); }
-  }
+  /* Capas de Entornos Realistas Avanzados */
+  .env-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
 
-  .moving-cloud {
-    position: absolute;
-    font-size: 1.6rem;
-    opacity: 0.45;
-    animation: drift linear infinite;
-    z-index: 1;
+  /* 1. Lluvia Realista (Inclinada y densa) */
+  .realistic-rain {
+    position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.8));
+    width: 1.5px; height: 22px; opacity: 0.6; transform: rotate(15deg);
+    animation: realRainFall linear infinite;
   }
-  @keyframes drift {
-    0% { transform: translateX(-50px); }
-    100% { transform: translateX(360px); }
+  @keyframes realRainFall {
+    0% { transform: translate(10px, -30px) rotate(15deg); }
+    100% { transform: translate(-30px, 130px) rotate(15deg); }
   }
 
-  .sun-glow {
-    position: absolute;
-    width: 60px;
-    height: 60px;
-    background: radial-gradient(circle, rgba(255,220,100,0.6) 0%, transparent 70%);
-    border-radius: 50%;
-    animation: pulseGlow 3s ease-in-out infinite;
-    z-index: 1;
+  /* 2. Neblina / Niebla densa desplazándose */
+  .realistic-fog {
+    position: absolute; width: 200%; height: 100%; top: 0; left: -50%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), rgba(255,255,255,0.25), rgba(255,255,255,0.15), transparent);
+    animation: fogDrift 10s ease-in-out infinite alternate;
   }
-  @keyframes pulseGlow {
-    0%, 100% { transform: scale(1); opacity: 0.6; }
-    50% { transform: scale(1.3); opacity: 0.9; }
+  @keyframes fogDrift {
+    0% { transform: translateX(-20px); }
+    100% { transform: translateX(40px); }
   }
 
-  .storm-flash {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(255, 255, 255, 0);
-    animation: flashFx 4s infinite;
-    z-index: 2;
+  /* 3. Nubes realistas volumétricas flotando */
+  .realistic-cloud {
+    position: absolute; font-size: 1.8rem; opacity: 0.5;
+    animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
   }
-  @keyframes flashFx {
-    0%, 90%, 94%, 100% { background: rgba(255,255,255,0); }
-    92%, 96% { background: rgba(255,255,255,0.35); }
+  @keyframes cloudDrift {
+    0% { transform: translateX(-60px); }
+    100% { transform: translateX(380px); }
   }
 
-  /* Alertas adversas */
+  /* 4. Sol resplandeciente / Atardecer cálido */
+  .realistic-sun {
+    position: absolute; width: 75px; height: 75px; border-radius: 50%;
+    filter: blur(1px); animation: sunPulse 4s ease-in-out infinite;
+  }
+  @keyframes sunPulse {
+    0%, 100% { transform: scale(1); opacity: 0.75; }
+    50% { transform: scale(1.15); opacity: 0.95; }
+  }
+
+  /* 5. Estrellas titilantes nocturnas */
+  .night-star {
+    position: absolute; background: #fff; border-radius: 50%;
+    animation: starTwinkle ease-in-out infinite;
+  }
+  @keyframes starTwinkle {
+    0%, 100% { opacity: 0.2; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+  }
+
+  /* Alertas */
   .adverse-alerts {
-    margin-top: 12px;
-    display: flex; flex-direction: column; gap: 6px; text-align: left;
+    margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left;
   }
   .alert-box {
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.6);
-    color: #f87171;
-    padding: 8px 12px;
-    border-radius: 8px;
-    font-size: 0.78rem;
-    font-weight: 600;
+    background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.6);
+    color: #f87171; padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600;
   }
 
   .body{padding:20px 24px 24px;}
@@ -344,10 +237,7 @@
   .stat .value{font-size:0.95rem;font-weight:600;}
 
   .hourly-card {
-    background: var(--mist);
-    border-radius: 16px;
-    padding: 14px;
-    margin-bottom: 18px;
+    background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px;
   }
   .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .hourly-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
@@ -364,8 +254,8 @@
   .hour-val { font-size: 0.82rem; font-weight: 600; }
 
   button.btn{
-    width:100%;background:var(--sky-800);color:#fff;border:none;
-    padding:12px;border-radius:12px;font-size:0.9rem;cursor:pointer;font-weight:600;
+    width:100%; background:var(--sky-800); color:#fff; border:none;
+    padding:12px; border-radius:12px; font-size:0.9rem; cursor:pointer; font-weight:600;
   }
 
   .tab-panel{display:none;}
@@ -374,8 +264,7 @@
   nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);margin-top:18px;}
   nav.tabs button{
     flex:1;background:transparent;border:none;color:rgba(255,255,255,0.6);
-    padding:12px 0;font-size:0.85rem;cursor:pointer;font-weight:600;
-    border-bottom:2px solid transparent;
+    padding:12px 0;font-size:0.85rem;cursor:pointer;font-weight:600; border-bottom:2px solid transparent;
   }
   nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
 
@@ -397,39 +286,27 @@
 <body>
 <div class="card">
 
-  <!-- Botones de Acción Superiores -->
+  <!-- Botones Superiores -->
   <div class="header-actions">
     <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades">📋</button>
     <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración">•••</button>
   </div>
 
-  <!-- Menú emergente de Configuración -->
+  <!-- Menú de Configuración -->
   <div class="menu-dropdown" id="menuConfig">
-    <div class="menu-item" onclick="modoEdicionLista()">
-      <span>✏️ Editar lista</span>
-    </div>
-    <div class="menu-item" onclick="cambiarUnidad('C')">
-      <span>°C Celsius</span>
-      <span class="check" id="checkC">✓</span>
-    </div>
-    <div class="menu-item" onclick="cambiarUnidad('F')">
-      <span>°F Fahrenheit</span>
-      <span class="check" id="checkF" style="display:none;">✓</span>
-    </div>
-    <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')">
-      <span>💬 Reportar un problema</span>
-    </div>
+    <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
+    <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
+    <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
+    <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
   </div>
 
-  <!-- Pantalla de Lista de Ciudades y Buscador -->
+  <!-- Lista de Ciudades -->
   <div class="cities-view" id="citiesView">
     <div class="cities-header">
       <h2 class="cities-title">Clima</h2>
       <button class="icon-btn" onclick="cerrarListaCiudades()">✕</button>
     </div>
-
     <div class="cities-list" id="citiesList"></div>
-
     <div class="search-bottom-bar">
       <div id="sugerencias-box"></div>
       <div class="search-input-box">
@@ -439,20 +316,21 @@
     </div>
   </div>
 
-  <!-- Vista Principal del Clima -->
+  <!-- Vista Principal -->
   <div id="weatherView">
-    <div class="top">
+    <div class="top" id="topHeaderBg">
       <div class="place" id="place">Detectando ubicación...</div>
       <div class="emoji" id="emoji">🌤️</div>
       <div class="temp"><span id="temp">--</span><span class="unit" id="unitLabel">°C</span></div>
       <div class="desc" id="desc">Cargando datos del clima</div>
       <div class="yesterday-badge" id="yesterdayDiff" style="display:none;"></div>
 
-      <!-- Ventana Animada Interactiva del Clima -->
+      <!-- Ventana Climática Realista -->
       <div class="weather-window" id="weatherWindow">
+        <div class="env-layer" id="envLayer"></div>
         <div class="window-content" id="windowText">
           <span>Cargando entorno...</span>
-          <span class="window-sub">Tiempo en vivo</span>
+          <span class="window-sub">Simulación atmosférica</span>
         </div>
       </div>
       
@@ -480,7 +358,7 @@
         <div class="hourly-scroll" id="hourlyScroll"></div>
       </div>
 
-      <!-- Cuadro de Astronomía y Ciclo Lunar -->
+      <!-- Astronomía -->
       <div class="hourly-card">
         <div class="hourly-header" style="margin-bottom: 8px;">
           <div class="hourly-title">Astronomía</div>
@@ -501,7 +379,7 @@
         </div>
       </div>
 
-      <!-- Estadísticas generales -->
+      <!-- Estadísticas -->
       <div class="stats">
         <div class="stat"><div class="label">Sensación</div><div class="value" id="feels">--°</div></div>
         <div class="stat"><div class="label">Humedad</div><div class="value" id="humidity">--%</div></div>
@@ -578,9 +456,7 @@ function cambiarUnidad(unidad) {
 }
 
 function convertirTemp(celsius) {
-  if (unidadActual === 'F') {
-    return Math.round(celsius * 9/5 + 32);
-  }
+  if (unidadActual === 'F') return Math.round(celsius * 9/5 + 32);
   return Math.round(celsius);
 }
 
@@ -616,9 +492,7 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
       nombreLugar ? Promise.resolve(nombreLugar) : fetchPlace(lat, lon)
     ]);
     datosClimaGlobal = weather;
-    if (esGPS) {
-      ubicacionGPSData = { lat, lon, nombre: place, weather };
-    }
+    if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
@@ -710,7 +584,7 @@ async function renderCiudadesGuardadas() {
       `);
     } catch(e) {
       cards.push(`
-        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.nombre}, '${escapeHTML(f.nombre)}')">
+        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
           <div class="city-card-info"><h4>${escapeHTML(f.nombre)}</h4></div>
           <button class="btn-delete-city" onclick="eliminarFavorito(${i}, event)">🗑️ Borrar</button>
         </div>
@@ -732,18 +606,12 @@ async function buscarSugerencias(texto) {
   clearTimeout(timerSugerencias);
   const box = document.getElementById('sugerencias-box');
   const query = texto.trim();
-  
-  if (query.length < 2) {
-    box.style.display = 'none';
-    box.innerHTML = '';
-    return;
-  }
+  if (query.length < 2) { box.style.display = 'none'; box.innerHTML = ''; return; }
 
   timerSugerencias = setTimeout(async () => {
     try {
       const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=5&language=es`);
       const data = await res.json();
-      
       if (data.results && data.results.length > 0) {
         box.innerHTML = data.results.map(item => {
           const nombreCompleto = `${item.name}${item.admin1 ? ', ' + item.admin1 : ''}, ${item.country || ''}`;
@@ -758,7 +626,6 @@ async function buscarSugerencias(texto) {
 function seleccionarSugerencia(lat, lon, nombre) {
   document.getElementById('sugerencias-box').style.display = 'none';
   document.getElementById('input-busqueda').value = '';
-  
   guardarEnFavoritos(nombre, lat, lon);
   cargarClima(lat, lon, nombre);
   cerrarListaCiudades();
@@ -798,10 +665,7 @@ function calcularDatosLuna(val) {
 
 function calcularDiferenciaAyer(hourly, currentTemp) {
   const el = document.getElementById('yesterdayDiff');
-  if (!hourly || !hourly.time || !hourly.temperature_2m) {
-    el.style.display = 'none';
-    return;
-  }
+  if (!hourly || !hourly.time || !hourly.temperature_2m) { el.style.display = 'none'; return; }
   const now = new Date();
   const past24h = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   let targetIdx = hourly.time.findIndex(t => {
@@ -814,20 +678,13 @@ function calcularDiferenciaAyer(hourly, currentTemp) {
     const diffActual = currentTemp - tempAyer;
     const diffAbs = Math.abs(convertirTemp(currentTemp) - convertirTemp(tempAyer));
 
-    if (diffAbs === 0) {
-      el.textContent = `🌡️ Temperatura similar a la de ayer`;
-    } else if (diffActual > 0) {
-      el.textContent = `🔥 ${diffAbs}° más caluroso que ayer`;
-    } else {
-      el.textContent = `❄️ ${diffAbs}° más fresco que ayer`;
-    }
+    if (diffAbs === 0) el.textContent = `🌡️ Temperatura similar a la de ayer`;
+    else if (diffActual > 0) el.textContent = `🔥 ${diffAbs}° más caluroso que ayer`;
+    else el.textContent = `❄️ ${diffAbs}° más fresco que ayer`;
     el.style.display = 'inline-block';
-  } else {
-    el.style.display = 'none';
-  }
+  } else { el.style.display = 'none'; }
 }
 
-/* --- RECOMENDACIÓN DE VESTIMENTA --- */
 function obtenerConsejoRopa(tempC, code) {
   let consejo = '';
   if (tempC <= 12) consejo = '🧥 Ponete campera o abrigo pesado.';
@@ -841,96 +698,134 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- ANIMACIÓN Y VENTANA CLIMÁTICA --- */
-function actualizarVentanaClima(code, tempC) {
-  const windowEl = document.getElementById('weatherWindow');
-  const textEl = document.getElementById('windowText');
+/* --- MOTOR DE ENTORNO REALISTA --- */
+function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
+  const ahora = new Date();
+  const amanecer = sunriseISO ? new Date(sunriseISO) : null;
+  const atardecer = sunsetISO ? new Date(sunsetISO) : null;
+  const headerBg = document.getElementById('topHeaderBg');
+  const envLayer = document.getElementById('envLayer');
   
-  const elemsPrevios = windowEl.querySelectorAll('.rain-drop, .moving-cloud, .sun-glow, .storm-flash');
-  elemsPrevios.forEach(el => el.remove());
+  envLayer.innerHTML = '';
 
-  let tipoAnimacion = 'despejado';
-  let mensajePrincipal = 'Cielo despejado en este momento';
+  let esDeNoche = false;
+  let esAtardecer = false;
+
+  if (amanecer && atardecer) {
+    const margenAtardecer = new Date(atardecer.getTime() - 45 * 60 * 1000);
+    if (ahora < amanecer || ahora > atardecer) esDeNoche = true;
+    else if (ahora >= margenAtardecer && ahora <= atardecer) esAtardecer = true;
+  }
+
+  // 1. Asignar colores de fondo reales según la atmósfera
+  if (esDeNoche) {
+    headerBg.style.background = 'linear-gradient(160deg, #050b14, #101c38)';
+  } else if (esAtardecer) {
+    headerBg.style.background = 'linear-gradient(160deg, #3b1428, #b45309)';
+  } else {
+    headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
+  }
+
+  // 2. Generar animaciones de entorno detalladas
+  if (esDeNoche) {
+    // Estrellas titilantes
+    for (let i = 0; i < 15; i++) {
+      const star = document.createElement('div');
+      star.className = 'night-star';
+      star.style.width = `${2 + Math.random() * 3}px`;
+      star.style.height = star.style.width;
+      star.style.top = `${Math.random() * 80}%`;
+      star.style.left = `${Math.random() * 100}%`;
+      star.style.animationDuration = `${1.5 + Math.random() * 2}s`;
+      star.style.animationDelay = `${Math.random() * 2}s`;
+      envLayer.appendChild(star);
+    }
+  }
+
+  // Lluvia / Tormenta
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+    for (let i = 0; i < 16; i++) {
+      const rain = document.createElement('div');
+      rain.className = 'realistic-rain';
+      rain.style.left = `${Math.random() * 100}%`;
+      rain.style.top = `${-20 + Math.random() * 20}px`;
+      rain.style.animationDuration = `${0.4 + Math.random() * 0.4}s`;
+      rain.style.animationDelay = `${Math.random() * 1}s`;
+      envLayer.appendChild(rain);
+    }
+    if ([95, 96, 99].includes(code)) {
+      const flash = document.createElement('div');
+      flash.className = 'storm-flash';
+      envLayer.appendChild(flash);
+    }
+  } 
+  // Neblina
+  else if ([45, 48].includes(code)) {
+    const fog = document.createElement('div');
+    fog.className = 'realistic-fog';
+    envLayer.appendChild(fog);
+  } 
+  // Nublado
+  else if ([2, 3].includes(code)) {
+    for (let i = 0; i < 2; i++) {
+      const cloud = document.createElement('div');
+      cloud.className = 'realistic-cloud';
+      cloud.textContent = '☁️';
+      cloud.style.top = `${15 + i * 40}px`;
+      cloud.style.animationDuration = `${14 + i * 8}s`;
+      cloud.style.animationDelay = `${i * -7}s`;
+      envLayer.appendChild(cloud);
+    }
+  } 
+  // Despejado / Sol
+  else if (!esDeNoche) {
+    const sun = document.createElement('div');
+    sun.className = 'realistic-sun';
+    sun.style.background = esAtardecer 
+      ? 'radial-gradient(circle, rgba(251,146,60,0.8) 0%, transparent 75%)' 
+      : 'radial-gradient(circle, rgba(254,240,138,0.9) 0%, transparent 75%)';
+    sun.style.top = '10px';
+    sun.style.right = '20px';
+    envLayer.appendChild(sun);
+  }
+}
+
+function actualizarVentanaClima(code, tempC, sunriseISO, sunsetISO) {
+  const textEl = document.getElementById('windowText');
+  let mensajePrincipal = 'Cielo despejado';
   let mensajeSub = 'Condiciones estables';
 
   if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) {
-    tipoAnimacion = 'lluvia';
-    mensajePrincipal = 'Precipitaciones detectadas';
-    mensajeSub = 'Lluvia en la zona';
+    mensajePrincipal = 'Precipitaciones activas';
+    mensajeSub = 'Lluvia persistente';
   } else if ([2, 3, 45, 48].includes(code)) {
-    tipoAnimacion = 'nublado';
-    mensajePrincipal = 'Cielo cubierto o neblina';
-    mensajeSub = 'Ambiente nuboso';
+    mensajePrincipal = 'Nubosidad o neblina';
+    mensajeSub = 'Visibilidad reducida';
   } else if ([95, 96, 99].includes(code)) {
-    tipoAnimacion = 'tormenta';
-    mensajePrincipal = 'Actividad eléctrica activa';
-    mensajeSub = 'Precaución al aire libre';
+    mensajePrincipal = 'Tormenta eléctrica';
+    mensajeSub = 'Riesgo meteorológico';
   } else {
-    tipoAnimacion = 'sol';
-    mensajePrincipal = 'Buen tiempo predominante';
-    mensajeSub = 'Ideal para actividades afuera';
+    mensajePrincipal = 'Ambiente despejado';
+    mensajeSub = 'Cielo abierto';
   }
 
   const consejoRopa = obtenerConsejoRopa(tempC, code);
-
   textEl.innerHTML = `
     <span>${mensajePrincipal}</span>
     <span class="window-sub">${mensajeSub}</span>
     <span class="window-outfit">${escapeHTML(consejoRopa)}</span>
   `;
 
-  if (tipoAnimacion === 'lluvia') {
-    for (let i = 0; i < 12; i++) {
-      const drop = document.createElement('div');
-      drop.className = 'rain-drop';
-      drop.style.left = `${Math.random() * 100}%`;
-      drop.style.animationDuration = `${0.5 + Math.random() * 0.5}s`;
-      drop.style.animationDelay = `${Math.random() * 1}s`;
-      windowEl.appendChild(drop);
-    }
-  } else if (tipoAnimacion === 'nublado') {
-    for (let i = 0; i < 2; i++) {
-      const cloud = document.createElement('div');
-      cloud.className = 'moving-cloud';
-      cloud.textContent = '☁️';
-      cloud.style.top = `${10 + i * 35}px`;
-      cloud.style.animationDuration = `${12 + i * 6}s`;
-      cloud.style.animationDelay = `${i * -6}s`;
-      windowEl.appendChild(cloud);
-    }
-  } else if (tipoAnimacion === 'tormenta') {
-    const flash = document.createElement('div');
-    flash.className = 'storm-flash';
-    windowEl.appendChild(flash);
-    for (let i = 0; i < 10; i++) {
-      const drop = document.createElement('div');
-      drop.className = 'rain-drop';
-      drop.style.left = `${Math.random() * 100}%`;
-      drop.style.animationDuration = `0.4s`;
-      drop.style.animationDelay = `${Math.random() * 0.5}s`;
-      windowEl.appendChild(drop);
-    }
-  } else {
-    const sun = document.createElement('div');
-    sun.className = 'sun-glow';
-    windowEl.appendChild(sun);
-  }
+  actualizarEntornoRealista(code, sunriseISO, sunsetISO);
 }
 
-/* --- CÁLCULO DINÁMICO DE ÍNDICE UV NOCTURNO / DIURNO --- */
 function formatearUV(uvMax, sunriseISO, sunsetISO) {
   const ahora = new Date();
-  
-  // Si tenemos horas de sol, comprobamos si actualmente es de noche
   if (sunriseISO && sunsetISO) {
     const amanecer = new Date(sunriseISO);
     const atardecer = new Date(sunsetISO);
-
-    if (ahora < amanecer || ahora > atardecer) {
-      return `0 🟢 (Noche)`;
-    }
+    if (ahora < amanecer || ahora > atardecer) return `0 🟢 (Noche)`;
   }
-
   const val = Math.round(uvMax);
   if (val <= 2) return `${val} 🟢 (Bajo)`;
   if (val <= 5) return `${val} 🟡 (Moderado)`;
@@ -951,7 +846,6 @@ async function fetchPlace(lat, lon){
 function renderAdverseAlerts(hourly, todayStr){
   const el = document.getElementById('adverseAlerts');
   if(!el || !hourly || !hourly.time){ if(el) el.innerHTML=''; return; }
-
   const ahora = new Date();
   let alertas = [];
 
@@ -959,7 +853,6 @@ function renderAdverseAlerts(hourly, todayStr){
     const tStr = hourly.time[i];
     if(!tStr.startsWith(todayStr)) continue;
     if(new Date(tStr) < ahora) continue;
-
     const code = hourly.weather_code[i];
     const viento = hourly.wind_speed_10m[i];
     const horaStr = fmtHora(tStr);
@@ -976,38 +869,30 @@ function cambiarVistaHoraria(tipo, btn){
   document.querySelectorAll('.hourly-toggles button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   vistaHorariaActual = tipo;
-  
   document.getElementById('hourlyTitle').textContent = tipo === 'temp' ? "Estado del clima" : tipo === 'lluvia' ? "Precipitación" : "Viento";
   document.getElementById('hourlySub').textContent = tipo === 'temp' ? `Temperatura (°${unidadActual})` : tipo === 'lluvia' ? "Prob. de lluvia (%)" : "Velocidad (km/h)";
-  
   if(datosClimaGlobal) renderHourly(datosClimaGlobal.hourly);
 }
 
 function renderHourly(hourly){
   const el = document.getElementById('hourlyScroll');
   if(!el || !hourly || !hourly.time) return;
-
   const now = new Date();
   let startIdx = hourly.time.findIndex(t => new Date(t) >= now);
   if(startIdx === -1) startIdx = 0;
 
   const idxs = [];
-  for(let i=0; i<24; i++){
-    if(startIdx + i < hourly.time.length) idxs.push(startIdx + i);
-  }
+  for(let i=0; i<24; i++){ if(startIdx + i < hourly.time.length) idxs.push(startIdx + i); }
 
   el.innerHTML = idxs.map((idx, i)=>{
     const timeStr = hourly.time[idx];
     const horaLabel = (i === 0) ? 'Ahora' : timeStr.slice(11, 16);
     const code = hourly.weather_code[idx];
-    
-    let iconoHTML = '';
-    let valorTexto = '';
+    let iconoHTML = ''; let valorTexto = '';
 
     if(vistaHorariaActual === 'temp') {
       const [desc, emoji] = WEATHER_CODES[code] || ['—','🌡️'];
-      iconoHTML = emoji;
-      valorTexto = convertirTemp(hourly.temperature_2m[idx]) + '°';
+      iconoHTML = emoji; valorTexto = convertirTemp(hourly.temperature_2m[idx]) + '°';
     } else if(vistaHorariaActual === 'lluvia') {
       iconoHTML = hourly.precipitation_probability[idx] >= 30 ? '🌧️' : '';
       valorTexto = hourly.precipitation_probability[idx] + '%';
@@ -1033,7 +918,10 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  actualizarVentanaClima(c.weather_code, c.temperature_2m);
+  const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
+  const sunsetISO = d && d.sunset ? d.sunset[0] : null;
+
+  actualizarVentanaClima(c.weather_code, c.temperature_2m, sunriseISO, sunsetISO);
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
 
   document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
@@ -1048,13 +936,7 @@ function renderWeather(data, place){
 
     document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[todayIdx]) + '° / ' + convertirTemp(d.temperature_2m_min[todayIdx]) + '°';
     document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
-    
-    // Cálculo inteligente de Índice UV (considera si es de noche)
-    document.getElementById('uv').textContent = formatearUV(
-      d.uv_index_max[todayIdx],
-      d.sunrise ? d.sunrise[todayIdx] : null,
-      d.sunset ? d.sunset[todayIdx] : null
-    );
+    document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx], sunriseISO, sunsetISO);
     
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
