@@ -671,37 +671,31 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- SINCRONIZACIÓN EXACTA HORA LOCAL DE LA CIUDAD --- */
+/* --- COMPARACIÓN PERFECTA DE HORA LOCAL DE LA CIUDAD --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
-  // Convertimos las fechas de la ciudad asegurando formato con sufijo UTC si no lo trae, 
-  // para que JavaScript compare correctamente las horas locales de esa ubicación exacta.
-  const parseLocalDate = (isoStr) => {
-    if (!isoStr) return null;
-    return new Date(isoStr.includes('Z') || isoStr.includes('+') ? isoStr : isoStr + '');
-  };
-
-  const ahora = parseLocalDate(dataTimeISO) || new Date();
-  const amanecer = parseLocalDate(sunriseISO);
-  const atardecer = parseLocalDate(sunsetISO);
-  
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
-  
   envLayer.innerHTML = '';
 
   let esDeNoche = false;
   let esAtardecer = false;
 
-  if (amanecer && atardecer) {
-    const margenAtardecer = new Date(atardecer.getTime() - 50 * 60 * 1000);
-    if (ahora < amanecer || ahora > atardecer) {
+  if (dataTimeISO && sunriseISO && sunsetISO) {
+    // Extraemos directamente las horas y minutos locales de las cadenas ISO (ej: "2026-10-14T14:30")
+    const horaActualMinutos = parseInt(dataTimeISO.slice(11, 13)) * 60 + parseInt(dataTimeISO.slice(14, 16));
+    const horaAmanecerMinutos = parseInt(sunriseISO.slice(11, 13)) * 60 + parseInt(sunriseISO.slice(14, 16));
+    const horaAtardecerMinutos = parseInt(sunsetISO.slice(11, 13)) * 60 + parseInt(sunsetISO.slice(14, 16));
+
+    const margenAtardecer = horaAtardecerMinutos - 50;
+
+    if (horaActualMinutos < horaAmanecerMinutos || horaActualMinutos > horaAtardecerMinutos) {
       esDeNoche = true;
-    } else if (ahora >= margenAtardecer && ahora <= atardecer) {
+    } else if (horaActualMinutos >= margenAtardecer && horaActualMinutos <= horaAtardecerMinutos) {
       esAtardecer = true;
     }
   }
 
-  // Colores reales según hora local de la ciudad
+  // Colores dinámicos y notorios
   if (esDeNoche) {
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
@@ -710,7 +704,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // Estrellas SOLO si es de noche en esa ubicación
+  // Estrellas SOLO si es de noche en la ciudad consultada
   if (esDeNoche) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
@@ -918,7 +912,7 @@ function renderWeather(data, place){
   
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
-  const dataTimeISO = c.time; // Hora local exacta de la ubicación dada por la API
+  const dataTimeISO = c.time;
 
   actualizarVentanaClima(c.weather_code, c.temperature_2m, dataTimeISO, sunriseISO, sunsetISO);
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
