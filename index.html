@@ -46,7 +46,6 @@
     min-height: 640px;
   }
   
-  /* Panel superior dinámico según entorno */
   .top{
     background: linear-gradient(160deg, var(--sky-950), var(--sky-600));
     color:#fff;padding:28px 20px 20px;text-align:center;position:relative;
@@ -166,10 +165,8 @@
   .window-sub { font-size: 0.72rem; opacity: 0.85; font-weight: 400; }
   .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 
-  /* Capas de Entornos Realistas Avanzados */
   .env-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
 
-  /* 1. Lluvia Realista (Inclinada y densa) */
   .realistic-rain {
     position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.8));
     width: 1.5px; height: 22px; opacity: 0.6; transform: rotate(15deg);
@@ -180,7 +177,6 @@
     100% { transform: translate(-30px, 130px) rotate(15deg); }
   }
 
-  /* 2. Neblina / Niebla densa desplazándose */
   .realistic-fog {
     position: absolute; width: 200%; height: 100%; top: 0; left: -50%;
     background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), rgba(255,255,255,0.25), rgba(255,255,255,0.15), transparent);
@@ -191,7 +187,6 @@
     100% { transform: translateX(40px); }
   }
 
-  /* 3. Nubes realistas volumétricas flotando */
   .realistic-cloud {
     position: absolute; font-size: 1.8rem; opacity: 0.5;
     animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
@@ -201,7 +196,6 @@
     100% { transform: translateX(380px); }
   }
 
-  /* 4. Sol resplandeciente / Atardecer cálido */
   .realistic-sun {
     position: absolute; width: 75px; height: 75px; border-radius: 50%;
     filter: blur(1px); animation: sunPulse 4s ease-in-out infinite;
@@ -211,7 +205,6 @@
     50% { transform: scale(1.15); opacity: 0.95; }
   }
 
-  /* 5. Estrellas titilantes nocturnas */
   .night-star {
     position: absolute; background: #fff; border-radius: 50%;
     animation: starTwinkle ease-in-out infinite;
@@ -221,7 +214,6 @@
     50% { opacity: 1; transform: scale(1.2); }
   }
 
-  /* Alertas */
   .adverse-alerts {
     margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left;
   }
@@ -698,7 +690,6 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- MOTOR DE ENTORNO REALISTA --- */
 function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
   const ahora = new Date();
   const amanecer = sunriseISO ? new Date(sunriseISO) : null;
@@ -717,7 +708,6 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
     else if (ahora >= margenAtardecer && ahora <= atardecer) esAtardecer = true;
   }
 
-  // 1. Asignar colores de fondo reales según la atmósfera
   if (esDeNoche) {
     headerBg.style.background = 'linear-gradient(160deg, #050b14, #101c38)';
   } else if (esAtardecer) {
@@ -726,9 +716,7 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // 2. Generar animaciones de entorno detalladas
   if (esDeNoche) {
-    // Estrellas titilantes
     for (let i = 0; i < 15; i++) {
       const star = document.createElement('div');
       star.className = 'night-star';
@@ -742,7 +730,6 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
     }
   }
 
-  // Lluvia / Tormenta
   if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
     for (let i = 0; i < 16; i++) {
       const rain = document.createElement('div');
@@ -758,15 +745,11 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
       flash.className = 'storm-flash';
       envLayer.appendChild(flash);
     }
-  } 
-  // Neblina
-  else if ([45, 48].includes(code)) {
+  } else if ([45, 48].includes(code)) {
     const fog = document.createElement('div');
     fog.className = 'realistic-fog';
     envLayer.appendChild(fog);
-  } 
-  // Nublado
-  else if ([2, 3].includes(code)) {
+  } else if ([2, 3].includes(code)) {
     for (let i = 0; i < 2; i++) {
       const cloud = document.createElement('div');
       cloud.className = 'realistic-cloud';
@@ -776,9 +759,7 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
       cloud.style.animationDelay = `${i * -7}s`;
       envLayer.appendChild(cloud);
     }
-  } 
-  // Despejado / Sol
-  else if (!esDeNoche) {
+  } else if (!esDeNoche) {
     const sun = document.createElement('div');
     sun.className = 'realistic-sun';
     sun.style.background = esAtardecer 
