@@ -214,9 +214,36 @@
 
   .body{padding:20px 24px 24px;}
   .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
-  .stat{text-align:center;background:var(--mist);border-radius:12px;padding:12px 6px;}
+  .stat{text-align:center;background:var(--mist);border-radius:12px;padding:12px 6px;transition: background 0.3s, color 0.3s;}
   .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:4px;text-transform: uppercase;}
   .stat .value{font-size:0.95rem;font-weight:600;}
+
+  /* Estilos específicos para la tarjeta de Alerta Meteorológica Global */
+  .stat-alert {
+    grid-column: span 3;
+    padding: 14px 12px;
+    border-radius: 14px;
+    text-align: center;
+  }
+  .stat-alert.alert-verde {
+    background: #16a34a; color: #ffffff;
+  }
+  .stat-alert.alert-verde .label { color: rgba(255,255,255,0.85); }
+  
+  .stat-alert.alert-amarilla {
+    background: #eab308; color: #0f172a;
+  }
+  .stat-alert.alert-amarilla .label { color: rgba(15, 23, 42, 0.8); }
+
+  .stat-alert.alert-naranja {
+    background: #f97316; color: #ffffff;
+  }
+  .stat-alert.alert-naranja .label { color: rgba(255,255,255,0.85); }
+
+  .stat-alert.alert-roja {
+    background: #dc2626; color: #ffffff;
+  }
+  .stat-alert.alert-roja .label { color: rgba(255,255,255,0.85); }
 
   .hourly-card { background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px; }
   .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
@@ -361,6 +388,12 @@
         <div class="stat"><div class="label">Precipitación</div><div class="value" id="precip">-- mm</div></div>
         <div class="stat"><div class="label">Presión</div><div class="value" id="pressure">-- hPa</div></div>
         <div class="stat" style="grid-column: span 3;"><div class="label">Índice UV</div><div class="value" id="uv">--</div></div>
+        
+        <!-- Tarjeta de Alerta Meteorológica Global -->
+        <div class="stat stat-alert alert-verde" id="alertCard">
+          <div class="label" id="alertLabel">Alerta Meteorológica</div>
+          <div class="value" id="alertValue">🟢 Verde: No te preocupes</div>
+        </div>
       </div>
       <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
     </div>
@@ -671,7 +704,48 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- ENTORNO Y HORA 100% SINCRONIZADOS CON LA API (INCLUYENDO PARCIALMENTE NUBLADO) --- */
+/* --- CALCULA Y ACTUALIZA LA TARJETA DE ALERTA GLOBAL SEGÚN CONDICIONES --- */
+function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
+  const card = document.getElementById('alertCard');
+  const valEl = document.getElementById('alertValue');
+  
+  if(!card || !valEl) return;
+
+  // Limpiamos clases previas
+  card.className = 'stat stat-alert';
+
+  // Nivel Rojo: Tormentas extremas con granizo / vientos destructivos (>80 km/h) / lluvias torrenciales (>70 mm)
+  if ([96, 99].includes(code) || windSpeed >= 80 || precipSum >= 70) {
+    card.classList.add('alert-roja');
+    let motivo = 'Tormenta severa extrema con granizo';
+    if (windSpeed >= 80) motivo = `Vientos destructivos (${Math.round(windSpeed)} km/h)`;
+    else if (precipSum >= 70) motivo = `Precipitaciones torrenciales acumuladas (${precipSum} mm)`;
+    valEl.textContent = `🔴 Roja: ${motivo}`;
+  } 
+  // Nivel Naranja: Tormenta fuerte / viento severo (>60 km/h) / lluvias muy intensas (>35 mm)
+  else if (code === 95 || windSpeed >= 60 || precipSum >= 35) {
+    card.classList.add('alert-naranja');
+    let motivo = 'Tormenta eléctrica intensa con riesgo de lluvias fuertes';
+    if (windSpeed >= 60) motivo = `Vientos fuertes con ráfagas peligrosas (${Math.round(windSpeed)} km/h)`;
+    else if (precipSum >= 35) motivo = `Lluvias intensas acumuladas (${precipSum} mm)`;
+    valEl.textContent = `🟠 Naranja: ${motivo}`;
+  } 
+  // Nivel Amarillo: Lluvias o chubascos moderados / vientos moderados-fuertes (>40 km/h) / precipitaciones (>15 mm)
+  else if ([65, 82].includes(code) || windSpeed >= 40 || precipSum >= 15) {
+    card.classList.add('alert-amarilla');
+    let motivo = 'Chubascos y lluvias moderadas en la zona';
+    if (windSpeed >= 40) motivo = `Vientos moderados a fuertes (${Math.round(windSpeed)} km/h)`;
+    else if (precipSum >= 15) motivo = `Precipitaciones moderadas (${precipSum} mm)`;
+    valEl.textContent = `🟡 Amarilla: ${motivo}`;
+  } 
+  // Nivel Verde: Condiciones estables sin fenómenos adversos
+  else {
+    card.classList.add('alert-verde');
+    valEl.textContent = '🟢 Verde: No te preocupes';
+  }
+}
+
+/* --- ENTORNO Y HORA 100% SINCRONIZADOS --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -694,7 +768,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // Colores dinámicos del fondo
   if (esDeNoche) {
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
@@ -703,7 +776,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // Estrellas si es de noche
   if (esDeNoche) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
@@ -718,9 +790,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // EFECTOS CLIMÁTICOS ESPECÍFICOS
-
-  // Nieve (71, 73, 75)
   if ([71, 73, 75].includes(code)) {
     for (let i = 0; i < 20; i++) {
       const snow = document.createElement('div');
@@ -733,9 +802,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       snow.style.animationDelay = `${Math.random() * 2}s`;
       envLayer.appendChild(snow);
     }
-  } 
-  // Lluvia / Tormentas
-  else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
     for (let i = 0; i < 16; i++) {
       const rain = document.createElement('div');
       rain.className = 'realistic-rain';
@@ -745,9 +812,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       rain.style.animationDelay = `${Math.random() * 1}s`;
       envLayer.appendChild(rain);
     }
-  } 
-  // Parcialmente nublado / Mayormente despejado (Codes 1 o 2) -> Sol con nubes flotando
-  else if (code === 1 || code === 2) {
+  } else if (code === 1 || code === 2) {
     if (!esDeNoche) {
       const sun = document.createElement('div');
       sun.className = 'realistic-sun';
@@ -758,16 +823,13 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       sun.style.top = '10px'; sun.style.right = '20px';
       envLayer.appendChild(sun);
     }
-    // Nube deslizándose por el entorno parcialmente nublado
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
     cloud.style.top = '30px';
     cloud.style.animationDuration = '16s';
     envLayer.appendChild(cloud);
-  } 
-  // Nublado completo (Codes 3, 45, 48) -> Nubes densas cubriendo
-  else if ([3, 45, 48].includes(code)) {
+  } else if ([3, 45, 48].includes(code)) {
     for (let i = 0; i < 2; i++) {
       const cloud = document.createElement('div');
       cloud.className = 'realistic-cloud';
@@ -777,9 +839,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       cloud.style.animationDelay = `${i * -6}s`;
       envLayer.appendChild(cloud);
     }
-  } 
-  // Despejado total (Code 0) -> Sol radiante limpio o cielo nocturno limpio
-  else if (!esDeNoche) {
+  } else if (!esDeNoche) {
     const sun = document.createElement('div');
     sun.className = 'realistic-sun';
     sun.style.background = esAtardecer 
@@ -940,10 +1000,15 @@ function renderWeather(data, place){
     let todayIdx = d.time.findIndex(t => t === todayStr);
     if (todayIdx === -1) todayIdx = d.time.length > 1 ? 1 : 0;
 
+    const precipHoy = d.precipitation_sum ? d.precipitation_sum[todayIdx] : 0;
+
     document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[todayIdx]) + '° / ' + convertirTemp(d.temperature_2m_min[todayIdx]) + '°';
-    document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
+    document.getElementById('precip').textContent = precipHoy + ' mm';
     document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx], sunriseISO, sunsetISO, dataTimeISO);
     
+    // Actualizamos la tarjeta de alerta global
+    actualizarTarjetaAlertaGlobal(c.weather_code, c.wind_speed_10m, precipHoy);
+
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
     document.getElementById('moonEmoji').textContent = luna.emoji;
