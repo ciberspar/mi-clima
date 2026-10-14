@@ -46,9 +46,9 @@
     min-height: 640px;
   }
   
-  /* Panel superior con transición suave de color según hora */
+  /* Panel superior con azules y celestes bien definidos y visibles */
   .top{
-    background: linear-gradient(160deg, var(--sky-950), var(--sky-600));
+    background: linear-gradient(160deg, #0284c7, #38bdf8);
     color:#fff;padding:28px 20px 20px;text-align:center;position:relative;
     transition: background 1.2s ease;
   }
@@ -96,16 +96,16 @@
     flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-bottom: 70px;
   }
   .city-card-item {
-    background: linear-gradient(135deg, var(--sky-800), var(--sky-600));
+    background: linear-gradient(135deg, #1e3a8a, #3b82f6);
     border-radius: 16px; padding: 14px 16px; display: flex; justify-content: space-between;
     align-items: center; cursor: pointer; position: relative;
   }
   .city-card-item.gps-card {
-    background: linear-gradient(135deg, #1e3a8a, var(--sky-800));
-    border: 1px solid rgba(255,255,255,0.2);
+    background: linear-gradient(135deg, #0284c7, #1d4ed8);
+    border: 1px solid rgba(255,255,255,0.25);
   }
   .city-card-info h4 { margin: 0 0 4px; font-size: 1rem; }
-  .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.8; }
+  .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.9; }
   .city-card-temp { font-size: 1.8rem; font-weight: 700; }
   .btn-delete-city {
     background: rgba(239, 68, 68, 0.3); border: none; color: #ef4444;
@@ -136,35 +136,33 @@
   .place{font-size:1.1rem;font-weight:600;min-height:1.2em;margin-top: 14px;}
   .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
   .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;}
-  .desc{font-size:0.95rem;opacity:0.9;}
+  .desc{font-size:0.95rem;opacity:0.95;}
   .emoji{font-size:2.2rem;margin-top:4px;}
   
   .yesterday-badge {
     display: inline-block; margin-top: 8px; padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.18); backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.22); backdrop-filter: blur(8px);
     border-radius: 12px; font-size: 0.78rem; font-weight: 500; color: #fff;
   }
 
-  /* Ventana animada con capas limpias */
   .weather-window {
     position: relative; width: 100%; min-height: 100px; margin-top: 14px; padding: 14px;
-    background: rgba(0, 0, 0, 0.22); border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center;
-    backdrop-filter: blur(12px); box-shadow: inset 0 2px 8px rgba(0,0,0,0.25);
+    backdrop-filter: blur(12px); box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
   }
   .window-content {
     position: relative; z-index: 4; font-size: 0.88rem; font-weight: 600; color: #fff;
-    text-shadow: 0 2px 6px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; gap: 4px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
-  .window-sub { font-size: 0.72rem; opacity: 0.85; font-weight: 400; }
+  .window-sub { font-size: 0.72rem; opacity: 0.9; font-weight: 400; }
   .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 
   .env-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
 
-  /* Lluvia */
   .realistic-rain {
-    position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.8));
-    width: 1.5px; height: 22px; opacity: 0.6; transform: rotate(15deg);
+    position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.85));
+    width: 1.5px; height: 22px; opacity: 0.7; transform: rotate(15deg);
     animation: realRainFall linear infinite;
   }
   @keyframes realRainFall {
@@ -172,9 +170,8 @@
     100% { transform: translate(-30px, 130px) rotate(15deg); }
   }
 
-  /* Nieve / Copos */
   .realistic-snow {
-    position: absolute; background: #fff; border-radius: 50%; opacity: 0.8;
+    position: absolute; background: #fff; border-radius: 50%; opacity: 0.85;
     animation: snowFall linear infinite;
   }
   @keyframes snowFall {
@@ -183,9 +180,8 @@
     100% { transform: translateY(110px) translateX(-8px); }
   }
 
-  /* Nubes flotantes */
   .realistic-cloud {
-    position: absolute; font-size: 1.8rem; opacity: 0.55;
+    position: absolute; font-size: 1.8rem; opacity: 0.65;
     animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
   }
   @keyframes cloudDrift {
@@ -193,24 +189,22 @@
     100% { transform: translateX(380px); }
   }
 
-  /* Sol Radiante */
   .realistic-sun {
     position: absolute; width: 70px; height: 70px; border-radius: 50%;
     animation: sunPulse 4s ease-in-out infinite;
   }
   @keyframes sunPulse {
-    0%, 100% { transform: scale(1); opacity: 0.8; }
-    50% { transform: scale(1.15); opacity: 0.95; }
+    0%, 100% { transform: scale(1); opacity: 0.85; }
+    50% { transform: scale(1.15); opacity: 1; }
   }
 
-  /* Estrellas nocturnas */
   .night-star {
     position: absolute; background: #fff; border-radius: 50%;
     animation: starTwinkle ease-in-out infinite;
   }
   @keyframes starTwinkle {
-    0%, 100% { opacity: 0.3; transform: scale(0.8); }
-    50% { opacity: 1; transform: scale(1.2); }
+    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.3); }
   }
 
   .adverse-alerts { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
@@ -678,7 +672,7 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- LOGICA CORREGIDA DE ENTORNO SEGÚN CLIMA Y HORA REAL --- */
+/* --- COLORES VIVOS Y NOTORIOS PARA AZULES Y CELESTES --- */
 function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
   const ahora = new Date();
   const amanecer = sunriseISO ? new Date(sunriseISO) : null;
@@ -700,21 +694,21 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
     }
   }
 
-  // 1. Color de fondo del panel según la hora
+  // 1. Degradados con azules y celestes con mucha más presencia y brillo
   if (esDeNoche) {
-    headerBg.style.background = 'linear-gradient(160deg, #090d16, #121c2e)';
+    headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
     headerBg.style.background = 'linear-gradient(160deg, #38121e, #d97706)';
   } else {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // 2. Estrellas SOLO si es de noche
+  // 2. Estrellas brillantes si es de noche
   if (esDeNoche) {
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
       star.className = 'night-star';
-      star.style.width = `${2 + Math.random() * 2.5}px`;
+      star.style.width = `${2.5 + Math.random() * 2.5}px`;
       star.style.height = star.style.width;
       star.style.top = `${Math.random() * 80}%`;
       star.style.left = `${Math.random() * 100}%`;
@@ -724,9 +718,7 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
     }
   }
 
-  // 3. EFECTOS SEGÚN CLIMA ACTUAL
-
-  // NIEVE (Codes 71, 73, 75)
+  // 3. EFECTOS SEGÚN CLIMA
   if ([71, 73, 75].includes(code)) {
     for (let i = 0; i < 20; i++) {
       const snow = document.createElement('div');
@@ -739,9 +731,7 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
       snow.style.animationDelay = `${Math.random() * 2}s`;
       envLayer.appendChild(snow);
     }
-  }
-  // LLUVIA (Codes 51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99)
-  else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
     for (let i = 0; i < 16; i++) {
       const rain = document.createElement('div');
       rain.className = 'realistic-rain';
@@ -751,18 +741,14 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
       rain.style.animationDelay = `${Math.random() * 1}s`;
       envLayer.appendChild(rain);
     }
-  } 
-  // PARCIALMENTE NUBLADO (Code 2): Solo 1 nube flotante
-  else if (code === 2) {
+  } else if (code === 2) {
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
     cloud.style.top = '25px';
     cloud.style.animationDuration = '18s';
     envLayer.appendChild(cloud);
-  }
-  // NUBLADO COMPLETO (Codes 3, 45, 48): Varias nubes densas
-  else if ([3, 45, 48].includes(code)) {
+  } else if ([3, 45, 48].includes(code)) {
     for (let i = 0; i < 2; i++) {
       const cloud = document.createElement('div');
       cloud.className = 'realistic-cloud';
@@ -772,9 +758,7 @@ function actualizarEntornoRealista(code, sunriseISO, sunsetISO) {
       cloud.style.animationDelay = `${i * -6}s`;
       envLayer.appendChild(cloud);
     }
-  }
-  // DESPEJADO / SOLEADO (Codes 0, 1): Sol resplandeciente SOLO si es de día
-  else if (!esDeNoche) {
+  } else if (!esDeNoche) {
     const sun = document.createElement('div');
     sun.className = 'realistic-sun';
     sun.style.background = esAtardecer 
