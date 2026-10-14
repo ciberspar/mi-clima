@@ -671,7 +671,7 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- COMPARACIÓN PERFECTA DE HORA LOCAL DE LA CIUDAD --- */
+/* --- HORA Y ENTORNO 100% AJUSTADOS A LA HORA LOCAL DE LA CIUDAD --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -681,7 +681,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   let esAtardecer = false;
 
   if (dataTimeISO && sunriseISO && sunsetISO) {
-    // Extraemos directamente las horas y minutos locales de las cadenas ISO (ej: "2026-10-14T14:30")
+    // Tomamos la hora exacta numérica local que devuelve la API para esa ciudad
     const horaActualMinutos = parseInt(dataTimeISO.slice(11, 13)) * 60 + parseInt(dataTimeISO.slice(14, 16));
     const horaAmanecerMinutos = parseInt(sunriseISO.slice(11, 13)) * 60 + parseInt(sunriseISO.slice(14, 16));
     const horaAtardecerMinutos = parseInt(sunsetISO.slice(11, 13)) * 60 + parseInt(sunsetISO.slice(14, 16));
@@ -695,7 +695,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // Colores dinámicos y notorios
+  // Colores dinámicos reales
   if (esDeNoche) {
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
@@ -704,7 +704,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // Estrellas SOLO si es de noche en la ciudad consultada
+  // Estrellas SOLO si es de noche en esa ubicación exacta
   if (esDeNoche) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
@@ -811,12 +811,12 @@ function actualizarVentanaClima(code, tempC, dataTimeISO, sunriseISO, sunsetISO)
   actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO);
 }
 
-function formatearUV(uvMax, sunriseISO, sunsetISO) {
-  const ahora = new Date();
-  if (sunriseISO && sunsetISO) {
-    const amanecer = new Date(sunriseISO);
-    const atardecer = new Date(sunsetISO);
-    if (ahora < amanecer || ahora > atardecer) return `0 🟢 (Noche)`;
+function formatearUV(uvMax, sunriseISO, sunsetISO, dataTimeISO) {
+  if (sunriseISO && sunsetISO && dataTimeISO) {
+    const horaActualMinutos = parseInt(dataTimeISO.slice(11, 13)) * 60 + parseInt(dataTimeISO.slice(14, 16));
+    const amanecerMinutos = parseInt(sunriseISO.slice(11, 13)) * 60 + parseInt(sunriseISO.slice(14, 16));
+    const atardecerMinutos = parseInt(sunsetISO.slice(11, 13)) * 60 + parseInt(sunsetISO.slice(14, 16));
+    if (horaActualMinutos < amanecerMinutos || horaActualMinutos > atardecerMinutos) return `0 🟢 (Noche)`;
   }
   const val = Math.round(uvMax);
   if (val <= 2) return `${val} 🟢 (Bajo)`;
@@ -835,16 +835,17 @@ async function fetchPlace(lat, lon){
   }catch(e){ return 'Mi ubicación'; }
 }
 
-function renderAdverseAlerts(hourly, todayStr){
+function renderAdverseAlerts(hourly, todayStr, currentDataTimeISO){
   const el = document.getElementById('adverseAlerts');
   if(!el || !hourly || !hourly.time){ if(el) el.innerHTML=''; return; }
-  const ahora = new Date();
+  const horaActualMinutos = currentDataTimeISO ? parseInt(currentDataTimeISO.slice(11, 13)) * 60 + parseInt(currentDataTimeISO.slice(14, 16)) : 0;
   let alertas = [];
 
   for(let i = 0; i < hourly.time.length; i++){
     const tStr = hourly.time[i];
     if(!tStr.startsWith(todayStr)) continue;
-    if(new Date(tStr) < ahora) continue;
+    const horaItemMinutos = parseInt(tStr.slice(11, 13)) * 60 + parseInt(tStr.slice(14, 16));
+    if(horaItemMinutos < horaActualMinutos) continue;
     const code = hourly.weather_code[i];
     const viento = hourly.wind_speed_10m[i];
     const horaStr = fmtHora(tStr);
@@ -863,14 +864,14 @@ function cambiarVistaHoraria(tipo, btn){
   vistaHorariaActual = tipo;
   document.getElementById('hourlyTitle').textContent = tipo === 'temp' ? "Estado del clima" : tipo === 'lluvia' ? "Precipitación" : "Viento";
   document.getElementById('hourlySub').textContent = tipo === 'temp' ? `Temperatura (°${unidadActual})` : tipo === 'lluvia' ? "Prob. de lluvia (%)" : "Velocidad (km/h)";
-  if(datosClimaGlobal) renderHourly(datosClimaGlobal.hourly);
+  if(datosClimaGlobal) renderHourly(datosClimaGlobal.hourly, datosClimaGlobal.current.time);
 }
 
-function renderHourly(hourly){
+function renderHourly(hourly, currentDataTimeISO){
   const el = document.getElementById('hourlyScroll');
   if(!el || !hourly || !hourly.time) return;
-  const now = new Date();
-  let startIdx = hourly.time.findIndex(t => new Date(t) >= now);
+  
+  let startIdx = hourly.time.findIndex(t => t >= currentDataTimeISO);
   if(startIdx === -1) startIdx = 0;
 
   const idxs = [];
@@ -912,7 +913,7 @@ function renderWeather(data, place){
   
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
-  const dataTimeISO = c.time;
+  const dataTimeISO = c.time; // Hora local exacta de la ubicación consultada
 
   actualizarVentanaClima(c.weather_code, c.temperature_2m, dataTimeISO, sunriseISO, sunsetISO);
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
@@ -923,13 +924,13 @@ function renderWeather(data, place){
   document.getElementById('pressure').textContent = Math.round(c.surface_pressure) + ' hPa';
   
   if(d){
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = dataTimeISO ? dataTimeISO.slice(0, 10) : new Date().toISOString().slice(0, 10);
     let todayIdx = d.time.findIndex(t => t === todayStr);
     if (todayIdx === -1) todayIdx = d.time.length > 1 ? 1 : 0;
 
     document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[todayIdx]) + '° / ' + convertirTemp(d.temperature_2m_min[todayIdx]) + '°';
     document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
-    document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx], sunriseISO, sunsetISO);
+    document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx], sunriseISO, sunsetISO, dataTimeISO);
     
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
@@ -942,8 +943,8 @@ function renderWeather(data, place){
     document.getElementById('sunset').textContent = fmtHora(d.sunset[todayIdx]);
 
     renderWeek(d, todayIdx);
-    renderAdverseAlerts(data.hourly, d.time[todayIdx]);
-    renderHourly(data.hourly);
+    renderAdverseAlerts(data.hourly, d.time[todayIdx], dataTimeISO);
+    renderHourly(data.hourly, dataTimeISO);
   }
 }
 
