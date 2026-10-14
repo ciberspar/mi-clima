@@ -269,7 +269,7 @@
   .window-sub { font-size: 0.72rem; opacity: 0.85; font-weight: 400; }
   .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; }
 
-  /* Animación de Gotas de Lluvia */
+  /* Animaciones */
   .rain-drop {
     position: absolute;
     background: linear-gradient(transparent, rgba(255,255,255,0.7));
@@ -284,7 +284,6 @@
     100% { transform: translateY(110px); }
   }
 
-  /* Animación de Nubes Flotantes */
   .moving-cloud {
     position: absolute;
     font-size: 1.6rem;
@@ -297,7 +296,6 @@
     100% { transform: translateX(360px); }
   }
 
-  /* Animación de Rayos de Sol */
   .sun-glow {
     position: absolute;
     width: 60px;
@@ -312,7 +310,6 @@
     50% { transform: scale(1.3); opacity: 0.9; }
   }
 
-  /* Animación de Tormenta */
   .storm-flash {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
@@ -713,7 +710,7 @@ async function renderCiudadesGuardadas() {
       `);
     } catch(e) {
       cards.push(`
-        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
+        <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.nombre}, '${escapeHTML(f.nombre)}')">
           <div class="city-card-info"><h4>${escapeHTML(f.nombre)}</h4></div>
           <button class="btn-delete-city" onclick="eliminarFavorito(${i}, event)">🗑️ Borrar</button>
         </div>
@@ -844,7 +841,7 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- LOGICA DE ANIMACIÓN Y ENTRACTO --- */
+/* --- ANIMACIÓN Y VENTANA CLIMÁTICA --- */
 function actualizarVentanaClima(code, tempC) {
   const windowEl = document.getElementById('weatherWindow');
   const textEl = document.getElementById('windowText');
@@ -920,8 +917,21 @@ function actualizarVentanaClima(code, tempC) {
   }
 }
 
-function formatearUV(uv) {
-  const val = Math.round(uv);
+/* --- CÁLCULO DINÁMICO DE ÍNDICE UV NOCTURNO / DIURNO --- */
+function formatearUV(uvMax, sunriseISO, sunsetISO) {
+  const ahora = new Date();
+  
+  // Si tenemos horas de sol, comprobamos si actualmente es de noche
+  if (sunriseISO && sunsetISO) {
+    const amanecer = new Date(sunriseISO);
+    const atardecer = new Date(sunsetISO);
+
+    if (ahora < amanecer || ahora > atardecer) {
+      return `0 🟢 (Noche)`;
+    }
+  }
+
+  const val = Math.round(uvMax);
   if (val <= 2) return `${val} 🟢 (Bajo)`;
   if (val <= 5) return `${val} 🟡 (Moderado)`;
   if (val <= 7) return `${val} 🟠 (Alto)`;
@@ -948,7 +958,7 @@ function renderAdverseAlerts(hourly, todayStr){
   for(let i = 0; i < hourly.time.length; i++){
     const tStr = hourly.time[i];
     if(!tStr.startsWith(todayStr)) continue;
-    if(new Date(tStr) < me) continue;
+    if(new Date(tStr) < ahora) continue;
 
     const code = hourly.weather_code[i];
     const viento = hourly.wind_speed_10m[i];
@@ -1023,9 +1033,7 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // Ventana animada + recomendación de ropa
   actualizarVentanaClima(c.weather_code, c.temperature_2m);
-
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
 
   document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
@@ -1041,8 +1049,12 @@ function renderWeather(data, place){
     document.getElementById('maxmin').textContent = convertirTemp(d.temperature_2m_max[todayIdx]) + '° / ' + convertirTemp(d.temperature_2m_min[todayIdx]) + '°';
     document.getElementById('precip').textContent = d.precipitation_sum[todayIdx] + ' mm';
     
-    // Índice UV con color/nivel
-    document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx]);
+    // Cálculo inteligente de Índice UV (considera si es de noche)
+    document.getElementById('uv').textContent = formatearUV(
+      d.uv_index_max[todayIdx],
+      d.sunrise ? d.sunrise[todayIdx] : null,
+      d.sunset ? d.sunset[todayIdx] : null
+    );
     
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
