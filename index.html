@@ -218,7 +218,6 @@
   .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:4px;text-transform: uppercase;}
   .stat .value{font-size:0.95rem;font-weight:600;}
 
-  /* Estilos específicos para la tarjeta de Alerta Meteorológica Global */
   .stat-alert {
     grid-column: span 3;
     padding: 14px 12px;
@@ -389,7 +388,6 @@
         <div class="stat"><div class="label">Presión</div><div class="value" id="pressure">-- hPa</div></div>
         <div class="stat" style="grid-column: span 3;"><div class="label">Índice UV</div><div class="value" id="uv">--</div></div>
         
-        <!-- Tarjeta de Alerta Meteorológica Global -->
         <div class="stat stat-alert alert-verde" id="alertCard">
           <div class="label" id="alertLabel">Alerta Meteorológica</div>
           <div class="value" id="alertValue">🟢 Verde: No te preocupes</div>
@@ -560,7 +558,12 @@ async function renderCiudadesGuardadas() {
 
   if (ubicacionGPSData) {
     const tempGPS = convertirTemp(ubicacionGPSData.weather.current.temperature_2m);
-    const [descGPS, emojiGPS] = WEATHER_CODES[ubicacionGPSData.weather.current.weather_code] || ['—','🌡️'];
+    let codeGPS = ubicacionGPSData.weather.current.weather_code;
+    const cloudGPS = ubicacionGPSData.weather.current.cloud_cover || 0;
+    if (codeGPS <= 1 && cloudGPS > 70) codeGPS = 3;
+    else if (codeGPS === 0 && cloudGPS > 30) codeGPS = 2;
+
+    const [descGPS, emojiGPS] = WEATHER_CODES[codeGPS] || ['—','🌡️'];
     cards.push(`
       <div class="city-card-item gps-card" onclick="seleccionarCiudadGuardada(${ubicacionGPSData.lat}, ${ubicacionGPSData.lon}, '${escapeHTML(ubicacionGPSData.nombre)}')">
         <div class="city-card-info">
@@ -577,7 +580,12 @@ async function renderCiudadesGuardadas() {
     try {
       const weather = await fetchWeather(f.lat, f.lon);
       const tempVal = convertirTemp(weather.current.temperature_2m);
-      const [desc, emoji] = WEATHER_CODES[weather.current.weather_code] || ['—','🌡️'];
+      let codeFav = weather.current.weather_code;
+      const cloudFav = weather.current.cloud_cover || 0;
+      if (codeFav <= 1 && cloudFav > 70) codeFav = 3;
+      else if (codeFav === 0 && cloudFav > 30) codeFav = 2;
+
+      const [desc, emoji] = WEATHER_CODES[codeFav] || ['—','🌡️'];
       cards.push(`
         <div class="city-card-item" onclick="seleccionarCiudadGuardada(${f.lat}, ${f.lon}, '${escapeHTML(f.nombre)}')">
           <div class="city-card-info">
@@ -637,8 +645,9 @@ function seleccionarSugerencia(lat, lon, nombre) {
   cerrarListaCiudades();
 }
 
+/* API FETCH MODIFICADA: INCLUYE cloud_cover */
 async function fetchWeather(lat, lon){
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&past_days=1&timezone=auto`;
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,cloud_cover&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&past_days=1&timezone=auto`;
   const res = await fetch(url);
   if(!res.ok) throw new Error('weather failed');
   return res.json();
@@ -704,17 +713,14 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- CALCULA Y ACTUALIZA LA TARJETA DE ALERTA GLOBAL SEGÚN CONDICIONES --- */
 function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
   const card = document.getElementById('alertCard');
   const valEl = document.getElementById('alertValue');
   
   if(!card || !valEl) return;
 
-  // Limpiamos clases previas
   card.className = 'stat stat-alert';
 
-  // Nivel Rojo: Tormentas extremas con granizo / vientos destructivos (>80 km/h) / lluvias torrenciales (>70 mm)
   if ([96, 99].includes(code) || windSpeed >= 80 || precipSum >= 70) {
     card.classList.add('alert-roja');
     let motivo = 'Tormenta severa extrema con granizo';
@@ -722,7 +728,6 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
     else if (precipSum >= 70) motivo = `Precipitaciones torrenciales acumuladas (${precipSum} mm)`;
     valEl.textContent = `🔴 Roja: ${motivo}`;
   } 
-  // Nivel Naranja: Tormenta fuerte / viento severo (>60 km/h) / lluvias muy intensas (>35 mm)
   else if (code === 95 || windSpeed >= 60 || precipSum >= 35) {
     card.classList.add('alert-naranja');
     let motivo = 'Tormenta eléctrica intensa con riesgo de lluvias fuertes';
@@ -730,7 +735,6 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
     else if (precipSum >= 35) motivo = `Lluvias intensas acumuladas (${precipSum} mm)`;
     valEl.textContent = `🟠 Naranja: ${motivo}`;
   } 
-  // Nivel Amarillo: Lluvias o chubascos moderados / vientos moderados-fuertes (>40 km/h) / precipitaciones (>15 mm)
   else if ([65, 82].includes(code) || windSpeed >= 40 || precipSum >= 15) {
     card.classList.add('alert-amarilla');
     let motivo = 'Chubascos y lluvias moderadas en la zona';
@@ -738,14 +742,12 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
     else if (precipSum >= 15) motivo = `Precipitaciones moderadas (${precipSum} mm)`;
     valEl.textContent = `🟡 Amarilla: ${motivo}`;
   } 
-  // Nivel Verde: Condiciones estables sin fenómenos adversos
   else {
     card.classList.add('alert-verde');
     valEl.textContent = '🟢 Verde: No te preocupes';
   }
 }
 
-/* --- ENTORNO Y HORA 100% SINCRONIZADOS --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -973,10 +975,22 @@ function renderHourly(hourly, currentDataTimeISO){
   }).join('');
 }
 
+/* RENDER WEATHER CORREGIDO */
 function renderWeather(data, place){
   const c = data.current;
   const d = data.daily;
-  const [desc, emoji] = WEATHER_CODES[c.weather_code] || ['—','🌡️'];
+
+  // Lógica de corrección con cloud_cover
+  let weatherCode = c.weather_code;
+  const cloudCover = c.cloud_cover || 0;
+
+  if (weatherCode <= 1 && cloudCover > 70) {
+    weatherCode = 3; // Forzamos a "Nublado"
+  } else if (weatherCode === 0 && cloudCover > 30) {
+    weatherCode = 2; // Forzamos a "Parcialmente nublado"
+  }
+
+  const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—','🌡️'];
   
   document.getElementById('place').textContent = place;
   document.getElementById('emoji').textContent = emoji;
@@ -987,7 +1001,7 @@ function renderWeather(data, place){
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
   const dataTimeISO = c.time;
 
-  actualizarVentanaClima(c.weather_code, c.temperature_2m, dataTimeISO, sunriseISO, sunsetISO);
+  actualizarVentanaClima(weatherCode, c.temperature_2m, dataTimeISO, sunriseISO, sunsetISO);
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
 
   document.getElementById('feels').textContent = convertirTemp(c.apparent_temperature) + '°';
@@ -1006,8 +1020,7 @@ function renderWeather(data, place){
     document.getElementById('precip').textContent = precipHoy + ' mm';
     document.getElementById('uv').textContent = formatearUV(d.uv_index_max[todayIdx], sunriseISO, sunsetISO, dataTimeISO);
     
-    // Actualizamos la tarjeta de alerta global
-    actualizarTarjetaAlertaGlobal(c.weather_code, c.wind_speed_10m, precipHoy);
+    actualizarTarjetaAlertaGlobal(weatherCode, c.wind_speed_10m, precipHoy);
 
     const luna = calcularDatosLuna(d.moon_phase ? d.moon_phase[todayIdx] : null);
     document.getElementById('moonPhaseName').textContent = luna.nombre;
