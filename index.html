@@ -180,12 +180,22 @@
   }
 
   .realistic-cloud {
-    position: absolute; font-size: 1.8rem; opacity: 0.65;
-    animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    position: absolute; font-size: 1.8rem; opacity: 0.85;
+    animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
   }
   @keyframes cloudDrift {
     0% { transform: translateX(-60px); }
     100% { transform: translateX(380px); }
+  }
+
+  .realistic-fog {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(4px);
+    animation: fogPulse 4s ease-in-out infinite alternate;
+  }
+  @keyframes fogPulse {
+    0% { opacity: 0.5; }
+    100% { opacity: 0.9; }
   }
 
   .realistic-sun {
@@ -645,7 +655,6 @@ function seleccionarSugerencia(lat, lon, nombre) {
   cerrarListaCiudades();
 }
 
-/* API FETCH MODIFICADA: INCLUYE cloud_cover */
 async function fetchWeather(lat, lon){
   const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,wind_speed_10m,wind_direction_10m,surface_pressure,weather_code,cloud_cover&hourly=temperature_2m,weather_code,precipitation_probability,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,sunrise,sunset,moonrise,moonset,moon_phase,weather_code&past_days=1&timezone=auto`;
   const res = await fetch(url);
@@ -748,6 +757,7 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
   }
 }
 
+/* --- ENTORNO Y HORA 100% REVISADO --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -770,15 +780,32 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  if (esDeNoche) {
+  // 1. Manejo del Fondo según el Estado y la Hora
+  if (code === 3) {
+    // Totalmente Nublado: Todo blanco / grisáceo blanquecino
+    headerBg.style.background = 'linear-gradient(160deg, #94a3b8, #cbd5e1)';
+  } else if ([45, 48].includes(code)) {
+    // Neblina: Fondo suave grisáceo
+    headerBg.style.background = 'linear-gradient(160deg, #64748b, #94a3b8)';
+  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+    // Lluvia / Tormenta: Fondo plomizo
+    headerBg.style.background = 'linear-gradient(160deg, #334155, #475569)';
+  } else if ([71, 73, 75].includes(code)) {
+    // Nieve: Fondo azul frío opaco
+    headerBg.style.background = 'linear-gradient(160deg, #475569, #94a3b8)';
+  } else if (esDeNoche) {
+    // Noche (Soleado / Parcialmente Nublado)
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
+    // Atardecer (Soleado / Parcialmente Nublado)
     headerBg.style.background = 'linear-gradient(160deg, #38121e, #d97706)';
   } else {
+    // Día despejado / parcialmente nublado
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  if (esDeNoche) {
+  // 2. Estrellas si es de Noche (en días despejados o parcialmente nublados)
+  if (esDeNoche && (code <= 2 || [45, 48].includes(code))) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
       star.className = 'night-star';
@@ -792,7 +819,67 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  if ([71, 73, 75].includes(code)) {
+  // 3. Sol / Astro en soleado o parcialmente nublado
+  if (!esDeNoche && (code <= 2)) {
+    const sun = document.createElement('div');
+    sun.className = 'realistic-sun';
+    sun.style.width = '60px'; sun.style.height = '60px';
+    sun.style.background = esAtardecer 
+      ? 'radial-gradient(circle, rgba(251,146,60,0.85) 0%, transparent 75%)' 
+      : 'radial-gradient(circle, rgba(254,240,138,0.95) 0%, transparent 75%)';
+    sun.style.top = '10px'; sun.style.right = '20px';
+    envLayer.appendChild(sun);
+  }
+
+  // 4. Elementos de Nubes, Lluvia, Nieve y Neblina
+  if (code === 1 || code === 2) {
+    // Parcialmente nublado: pocas nubes (1 sola nube flotando suavemente)
+    const cloud = document.createElement('div');
+    cloud.className = 'realistic-cloud';
+    cloud.textContent = '☁️';
+    cloud.style.top = '25px';
+    cloud.style.animationDuration = '18s';
+    envLayer.appendChild(cloud);
+  } else if (code === 3) {
+    // Nublado Total: Varias nubes llenando el ambiente
+    for (let i = 0; i < 3; i++) {
+      const cloud = document.createElement('div');
+      cloud.className = 'realistic-cloud';
+      cloud.textContent = '☁️';
+      cloud.style.top = `${10 + i * 28}px`;
+      cloud.style.fontSize = `${2 + i * 0.4}rem`;
+      cloud.style.animationDuration = `${10 + i * 5}s`;
+      cloud.style.animationDelay = `${i * -4}s`;
+      envLayer.appendChild(cloud);
+    }
+  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+    // Lluvia: Nubes + Lluvia cayendo
+    const cloud = document.createElement('div');
+    cloud.className = 'realistic-cloud';
+    cloud.textContent = '☁️';
+    cloud.style.top = '10px';
+    cloud.style.left = '20px';
+    cloud.style.animationDuration = '22s';
+    envLayer.appendChild(cloud);
+
+    for (let i = 0; i < 18; i++) {
+      const rain = document.createElement('div');
+      rain.className = 'realistic-rain';
+      rain.style.left = `${Math.random() * 100}%`;
+      rain.style.top = `${-20 + Math.random() * 20}px`;
+      rain.style.animationDuration = `${0.4 + Math.random() * 0.4}s`;
+      rain.style.animationDelay = `${Math.random() * 1}s`;
+      envLayer.appendChild(rain);
+    }
+  } else if ([71, 73, 75].includes(code)) {
+    // Nieve: Nubes + Nieve cayendo
+    const cloud = document.createElement('div');
+    cloud.className = 'realistic-cloud';
+    cloud.textContent = '☁️';
+    cloud.style.top = '10px';
+    cloud.style.animationDuration = '20s';
+    envLayer.appendChild(cloud);
+
     for (let i = 0; i < 20; i++) {
       const snow = document.createElement('div');
       snow.className = 'realistic-snow';
@@ -804,52 +891,19 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       snow.style.animationDelay = `${Math.random() * 2}s`;
       envLayer.appendChild(snow);
     }
-  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
-    for (let i = 0; i < 16; i++) {
-      const rain = document.createElement('div');
-      rain.className = 'realistic-rain';
-      rain.style.left = `${Math.random() * 100}%`;
-      rain.style.top = `${-20 + Math.random() * 20}px`;
-      rain.style.animationDuration = `${0.4 + Math.random() * 0.4}s`;
-      rain.style.animationDelay = `${Math.random() * 1}s`;
-      envLayer.appendChild(rain);
-    }
-  } else if (code === 1 || code === 2) {
-    if (!esDeNoche) {
-      const sun = document.createElement('div');
-      sun.className = 'realistic-sun';
-      sun.style.width = '60px'; sun.style.height = '60px';
-      sun.style.background = esAtardecer 
-        ? 'radial-gradient(circle, rgba(251,146,60,0.85) 0%, transparent 75%)' 
-        : 'radial-gradient(circle, rgba(254,240,138,0.95) 0%, transparent 75%)';
-      sun.style.top = '10px'; sun.style.right = '20px';
-      envLayer.appendChild(sun);
-    }
+  } else if ([45, 48].includes(code)) {
+    // Neblina: Nubes + Capa de Niebla
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
-    cloud.style.top = '30px';
-    cloud.style.animationDuration = '16s';
+    cloud.style.top = '15px';
+    cloud.style.opacity = '0.5';
+    cloud.style.animationDuration = '25s';
     envLayer.appendChild(cloud);
-  } else if ([3, 45, 48].includes(code)) {
-    for (let i = 0; i < 2; i++) {
-      const cloud = document.createElement('div');
-      cloud.className = 'realistic-cloud';
-      cloud.textContent = '☁️';
-      cloud.style.top = `${15 + i * 38}px`;
-      cloud.style.animationDuration = `${12 + i * 6}s`;
-      cloud.style.animationDelay = `${i * -6}s`;
-      envLayer.appendChild(cloud);
-    }
-  } else if (!esDeNoche) {
-    const sun = document.createElement('div');
-    sun.className = 'realistic-sun';
-    sun.style.background = esAtardecer 
-      ? 'radial-gradient(circle, rgba(251,146,60,0.85) 0%, transparent 75%)' 
-      : 'radial-gradient(circle, rgba(254,240,138,0.95) 0%, transparent 75%)';
-    sun.style.top = '10px';
-    sun.style.right = '20px';
-    envLayer.appendChild(sun);
+
+    const fog = document.createElement('div');
+    fog.className = 'realistic-fog';
+    envLayer.appendChild(fog);
   }
 }
 
@@ -975,19 +1029,17 @@ function renderHourly(hourly, currentDataTimeISO){
   }).join('');
 }
 
-/* RENDER WEATHER CORREGIDO */
 function renderWeather(data, place){
   const c = data.current;
   const d = data.daily;
 
-  // Lógica de corrección con cloud_cover
   let weatherCode = c.weather_code;
   const cloudCover = c.cloud_cover || 0;
 
   if (weatherCode <= 1 && cloudCover > 70) {
-    weatherCode = 3; // Forzamos a "Nublado"
+    weatherCode = 3;
   } else if (weatherCode === 0 && cloudCover > 30) {
-    weatherCode = 2; // Forzamos a "Parcialmente nublado"
+    weatherCode = 2;
   }
 
   const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—','🌡️'];
