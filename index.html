@@ -671,7 +671,7 @@ function obtenerConsejoRopa(tempC, code) {
   return consejo;
 }
 
-/* --- HORA Y ENTORNO 100% AJUSTADOS A LA HORA LOCAL DE LA CIUDAD --- */
+/* --- ENTORNO Y HORA 100% SINCRONIZADOS CON LA API (INCLUYENDO PARCIALMENTE NUBLADO) --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -681,7 +681,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   let esAtardecer = false;
 
   if (dataTimeISO && sunriseISO && sunsetISO) {
-    // Tomamos la hora exacta numérica local que devuelve la API para esa ciudad
     const horaActualMinutos = parseInt(dataTimeISO.slice(11, 13)) * 60 + parseInt(dataTimeISO.slice(14, 16));
     const horaAmanecerMinutos = parseInt(sunriseISO.slice(11, 13)) * 60 + parseInt(sunriseISO.slice(14, 16));
     const horaAtardecerMinutos = parseInt(sunsetISO.slice(11, 13)) * 60 + parseInt(sunsetISO.slice(14, 16));
@@ -695,7 +694,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // Colores dinámicos reales
+  // Colores dinámicos del fondo
   if (esDeNoche) {
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
@@ -704,7 +703,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // Estrellas SOLO si es de noche en esa ubicación exacta
+  // Estrellas si es de noche
   if (esDeNoche) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
@@ -719,7 +718,9 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // Efectos según el clima actual
+  // EFECTOS CLIMÁTICOS ESPECÍFICOS
+
+  // Nieve (71, 73, 75)
   if ([71, 73, 75].includes(code)) {
     for (let i = 0; i < 20; i++) {
       const snow = document.createElement('div');
@@ -732,7 +733,9 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       snow.style.animationDelay = `${Math.random() * 2}s`;
       envLayer.appendChild(snow);
     }
-  } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
+  } 
+  // Lluvia / Tormentas
+  else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
     for (let i = 0; i < 16; i++) {
       const rain = document.createElement('div');
       rain.className = 'realistic-rain';
@@ -742,22 +745,29 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       rain.style.animationDelay = `${Math.random() * 1}s`;
       envLayer.appendChild(rain);
     }
-  } else if (code === 2) {
-    const cloud = document.createElement('div');
-    cloud.className = 'realistic-cloud';
-    cloud.textContent = '☁️';
-    cloud.style.top = '25px';
-    cloud.style.animationDuration = '18s';
-    envLayer.appendChild(cloud);
+  } 
+  // Parcialmente nublado / Mayormente despejado (Codes 1 o 2) -> Sol con nubes flotando
+  else if (code === 1 || code === 2) {
     if (!esDeNoche) {
       const sun = document.createElement('div');
       sun.className = 'realistic-sun';
-      sun.style.width = '50px'; sun.style.height = '50px';
-      sun.style.background = 'radial-gradient(circle, rgba(254,240,138,0.9) 0%, transparent 75%)';
+      sun.style.width = '60px'; sun.style.height = '60px';
+      sun.style.background = esAtardecer 
+        ? 'radial-gradient(circle, rgba(251,146,60,0.85) 0%, transparent 75%)' 
+        : 'radial-gradient(circle, rgba(254,240,138,0.95) 0%, transparent 75%)';
       sun.style.top = '10px'; sun.style.right = '20px';
       envLayer.appendChild(sun);
     }
-  } else if ([3, 45, 48].includes(code)) {
+    // Nube deslizándose por el entorno parcialmente nublado
+    const cloud = document.createElement('div');
+    cloud.className = 'realistic-cloud';
+    cloud.textContent = '☁️';
+    cloud.style.top = '30px';
+    cloud.style.animationDuration = '16s';
+    envLayer.appendChild(cloud);
+  } 
+  // Nublado completo (Codes 3, 45, 48) -> Nubes densas cubriendo
+  else if ([3, 45, 48].includes(code)) {
     for (let i = 0; i < 2; i++) {
       const cloud = document.createElement('div');
       cloud.className = 'realistic-cloud';
@@ -767,7 +777,9 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       cloud.style.animationDelay = `${i * -6}s`;
       envLayer.appendChild(cloud);
     }
-  } else if (!esDeNoche) {
+  } 
+  // Despejado total (Code 0) -> Sol radiante limpio o cielo nocturno limpio
+  else if (!esDeNoche) {
     const sun = document.createElement('div');
     sun.className = 'realistic-sun';
     sun.style.background = esAtardecer 
@@ -790,9 +802,9 @@ function actualizarVentanaClima(code, tempC, dataTimeISO, sunriseISO, sunsetISO)
   } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) {
     mensajePrincipal = 'Precipitaciones activas';
     mensajeSub = 'Lluvia en la zona';
-  } else if ([2, 3, 45, 48].includes(code)) {
-    mensajePrincipal = 'Nubosidad variable';
-    mensajeSub = 'Cielo parcial o cubierto';
+  } else if ([1, 2, 3, 45, 48].includes(code)) {
+    mensajePrincipal = code === 1 || code === 2 ? 'Cielo parcialmente nublado' : 'Nubosidad total';
+    mensajeSub = 'Nubosidad variable en la zona';
   } else if ([95, 96, 99].includes(code)) {
     mensajePrincipal = 'Tormenta eléctrica';
     mensajeSub = 'Riesgo meteorológico';
@@ -913,7 +925,7 @@ function renderWeather(data, place){
   
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
-  const dataTimeISO = c.time; // Hora local exacta de la ubicación consultada
+  const dataTimeISO = c.time;
 
   actualizarVentanaClima(c.weather_code, c.temperature_2m, dataTimeISO, sunriseISO, sunsetISO);
   calcularDiferenciaAyer(data.hourly, c.temperature_2m);
