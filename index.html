@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<!-- Corrección de Accesibilidad: Eliminado user-scalable=no para permitir zoom -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
 
 <!-- AQUI PEGAS LA ETIQUETA QUE TE DIO GOOGLE -->
@@ -27,7 +28,8 @@
     --mist:#eef2f8;
     --amber:#e2a33d;
     --ink:#12203a;
-    --muted:#5c6c86;
+    /* Contraste mejorado para textos secundarios */
+    --muted:#46546d;
     --card:#ffffff;
     --line:#dbe3ef;
   }
@@ -36,7 +38,7 @@
       --mist:#0b1120;
       --card:#151f38;
       --ink:#e8edf7;
-      --muted:#8b97b3;
+      --muted:#9aa6c1;
       --line:#26314f;
     }
   }
@@ -316,7 +318,8 @@
 </style>
 </head>
 <body>
-<div class="card">
+<!-- Corrección de Accesibilidad: Se utiliza la etiqueta semántica <main> para envolver la tarjeta -->
+<main class="card">
 
   <div class="header-actions">
     <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades">📋</button>
@@ -436,7 +439,7 @@
     v1.2.0 • Actualizado: 15 de Octubre de 2026
   </div>
 
-</div>
+</main>
 
 <script>
 function escapeHTML(str) {
@@ -542,6 +545,7 @@ window.addEventListener('DOMContentLoaded', () => {
   obtenerUbicacionActual();
 });
 
+/* SE MANTIENE TU FUNCIÓN ORIGINAL DE OBTENER UBICACIÓN */
 function obtenerUbicacionActual(){
   document.getElementById('place').textContent = "Buscando ubicación...";
   if(navigator.geolocation){
