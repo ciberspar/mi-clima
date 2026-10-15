@@ -2,7 +2,6 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<!-- Corrección de Accesibilidad: Eliminado user-scalable=no para permitir zoom -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
 
@@ -28,7 +27,6 @@
     --mist:#eef2f8;
     --amber:#e2a33d;
     --ink:#12203a;
-    /* Contraste mejorado para textos secundarios */
     --muted:#46546d;
     --card:#ffffff;
     --line:#dbe3ef;
@@ -318,7 +316,6 @@
 </style>
 </head>
 <body>
-<!-- Corrección de Accesibilidad: Se utiliza la etiqueta semántica <main> para envolver la tarjeta -->
 <main class="card">
 
   <div class="header-actions">
@@ -422,12 +419,12 @@
           <div class="value" id="alertValue">🟢 Verde: No te preocupes</div>
         </div>
       </div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
+      <button class="btn" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
     </div>
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="obtenerUbicacionActual()">Actualizar clima</button>
+      <button class="btn" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
     </div>
   </div>
 
@@ -542,29 +539,39 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
 
 window.addEventListener('DOMContentLoaded', () => {
   cambiarUnidad(unidadActual);
-  obtenerUbicacionActual();
+  obtenerUbicacionIP();
 });
 
-/* SE MANTIENE TU FUNCIÓN ORIGINAL DE OBTENER UBICACIÓN */
-function obtenerUbicacionActual(){
+/* INICIO: Geolocalización automática por IP al cargar */
+function obtenerUbicacionIP(){
   document.getElementById('place').textContent = "Buscando ubicación...";
+  fetch('https://ipapi.co/json/')
+    .then(res => res.json())
+    .then(data => {
+      if(data.latitude && data.longitude){
+        const nombreLugar = `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`;
+        cargarClima(data.latitude, data.longitude, nombreLugar, true);
+      } else {
+        document.getElementById('place').textContent = "Ubicación no disponible";
+      }
+    })
+    .catch(() => {
+      document.getElementById('place').textContent = "Ubicación no disponible";
+    });
+}
+
+/* GPS preciso activado SOLAMENTE al pulsar el botón "Actualizar clima" */
+function actualizarUbicacionGPS(){
+  document.getElementById('place').textContent = "Obteniendo ubicación GPS...";
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
       (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null, true),
-      () => usarRespaldoIP(),
-      { enableHighAccuracy:false, timeout:8000, maximumAge:300000 }
+      () => obtenerUbicacionIP(),
+      { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
     );
-  } else { usarRespaldoIP(); }
-}
-
-async function usarRespaldoIP(){
-  try {
-    const res = await fetch('https://ipapi.co/json/');
-    const data = await res.json();
-    if(data.latitude && data.longitude){
-      cargarClima(data.latitude, data.longitude, `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`, true);
-    }
-  } catch(e) { document.getElementById('place').textContent = "Ubicación no disponible"; }
+  } else { 
+    obtenerUbicacionIP(); 
+  }
 }
 
 function obtenerFavoritos() {
