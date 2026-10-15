@@ -2,10 +2,19 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
+
+<!-- Configuraciones PWA Universales -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1c2a4f">
+
+<!-- Compatibilidad específica para iOS / Safari -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Clima G">
+<link rel="apple-touch-icon" href="https://img.icons8.com/color/192/partly-cloudy-day--v1.png">
+
 <style>
   :root{
     --sky-950:#0f1730;
@@ -36,6 +45,9 @@
     color:var(--ink);
     font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     display:flex;align-items:center;justify-content:center;padding:16px;
+    -webkit-user-select:none; user-select:none; -webkit-touch-callout:none;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
   }
   .card{
     width:100%;max-width:390px;
@@ -262,7 +274,7 @@
   .hourly-toggles button { background: transparent; border: none; border-radius: 16px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--muted); }
   .hourly-toggles button.active { background: var(--sky-800); color: #fff; }
   
-  .hourly-scroll { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 6px; scrollbar-width: none; }
+  .hourly-scroll { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .hourly-scroll::-webkit-scrollbar { display: none; }
   .hour-col { display: flex; flex-direction: column; align-items: center; min-width: 44px; text-align: center; gap: 6px; }
   .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
@@ -439,7 +451,10 @@ const WEATHER_CODES = {
 
 let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
-let unidadActual = localStorage.getItem('clima_unidad') || 'C';
+let unidadActual = 'C';
+try {
+  unidadActual = localStorage.getItem('clima_unidad') || 'C';
+} catch(e) {}
 let editandoLista = false;
 let ubicacionGPSData = null;
 
@@ -459,7 +474,9 @@ document.addEventListener('click', (e) => {
 
 function cambiarUnidad(unidad) {
   unidadActual = unidad;
-  localStorage.setItem('clima_unidad', unidad);
+  try {
+    localStorage.setItem('clima_unidad', unidad);
+  } catch(e) {}
   document.getElementById('checkC').style.display = unidad === 'C' ? 'inline' : 'none';
   document.getElementById('checkF').style.display = unidad === 'F' ? 'inline' : 'none';
   document.getElementById('unitLabel').textContent = '°' + unidad;
@@ -549,7 +566,9 @@ function guardarEnFavoritos(nombre, lat, lon) {
   const coords = `${lat},${lon}`;
   if (!favs.some(f => f.coords === coords)) {
     favs.push({ nombre, coords, lat, lon });
-    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+    try {
+      localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+    } catch(e) {}
   }
 }
 
@@ -557,7 +576,9 @@ function eliminarFavorito(idx, event) {
   event.stopPropagation();
   let favs = obtenerFavoritos();
   favs.splice(idx, 1);
-  localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+  try {
+    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
+  } catch(e) {}
   renderCiudadesGuardadas();
 }
 
@@ -757,7 +778,6 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
   }
 }
 
-/* --- ENTORNO Y HORA 100% REVISADO --- */
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -780,31 +800,22 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // 1. Manejo del Fondo según el Estado y la Hora
   if (code === 3) {
-    // Totalmente Nublado: Todo blanco / grisáceo blanquecino
     headerBg.style.background = 'linear-gradient(160deg, #94a3b8, #cbd5e1)';
   } else if ([45, 48].includes(code)) {
-    // Neblina: Fondo suave grisáceo
     headerBg.style.background = 'linear-gradient(160deg, #64748b, #94a3b8)';
   } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
-    // Lluvia / Tormenta: Fondo plomizo
     headerBg.style.background = 'linear-gradient(160deg, #334155, #475569)';
   } else if ([71, 73, 75].includes(code)) {
-    // Nieve: Fondo azul frío opaco
     headerBg.style.background = 'linear-gradient(160deg, #475569, #94a3b8)';
   } else if (esDeNoche) {
-    // Noche (Soleado / Parcialmente Nublado)
     headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
   } else if (esAtardecer) {
-    // Atardecer (Soleado / Parcialmente Nublado)
     headerBg.style.background = 'linear-gradient(160deg, #38121e, #d97706)';
   } else {
-    // Día despejado / parcialmente nublado
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
 
-  // 2. Estrellas si es de Noche (en días despejados o parcialmente nublados)
   if (esDeNoche && (code <= 2 || [45, 48].includes(code))) {
     for (let i = 0; i < 18; i++) {
       const star = document.createElement('div');
@@ -819,7 +830,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     }
   }
 
-  // 3. Sol / Astro en soleado o parcialmente nublado
   if (!esDeNoche && (code <= 2)) {
     const sun = document.createElement('div');
     sun.className = 'realistic-sun';
@@ -831,9 +841,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     envLayer.appendChild(sun);
   }
 
-  // 4. Elementos de Nubes, Lluvia, Nieve y Neblina
   if (code === 1 || code === 2) {
-    // Parcialmente nublado: pocas nubes (1 sola nube flotando suavemente)
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
@@ -841,7 +849,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     cloud.style.animationDuration = '18s';
     envLayer.appendChild(cloud);
   } else if (code === 3) {
-    // Nublado Total: Varias nubes llenando el ambiente
     for (let i = 0; i < 3; i++) {
       const cloud = document.createElement('div');
       cloud.className = 'realistic-cloud';
@@ -853,7 +860,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       envLayer.appendChild(cloud);
     }
   } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
-    // Lluvia: Nubes + Lluvia cayendo
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
@@ -872,7 +878,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       envLayer.appendChild(rain);
     }
   } else if ([71, 73, 75].includes(code)) {
-    // Nieve: Nubes + Nieve cayendo
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
@@ -892,7 +897,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
       envLayer.appendChild(snow);
     }
   } else if ([45, 48].includes(code)) {
-    // Neblina: Nubes + Capa de Niebla
     const cloud = document.createElement('div');
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
