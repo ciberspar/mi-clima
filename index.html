@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
 
-<!-- Favicon y Logo de Clima G -->
+<!-- Favicon y Logo dinámico de Clima G -->
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 
@@ -485,7 +485,7 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.4.0 • Actualizado: 18 de Octubre de 2026
+    v1.4.1 • Actualizado: 18 de Octubre de 2026
   </div>
 
 </main>
@@ -516,6 +516,59 @@ try {
 } catch(e) {}
 let editandoLista = false;
 let ubicacionGPSData = null;
+
+/* INNOVACIÓN: Logo dinámico en tiempo real con temperatura y estado del clima */
+function actualizarLogoDinamico(tempC, weatherCode) {
+  const tempEntera = convertirTemp(tempC);
+  const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—', '🌤️'];
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext('2d');
+
+  // Fondo redondeado elegante
+  ctx.fillStyle = '#1c2a4f';
+  ctx.beginPath();
+  if (ctx.roundRect) {
+    ctx.roundRect(0, 0, 128, 128, 28);
+  } else {
+    ctx.rect(0, 0, 128, 128);
+  }
+  ctx.fill();
+
+  // Dibujar el emoji del clima en la parte superior
+  ctx.font = '52px serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(emoji, 64, 44);
+
+  // Dibujar el texto de la temperatura en la parte inferior
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 38px -apple-system, sans-serif';
+  ctx.fillText(`${tempEntera}°`, 64, 98);
+
+  const faviconUrl = canvas.toDataURL('image/png');
+
+  // Actualizar Favicon e ícono Apple dinámicamente
+  let linkFavicon = document.querySelector("link[rel*='icon']");
+  if (!linkFavicon) {
+    linkFavicon = document.createElement('link');
+    linkFavicon.rel = 'icon';
+    document.head.appendChild(linkFavicon);
+  }
+  linkFavicon.href = faviconUrl;
+
+  let linkApple = document.querySelector("link[rel='apple-touch-icon']");
+  if (linkApple) {
+    linkApple.href = faviconUrl;
+  }
+
+  // Integración Badging API para el sistema
+  if ('setAppBadge' in navigator) {
+    navigator.setAppBadge(tempEntera).catch(() => {});
+  }
+}
 
 function toggleMenuConfig(e) {
   if (e) e.stopPropagation();
@@ -585,7 +638,6 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
     if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
     
-    // Consultar APIs de Sismos (USGS) y Alertas Globales (GDACS)
     consultarAlertasGDACS(lat, lon);
     consultarSismosUSGS(lat, lon);
   }catch(e){
@@ -850,7 +902,6 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
   }
 }
 
-/* Integración con GDACS (Alertas globales) */
 async function consultarAlertasGDACS(lat, lon) {
   const alertCard = document.getElementById('alertCard');
   const alertValue = document.getElementById('alertValue');
@@ -885,7 +936,6 @@ async function consultarAlertasGDACS(lat, lon) {
   } catch (e) {}
 }
 
-/* Integración con USGS (Sismos en vivo - solo aparece si hay sismos) */
 async function consultarSismosUSGS(lat, lon) {
   const seismicContainer = document.getElementById('seismicAlerts');
   if (!seismicContainer) return;
@@ -1194,6 +1244,9 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
+  // LLAMADA A LA INNOVACIÓN: Actualiza el logo con emoji y temperatura en tiempo real
+  actualizarLogoDinamico(c.temperature_2m, weatherCode);
+
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
   const dataTimeISO = c.time;
