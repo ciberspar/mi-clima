@@ -318,13 +318,35 @@
   nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
 
   .week-list{padding:6px 24px 20px;}
-  .day-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);}
-  .day-row:last-child{border-bottom:none;}
+  .day-card{border-bottom:1px solid var(--line); padding: 4px 0;}
+  .day-card:last-child{border-bottom:none;}
+  .day-row{display:flex;align-items:center;gap:10px;padding:11px 0;cursor:pointer;}
   .day-row .day-name{flex:1;font-size:0.9rem;font-weight:600;text-transform:capitalize;}
   .day-row .day-emoji{font-size:1.3rem;width:28px;text-align:center;}
   .day-row .day-precip{font-size:0.75rem;color:var(--muted);width:44px;}
   .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;}
   .day-row .day-range b{color:var(--ink);}
+
+  /* Estilos para el desplegable de horas en el clima semanal */
+  .week-hourly-wrapper {
+    display: none;
+    background: var(--mist);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin: 4px 0 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    animation: fadeIn 0.2s ease-out;
+  }
+  .week-hourly-wrapper::-webkit-scrollbar { display: none; }
+  .week-hourly-wrapper.active { display: flex; gap: 14px; }
+  .week-hour-col {
+    display: flex; flex-direction: column; align-items: center; min-width: 40px; text-align: center; gap: 4px;
+  }
+  .week-hour-time { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+  .week-hour-icon { font-size: 1rem; }
+  .week-hour-val { font-size: 0.78rem; font-weight: 600; }
 
   .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 4px;}
   .visitas b{color:var(--ink);}
@@ -442,7 +464,7 @@
 
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
+      <button class="btn" style="margin-top: 14px;" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
     </div>
   </div>
 
@@ -1124,23 +1146,69 @@ function renderWeather(data, place){
     document.getElementById('sunrise').textContent = fmtHora(d.sunrise[todayIdx]);
     document.getElementById('sunset').textContent = fmtHora(d.sunset[todayIdx]);
 
-    renderWeek(d, todayIdx);
+    renderWeek(d, todayIdx, data.hourly);
     renderAdverseAlerts(data.hourly, d.time[todayIdx], dataTimeISO);
     renderHourly(data.hourly, dataTimeISO);
   }
 }
 
-function renderWeek(d, todayIdx = 0){
+/* Función para alternar el desplegable de la pestaña Semana */
+function toggleSemanaHoras(idTarget) {
+  const target = document.getElementById(idTarget);
+  if (!target) return;
+  const estaActivo = target.classList.contains('active');
+  
+  // Cierra los demás desplegables para mantener limpia la interfaz
+  document.querySelectorAll('.week-hourly-wrapper').forEach(el => el.classList.remove('active'));
+  
+  if (!estaActivo) {
+    target.classList.add('active');
+  }
+}
+
+function renderWeek(d, todayIdx = 0, hourly = null){
   const futureDays = d.time.slice(todayIdx);
   const rows = futureDays.map((dateStr, i)=>{
     const actualIdx = todayIdx + i;
     const [desc, emoji] = WEATHER_CODES[d.weather_code[actualIdx]] || ['—','🌡️'];
+    const wrapperId = `week-hourly-${actualIdx}`;
+
+    // Construcción del bloque de horas para este día específico
+    let horasHTML = '';
+    if (hourly && hourly.time) {
+      const horasDelDia = [];
+      for (let h = 0; h < hourly.time.length; h++) {
+        if (hourly.time[h].startsWith(dateStr)) {
+          horasDelDia.push(h);
+        }
+      }
+
+      horasHTML = horasDelDia.map(hIdx => {
+        const horaStr = hourly.time[hIdx].slice(11, 16);
+        const codeH = hourly.weather_code[hIdx];
+        const [descH, emojiH] = WEATHER_CODES[codeH] || ['—','🌡️'];
+        const tempH = convertirTemp(hourly.temperature_2m[hIdx]);
+        return `
+          <div class="week-hour-col">
+            <div class="week-hour-time">${escapeHTML(horaStr)}</div>
+            <div class="week-hour-icon">${emojiH}</div>
+            <div class="week-hour-val">${tempH}°</div>
+          </div>
+        `;
+      }).join('');
+    }
+
     return `
-      <div class="day-row">
-        <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
-        <div class="day-emoji">${emoji}</div>
-        <div class="day-precip">${d.precipitation_sum[actualIdx]} mm</div>
-        <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[actualIdx])}°</b> / ${convertirTemp(d.temperature_2m_min[actualIdx])}°</div>
+      <div class="day-card">
+        <div class="day-row" onclick="toggleSemanaHoras('${wrapperId}')">
+          <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
+          <div class="day-emoji">${emoji}</div>
+          <div class="day-precip">${d.precipitation_sum[actualIdx]} mm</div>
+          <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[actualIdx])}°</b> / ${convertirTemp(d.temperature_2m_min[actualIdx])}°</div>
+        </div>
+        <div class="week-hourly-wrapper" id="${wrapperId}">
+          ${horasHTML}
+        </div>
       </div>`;
   }).join('');
   document.getElementById('weekList').innerHTML = rows;
