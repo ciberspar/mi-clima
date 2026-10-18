@@ -3,12 +3,9 @@ name: Lighthouse CI
 on:
   push:
     branches: [ "main", "master" ]
-  pull_request:
-    branches: [ "main", "master" ]
 
 permissions:
-  contents: read
-  actions: write
+  contents: write
 
 jobs:
   lighthouse:
@@ -16,18 +13,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Audit URL with Lighthouse
-        uses: treosh/lighthouse-ci-action@v10
+      - name: Use Node.js
+        uses: actions/setup-node@v4
         with:
-          urls: |
-            https://ciberspar.github.io/mi-clima/
-          uploadArtifacts: true
-          temporaryPublicStorage: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          node-version: '20'
 
-      - name: Upload Lighthouse reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-report
-          path: .lighthouseci/
+      - name: Install Lighthouse CI
+        run: npm install -g @lhci/cli
+
+      - name: Run Lighthouse Audit
+        run: lhci collect --url=https://ciberspar.github.io/mi-clima/
+
+      - name: Save and Commit Report
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add .lighthouseci/
+          git commit -m "chore: actualiza reporte de Lighthouse CI [skip ci]" || echo "No hay cambios nuevos en los reportes"
+          git push
