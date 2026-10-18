@@ -1,0 +1,19 @@
+name: Lighthouse CI
+
+on:
+  push:
+    branches: [ "main", "master" ]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Audit URL with Lighthouse
+        uses: treosh/lighthouse-ci-action@v9
+        with:
+          urls: |
+            https://ciberspar.github.io/mi-clima/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
