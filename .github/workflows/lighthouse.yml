@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: write
 
 jobs:
   lighthouse:
@@ -21,4 +22,12 @@ jobs:
           urls: |
             https://ciberspar.github.io/mi-clima/
           uploadArtifacts: true
-          temporaryPublicStorage: true
+          temporaryPublicStorage: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Lighthouse reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
