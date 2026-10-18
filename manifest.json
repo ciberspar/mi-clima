@@ -28,5 +28,20 @@
       "type": "image/png",
       "purpose": "maskable"
     }
+  ],
+  "shortcuts": [
+    {
+      "name": "Actualizar Clima",
+      "short_name": "Actualizar",
+      "description": "Obtiene el pronóstico más reciente al instante",
+      "url": "./",
+      "icons": [
+        {
+          "src": "https://img.icons8.com/color/192/partly-cloudy-day--v1.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
   ]
 }
