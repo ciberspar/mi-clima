@@ -573,52 +573,11 @@ function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
   }
 }
 
-/* Logo dinámico en tiempo real (Dibuja la temperatura y emoji sobre la imagen del logo) */
-function actualizarLogoDinamico(tempC, weatherCode) {
+/* Inserta el globito rojo (badge) con los grados en el icono de la PWA */
+function actualizarGlobitoRojoPWA(tempC) {
   const tempEntera = convertirTemp(tempC);
-  const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—', '🌤️'];
-
-  const canvas = document.createElement('canvas');
-  canvas.width = 128;
-  canvas.height = 128;
-  const ctx = canvas.getContext('2d');
-
-  ctx.fillStyle = '#1c2a4f';
-  ctx.beginPath();
-  if (ctx.roundRect) {
-    ctx.roundRect(0, 0, 128, 128, 28);
-  } else {
-    ctx.rect(0, 0, 128, 128);
-  }
-  ctx.fill();
-
-  ctx.font = '52px serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(emoji, 64, 44);
-
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 38px -apple-system, sans-serif';
-  ctx.fillText(`${tempEntera}°`, 64, 98);
-
-  const faviconUrl = canvas.toDataURL('image/png');
-
-  let linkFavicon = document.querySelector("link[rel*='icon']");
-  if (!linkFavicon) {
-    linkFavicon = document.createElement('link');
-    linkFavicon.rel = 'icon';
-    document.head.appendChild(linkFavicon);
-  }
-  linkFavicon.href = faviconUrl;
-
-  let linkApple = document.querySelector("link[rel='apple-touch-icon']");
-  if (linkApple) {
-    linkApple.href = faviconUrl;
-  }
-
-  // Al abrir la app, limpiamos el badge rojo para que no muestre números viejos
-  if ('clearAppBadge' in navigator) {
-    navigator.clearAppBadge().catch(() => {});
+  if ('setAppBadge' in navigator) {
+    navigator.setAppBadge(tempEntera).catch(() => {});
   }
 }
 
@@ -1296,8 +1255,8 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // Dibuja los grados y emoji sobre el logo dinámico
-  actualizarLogoDinamico(c.temperature_2m, weatherCode);
+  // Muestra el globito rojo con los grados en el icono de la PWA
+  actualizarGlobitoRojoPWA(c.temperature_2m);
   
   // Comprueba si hay alertas para mandar notificación push
   verificarAlertasParaNotificacion(weatherCode, c.temperature_2m, c.wind_speed_10m);
@@ -1391,7 +1350,7 @@ function renderWeek(d, todayIdx = 0, hourly = null){
         <div class="day-row" onclick="toggleSemanaHoras('${wrapperId}')">
           <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
           <div class="day-emoji">${emoji}</div>
-          <div class="day-precip">${d.precipitation_sum[actualIdx]} mm</div>
+          <div class="svg-precip">${d.precipitation_sum[actualIdx]} mm</div>
           <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[actualIdx])}°</b> / ${convertirTemp(d.temperature_2m_min[actualIdx])}°</div>
         </div>
         <div class="week-hourly-wrapper" id="${wrapperId}">
