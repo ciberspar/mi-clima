@@ -9,7 +9,6 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 
-
 <!-- Datos Estructurados para SEO y Nombre del Sitio en Google -->
 <script type="application/ld+json">
 {
@@ -21,10 +20,7 @@
 }
 </script>
 
-<!-- Si aqui pone lo de seo sisi -->
 <meta name="description" content="Consulta el clima en vivo, pronóstico actualizado y estado del tiempo en tiempo real.">
-
-<!-- AQUI PEGAS LA ETIQUETA QUE TE DIO GOOGLE -->
 <meta name="google-site-verification" content="Xeu9Yb11U91i6zXqhXr1MODmBtybdt7Ytvm9xBR-IQI" />
 
 <!-- Configuraciones PWA Universales -->
@@ -287,6 +283,20 @@
   }
   .stat-alert.alert-roja .label { color: rgba(255,255,255,0.85); }
 
+  .seismic-card {
+    grid-column: span 3;
+    padding: 12px;
+    border-radius: 14px;
+    background: #b91c1c;
+    color: #ffffff;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+    animation: fadeIn 0.3s ease-out;
+  }
+
   .hourly-card { background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px; }
   .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .hourly-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
@@ -327,7 +337,6 @@
   .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;}
   .day-row .day-range b{color:var(--ink);}
 
-  /* Estilos para el desplegable de horas en el clima semanal */
   .week-hourly-wrapper {
     display: none;
     background: var(--mist);
@@ -410,6 +419,9 @@
     </div>
 
     <div class="body tab-panel active" id="tab-hoy">
+      <!-- Tarjeta de sismos (oculta por defecto, solo aparece si hay sismo cercano) -->
+      <div id="seismicAlerts" style="display: none;"></div>
+
       <div class="hourly-card">
         <div class="hourly-header">
           <div>
@@ -473,7 +485,7 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.3.0 • Actualizado: 18 de Octubre de 2026
+    v1.4.0 • Actualizado: 18 de Octubre de 2026
   </div>
 
 </main>
@@ -572,6 +584,10 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
     datosClimaGlobal = weather;
     if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
+    
+    // Consultar APIs de Sismos (USGS) y Alertas Globales (GDACS)
+    consultarAlertasGDACS(lat, lon);
+    consultarSismosUSGS(lat, lon);
   }catch(e){
     document.getElementById('place').textContent = "Error al cargar";
   }
@@ -582,7 +598,6 @@ window.addEventListener('DOMContentLoaded', () => {
   obtenerUbicacionIP();
 });
 
-/* INICIO: Geolocalización automática por IP al cargar */
 function obtenerUbicacionIP(){
   document.getElementById('place').textContent = "Buscando ubicación...";
   fetch('https://ipapi.co/json/')
@@ -600,7 +615,6 @@ function obtenerUbicacionIP(){
     });
 }
 
-/* GPS preciso activado SOLAMENTE al pulsar el botón "Actualizar clima" */
 function actualizarUbicacionGPS(){
   document.getElementById('place').textContent = "Obteniendo ubicación GPS...";
   if(navigator.geolocation){
@@ -836,6 +850,76 @@ function actualizarTarjetaAlertaGlobal(code, windSpeed, precipSum) {
   }
 }
 
+/* Integración con GDACS (Alertas globales) */
+async function consultarAlertasGDACS(lat, lon) {
+  const alertCard = document.getElementById('alertCard');
+  const alertValue = document.getElementById('alertValue');
+  if (!alertCard || !alertValue) return;
+
+  try {
+    const res = await fetch('https://www.gdacs.org/xml/gdacs.geojson');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.features) return;
+
+    const alertasCercanas = data.features.filter(f => {
+      if (!f.geometry || !f.geometry.coordinates) return false;
+      const [alertLon, alertLat] = f.geometry.coordinates;
+      return Math.abs(lat - alertLat) < 4.0 && Math.abs(lon - alertLon) < 4.0;
+    });
+
+    if (alertasCercanas.length > 0) {
+      const alerta = alertasCercanas[0].properties || {};
+      const titulo = alerta.eventname || alerta.name || 'Alerta activa';
+      const nivel = (alerta.alertlevel || 'Orange').toLowerCase();
+
+      alertCard.className = 'stat stat-alert';
+      if (nivel === 'red') {
+        alertCard.classList.add('alert-roja');
+        alertValue.textContent = `🔴 Roja: ${escapeHTML(titulo)}`;
+      } else {
+        alertCard.classList.add('alert-naranja');
+        alertValue.textContent = `🟠 Naranja: ${escapeHTML(titulo)}`;
+      }
+    }
+  } catch (e) {}
+}
+
+/* Integración con USGS (Sismos en vivo - solo aparece si hay sismos) */
+async function consultarSismosUSGS(lat, lon) {
+  const seismicContainer = document.getElementById('seismicAlerts');
+  if (!seismicContainer) return;
+
+  seismicContainer.style.display = 'none';
+  seismicContainer.innerHTML = '';
+
+  try {
+    const res = await fetch('https://earthquake.usgs.gov/earthquakes/feed/v1.0/summary/all_day.geojson');
+    if (!res.ok) return;
+    const data = await res.json();
+    if (!data.features) return;
+
+    const sismosCercanos = data.features.filter(eq => {
+      if (!eq.geometry || !eq.geometry.coordinates) return false;
+      const [eqLon, eqLat] = eq.geometry.coordinates;
+      return Math.abs(lat - eqLat) < 4.5 && Math.abs(lon - eqLon) < 4.5;
+    });
+
+    if (sismosCercanos.length > 0) {
+      const sismo = sismosCercanos[0].properties;
+      const mag = sismo.mag ? sismo.mag.toFixed(1) : 'S/N';
+      const lugar = sismo.place || 'Cerca de tu ubicación';
+
+      seismicContainer.style.display = 'block';
+      seismicContainer.innerHTML = `
+        <div class="seismic-card">
+          🌋 <b>Sismo Reciente Detectado:</b> M ${mag} - ${escapeHTML(lugar)}
+        </div>
+      `;
+    }
+  } catch (e) {}
+}
+
 function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   const headerBg = document.getElementById('topHeaderBg');
   const envLayer = document.getElementById('envLayer');
@@ -848,7 +932,6 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     const horaActualMinutos = parseInt(dataTimeISO.slice(11, 13)) * 60 + parseInt(dataTimeISO.slice(14, 16));
     const horaAmanecerMinutos = parseInt(sunriseISO.slice(11, 13)) * 60 + parseInt(sunriseISO.slice(14, 16));
     const horaAtardecerMinutos = parseInt(sunsetISO.slice(11, 13)) * 60 + parseInt(sunsetISO.slice(14, 16));
-
     const margenAtardecer = horaAtardecerMinutos - 50;
 
     if (horaActualMinutos < horaAmanecerMinutos || horaActualMinutos > horaAtardecerMinutos) {
@@ -1152,13 +1235,11 @@ function renderWeather(data, place){
   }
 }
 
-/* Función para alternar el desplegable de la pestaña Semana */
 function toggleSemanaHoras(idTarget) {
   const target = document.getElementById(idTarget);
   if (!target) return;
   const estaActivo = target.classList.contains('active');
   
-  // Cierra los demás desplegables para mantener limpia la interfaz
   document.querySelectorAll('.week-hourly-wrapper').forEach(el => el.classList.remove('active'));
   
   if (!estaActivo) {
@@ -1173,7 +1254,6 @@ function renderWeek(d, todayIdx = 0, hourly = null){
     const [desc, emoji] = WEATHER_CODES[d.weather_code[actualIdx]] || ['—','🌡️'];
     const wrapperId = `week-hourly-${actualIdx}`;
 
-    // Construcción del bloque de horas para este día específico
     let horasHTML = '';
     if (hourly && hourly.time) {
       const horasDelDia = [];
