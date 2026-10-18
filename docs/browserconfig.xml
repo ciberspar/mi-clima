@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<browserconfig>
+    <msapplication>
+        <tile>
+            <square150x150logo src="https://img.icons8.com/color/192/partly-cloudy-day--v1.png"/>
+            <TileColor>#1c2a4f</TileColor>
+        </tile>
+    </msapplication>
+</browserconfig>
