@@ -530,7 +530,6 @@ async function solicitarPermisoNotificaciones() {
   
   if (permiso === 'granted') {
     alert('¡Notificaciones activadas! Ahora recibirás alertas del clima en tu dispositivo.');
-    enviarNotificacionClima('Clima G Activado 🌤️', 'Recibirás alertas del tiempo directamente en tu dispositivo.');
   } else if (permiso === 'denied') {
     alert('Las notificaciones fueron bloqueadas. Podés habilitarlas desde la configuración de tu navegador.');
   }
@@ -574,7 +573,7 @@ function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
   }
 }
 
-/* Logo dinámico en tiempo real con temperatura y estado del clima */
+/* Logo dinámico en tiempo real (Dibuja la temperatura y emoji sobre la imagen del logo) */
 function actualizarLogoDinamico(tempC, weatherCode) {
   const tempEntera = convertirTemp(tempC);
   const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—', '🌤️'];
@@ -617,8 +616,9 @@ function actualizarLogoDinamico(tempC, weatherCode) {
     linkApple.href = faviconUrl;
   }
 
-  if ('setAppBadge' in navigator) {
-    navigator.setAppBadge(tempEntera).catch(() => {});
+  // Al abrir la app, limpiamos el badge rojo para que no muestre números viejos
+  if ('clearAppBadge' in navigator) {
+    navigator.clearAppBadge().catch(() => {});
   }
 }
 
@@ -1296,8 +1296,10 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // Actualiza el logo dinámico y envía alertas automáticas
+  // Dibuja los grados y emoji sobre el logo dinámico
   actualizarLogoDinamico(c.temperature_2m, weatherCode);
+  
+  // Comprueba si hay alertas para mandar notificación push
   verificarAlertasParaNotificacion(weatherCode, c.temperature_2m, c.wind_speed_10m);
 
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
