@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+
+    <!-- Página Principal -->
+    <url>
+        <loc>https://climap.duckdns.org/</loc>
+        <lastmod>2026-10-15</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>1.0</priority>
+    </url>
+
+    <!-- Si tenés más secciones, las agregás abajo respetando la estructura -->
+    <url>
+        <loc>https://climap.duckdns.org/contacto.html</loc>
+        <lastmod>2026-10-15</lastmod>
+        <changefreq>monthly</changefreq>
+        <priority>0.5</priority>
+    </url>
+
+</urlset>
