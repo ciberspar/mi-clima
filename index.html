@@ -97,7 +97,7 @@
     display: none; position: absolute; top: 58px; right: 16px;
     background: rgba(21, 31, 56, 0.95); backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
-    width: 220px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    width: 230px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     overflow: hidden; color: #fff; animation: fadeIn 0.15s ease-out;
   }
   .menu-dropdown.active { display: block; }
@@ -374,6 +374,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
+    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Notificaciones Apple Watch</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -517,7 +518,63 @@ try {
 let editandoLista = false;
 let ubicacionGPSData = null;
 
-/* INNOVACIÓN: Logo dinámico en tiempo real con temperatura y estado del clima */
+/* Notificaciones Web para iPhone / Apple Watch */
+async function solicitarPermisoNotificaciones() {
+  document.getElementById('menuConfig').classList.remove('active');
+  if (!('Notification' in window)) {
+    alert('Tu dispositivo o navegador no soporta notificaciones.');
+    return;
+  }
+
+  const permiso = await Notification.requestPermission();
+  
+  if (permiso === 'granted') {
+    alert('¡Notificaciones activadas! Ahora recibirás alertas del clima en tu iPhone y Apple Watch.');
+    enviarNotificacionClima('Clima G Activado ⌚', 'Recibirás alertas del tiempo directamente en tu muñeca.');
+  } else if (permiso === 'denied') {
+    alert('Las notificaciones fueron bloqueadas. Podés habilitarlas desde la configuración de tu navegador.');
+  }
+}
+
+function enviarNotificacionClima(titulo, mensaje) {
+  if ('Notification' in window && Notification.permission === 'granted') {
+    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+      navigator.serviceWorker.ready.then((registration) => {
+        registration.showNotification(titulo, {
+          body: mensaje,
+          icon: 'favicon.svg',
+          badge: 'favicon.svg',
+          vibrate: [200, 100, 200]
+        });
+      });
+    } else {
+      new Notification(titulo, {
+        body: mensaje,
+        icon: 'favicon.svg'
+      });
+    }
+  }
+}
+
+function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+
+  const tempEntera = convertirTemp(tempC);
+
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weatherCode)) {
+    enviarNotificacionClima(
+      `Alerta de lluvia (${tempEntera}°${unidadActual}) 🌧️`,
+      'Se detectaron precipitaciones o tormentas en tu zona. ¡No te olvides el paraguas!'
+    );
+  } else if (windSpeed >= 50) {
+    enviarNotificacionClima(
+      `Vientos fuertes (${Math.round(windSpeed)} km/h) 🌬️`,
+      'Ráfagas intensas detectadas en tu ubicación.'
+    );
+  }
+}
+
+/* Logo dinámico en tiempo real con temperatura y estado del clima */
 function actualizarLogoDinamico(tempC, weatherCode) {
   const tempEntera = convertirTemp(tempC);
   const [desc, emoji] = WEATHER_CODES[weatherCode] || ['—', '🌤️'];
@@ -527,7 +584,6 @@ function actualizarLogoDinamico(tempC, weatherCode) {
   canvas.height = 128;
   const ctx = canvas.getContext('2d');
 
-  // Fondo redondeado elegante
   ctx.fillStyle = '#1c2a4f';
   ctx.beginPath();
   if (ctx.roundRect) {
@@ -537,20 +593,17 @@ function actualizarLogoDinamico(tempC, weatherCode) {
   }
   ctx.fill();
 
-  // Dibujar el emoji del clima en la parte superior
   ctx.font = '52px serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(emoji, 64, 44);
 
-  // Dibujar el texto de la temperatura en la parte inferior
   ctx.fillStyle = '#ffffff';
   ctx.font = 'bold 38px -apple-system, sans-serif';
   ctx.fillText(`${tempEntera}°`, 64, 98);
 
   const faviconUrl = canvas.toDataURL('image/png');
 
-  // Actualizar Favicon e ícono Apple dinámicamente
   let linkFavicon = document.querySelector("link[rel*='icon']");
   if (!linkFavicon) {
     linkFavicon = document.createElement('link');
@@ -564,7 +617,6 @@ function actualizarLogoDinamico(tempC, weatherCode) {
     linkApple.href = faviconUrl;
   }
 
-  // Integración Badging API para el sistema
   if ('setAppBadge' in navigator) {
     navigator.setAppBadge(tempEntera).catch(() => {});
   }
@@ -1244,8 +1296,9 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // LLAMADA A LA INNOVACIÓN: Actualiza el logo con emoji y temperatura en tiempo real
+  // Actualiza el logo dinámico y envía alertas automáticas
   actualizarLogoDinamico(c.temperature_2m, weatherCode);
+  verificarAlertasParaNotificacion(weatherCode, c.temperature_2m, c.wind_speed_10m);
 
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
