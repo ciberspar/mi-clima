@@ -374,7 +374,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Notificaciones Apple Watch</span></div>
+    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Activar notificaciones</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -518,7 +518,7 @@ try {
 let editandoLista = false;
 let ubicacionGPSData = null;
 
-/* Notificaciones Web para iPhone / Apple Watch */
+/* Notificaciones Web Universales */
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
   if (!('Notification' in window)) {
@@ -529,8 +529,8 @@ async function solicitarPermisoNotificaciones() {
   const permiso = await Notification.requestPermission();
   
   if (permiso === 'granted') {
-    alert('¡Notificaciones activadas! Ahora recibirás alertas del clima en tu iPhone y Apple Watch.');
-    enviarNotificacionClima('Clima G Activado ⌚', 'Recibirás alertas del tiempo directamente en tu muñeca.');
+    alert('¡Notificaciones activadas! Ahora recibirás alertas del clima en tu dispositivo.');
+    enviarNotificacionClima('Clima G Activado 🌤️', 'Recibirás alertas del tiempo directamente en tu dispositivo.');
   } else if (permiso === 'denied') {
     alert('Las notificaciones fueron bloqueadas. Podés habilitarlas desde la configuración de tu navegador.');
   }
