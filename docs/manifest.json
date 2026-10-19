@@ -1,6 +1,6 @@
 {
-  "name": "Clima GPS",
-  "short_name": "Clima",
+  "name": "Clima G",
+  "short_name": "Clima G",
   "description": "Aplicación del clima en tiempo real con geolocalización",
   "start_url": "./",
   "scope": "./",
