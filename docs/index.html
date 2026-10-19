@@ -9,9 +9,6 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 
-<!-- Leaflet CSS para el Mapa Radar -->
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-
 <!-- Datos Estructurados para SEO y Nombre del Sitio en Google -->
 <script type="application/ld+json">
 {
@@ -334,8 +331,13 @@
   .week-hour-icon { font-size: 1rem; }
   .week-hour-val { font-size: 0.78rem; font-weight: 600; }
 
-  /* Estilos para Mapa y Aire */
-  #map-container { width: 100%; height: 320px; border-radius: 16px; overflow: hidden; margin-bottom: 12px; z-index: 10; }
+  /* Estilos para Mapa interactivo estilo Apple Weather y Aire */
+  .map-controls { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+  .map-controls::-webkit-scrollbar { display: none; }
+  .map-btn { background: var(--mist); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; color: var(--ink); cursor: pointer; white-space: nowrap; }
+  .map-btn.active { background: var(--sky-800); color: #fff; border-color: var(--sky-800); }
+  #map-container { width: 100%; height: 420px; border-radius: 20px; overflow: hidden; margin-bottom: 12px; border: 1px solid var(--line); position: relative; background: #000; }
+  #map-iframe { width: 100%; height: 100%; border: none; }
   .aqi-banner { padding: 16px; border-radius: 16px; text-align: center; color: #fff; font-weight: bold; margin-bottom: 16px; }
 
   .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 4px;font-weight: 600;}
@@ -479,11 +481,19 @@
       </div>
     </div>
 
-    <!-- VISTA 4: MAPA RADAR -->
+    <!-- VISTA 4: MAPA TIPO APPLE WEATHER -->
     <div class="body tab-panel" id="tab-mapa">
-      <div id="map-container"></div>
-      <div style="font-size: 0.75rem; text-align: center; color: var(--muted); margin-bottom: 12px;">
-        🌧️ Radar de lluvias y precipitaciones en tiempo real
+      <div class="map-controls">
+        <button class="map-btn active" onclick="cambiarCapaMapa('rain', this)">🌧️ Precipitación</button>
+        <button class="map-btn" onclick="cambiarCapaMapa('temp', this)">🌡️ Temperatura</button>
+        <button class="map-btn" onclick="cambiarCapaMapa('wind', this)">🌬️ Viento</button>
+        <button class="map-btn" onclick="cambiarCapaMapa('air', this)">🌫️ Calidad del aire</button>
+      </div>
+      <div id="map-container">
+        <iframe id="map-iframe" src="about:blank" title="Mapa del clima interactivo"></iframe>
+      </div>
+      <div style="font-size: 0.75rem; text-align: center; color: var(--muted); margin-bottom: 12px; font-weight: 600;">
+        🗺️ Mapa interactivo estilo Apple Weather
       </div>
     </div>
   </div>
@@ -493,12 +503,11 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.7.0 • Actualizado: 19 de Octubre de 2026
+    v1.5.0 • Actualizado: 19 de Octubre de 2026
   </div>
 
 </main>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 function escapeHTML(str) {
   if (typeof str !== 'string') return str;
@@ -523,10 +532,10 @@ let unidadActual = 'C';
 try { unidadActual = localStorage.getItem('clima_unidad') || 'C'; } catch(e) {}
 let editandoLista = false;
 let ubicacionGPSData = null;
-let leafletMap = null;
 let currentLat = -31.42, currentLon = -64.18;
+let capaMapaActual = 'rain';
 
-// PUSH NOTIFICATIONS PRO
+// NOTIFICACIONES PUSH
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
   if (!('Notification' in window)) {
@@ -549,13 +558,13 @@ function enviarNotificacionClima(titulo, mensaje) {
       navigator.serviceWorker.ready.then((reg) => {
         reg.showNotification(titulo, {
           body: mensaje,
-          icon: 'favicon.svg',
-          badge: 'favicon.svg',
+          icon: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
+          badge: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
           vibrate: [200, 100, 200]
         });
       });
     } else {
-      new Notification(titulo, { body: mensaje, icon: 'favicon.svg' });
+      new Notification(titulo, { body: mensaje, icon: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png' });
     }
   }
 }
@@ -640,7 +649,7 @@ function cambiarTab(tab){
   document.getElementById('tab-'+tab).classList.add('active');
 
   if(tab === 'mapa') {
-    setTimeout(inicializarMapaRadar, 200);
+    cargarIframeMapa(capaMapaActual);
   }
 }
 
@@ -698,7 +707,7 @@ function actualizarUbicacionGPS(){
   }
 }
 
-/* API CALIDAD DEL AIRE DE OPEN-METEO */
+/* CALIDAD DEL AIRE */
 async function consultarCalidadAire(lat, lon) {
   try {
     const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,carbon_monoxide`);
@@ -722,29 +731,27 @@ async function consultarCalidadAire(lat, lon) {
   } catch(e) {}
 }
 
-/* MAPA RADAR CON LEAFLET + RAINVIEWER */
-function inicializarMapaRadar() {
-  if (!leafletMap) {
-    leafletMap = L.map('map-container').setView([currentLat, currentLon], 8);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom: 18,
-      attribution: '© OpenStreetMap'
-    }).addTo(leafletMap);
-
-    fetch('https://api.rainviewer.com/public/weather-maps.json')
-      .then(res => res.json())
-      .then(data => {
-        if(data.radar && data.radar.past && data.radar.past.length > 0) {
-          const lastFrame = data.radar.past[data.radar.past.length - 1];
-          L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${lastFrame.time}/256/{z}/{x}/{y}/2/1_1.png`, {
-            opacity: 0.65
-          }).addTo(leafletMap);
-        }
-      }).catch(() => {});
-  } else {
-    leafletMap.setView([currentLat, currentLon], 8);
-    leafletMap.invalidateSize();
+/* MAPA TIPO APPLE WEATHER (WINDY) */
+function cargarIframeMapa(overlay) {
+  const iframe = document.getElementById('map-iframe');
+  if (!iframe) return;
+  let windyOverlay = 'rain';
+  if (overlay === 'temp') windyOverlay = 'temp';
+  else if (overlay === 'wind') windyOverlay = 'wind';
+  else if (overlay === 'air') windyOverlay = 'cosc';
+  
+  const url = `https://embed.windy.com/embed2.html?lat=${currentLat}&lon=${currentLon}&detailLat=${currentLat}&detailLon=${currentLon}&width=100%25&height=100%25&zoom=9&level=surface&overlay=${windyOverlay}&product=ecmwf&menu=&message=true&marker=true&calendar=now&pressure=&type=map&location=coordinates&detail=&metricWind=km%2Fh&metricTemp=%C2%B0C&radarRange=-1`;
+  
+  if (iframe.src !== url) {
+    iframe.src = url;
   }
+}
+
+function cambiarCapaMapa(capa, btn) {
+  document.querySelectorAll('.map-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  capaMapaActual = capa;
+  cargarIframeMapa(capa);
 }
 
 function obtenerFavoritos() {
@@ -1408,7 +1415,7 @@ function renderWeek(d, todayIdx = 0, hourly = null){
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
-      .then((reg) => { console.log('Service Worker registrado con éxito', reg); })
+      .then((reg) => { console.log('Service Worker registrado', reg); })
       .catch((err) => { console.error('Error al registrar Service Worker', err); });
   });
 }
