@@ -23,13 +23,8 @@ jobs:
 
       - name: Run Lighthouse Audit
         run: |
-          # Opción A: Si auditas tu sitio ya desplegado en GitHub Pages (suele requerir una URL directa al archivo index.html dentro de docs o la raíz configurada en Pages)
-          # Si GitHub Pages sirve desde /docs, la URL sigue siendo la misma, pero asegúrate de que los cambios ya se hayan publicado.
-          
-          lhci collect --url=https://climag.duckdns.org
-          
-          # Opción B (Alternativa recomendada si quieres auditar directamente la carpeta docs localmente antes de publicar):
-          # lhci collect --static-dist-dir=docs
+          # Audita directamente la carpeta docs localmente antes de publicar
+          lhci collect --static-dist-dir=docs
 
       - name: Save and Commit Report
         run: |
