@@ -9,6 +9,9 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 
+<!-- Leaflet CSS para el Mapa Radar -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <!-- Datos Estructurados para SEO y Nombre del Sitio en Google -->
 <script type="application/ld+json">
 {
@@ -264,38 +267,19 @@
     border-radius: 14px;
     text-align: center;
   }
-  .stat-alert.alert-verde {
-    background: #15803d; color: #ffffff;
-  }
+  .stat-alert.alert-verde { background: #15803d; color: #ffffff; }
   .stat-alert.alert-verde .label { color: rgba(255,255,255,0.9); }
-  
-  .stat-alert.alert-amarilla {
-    background: #ca8a04; color: #ffffff;
-  }
+  .stat-alert.alert-amarilla { background: #ca8a04; color: #ffffff; }
   .stat-alert.alert-amarilla .label { color: rgba(255,255,255,0.9); }
-
-  .stat-alert.alert-naranja {
-    background: #c2410c; color: #ffffff;
-  }
+  .stat-alert.alert-naranja { background: #c2410c; color: #ffffff; }
   .stat-alert.alert-naranja .label { color: rgba(255,255,255,0.9); }
-
-  .stat-alert.alert-roja {
-    background: #b91c1c; color: #ffffff;
-  }
+  .stat-alert.alert-roja { background: #b91c1c; color: #ffffff; }
   .stat-alert.alert-roja .label { color: rgba(255,255,255,0.9); }
 
   .seismic-card {
-    grid-column: span 3;
-    padding: 12px;
-    border-radius: 14px;
-    background: #991b1b;
-    color: #ffffff;
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: 600;
-    margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.4);
-    animation: fadeIn 0.3s ease-out;
+    grid-column: span 3; padding: 12px; border-radius: 14px; background: #991b1b;
+    color: #ffffff; text-align: center; font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 10px; box-shadow: 0 4px 12px rgba(153, 27, 27, 0.4); animation: fadeIn 0.3s ease-out;
   }
 
   .hourly-card { background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px; min-height: 120px; }
@@ -324,7 +308,7 @@
   nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.2);margin-top:18px;}
   nav.tabs button{
     flex:1;background:transparent;border:none;color:rgba(255,255,255,0.7);
-    padding:12px 0;font-size:0.85rem;cursor:pointer;font-weight:600; border-bottom:2px solid transparent;
+    padding:12px 0;font-size:0.8rem;cursor:pointer;font-weight:600; border-bottom:2px solid transparent;
   }
   nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
 
@@ -339,24 +323,20 @@
   .day-row .day-range b{color:var(--ink);}
 
   .week-hourly-wrapper {
-    display: none;
-    background: var(--mist);
-    border-radius: 12px;
-    padding: 10px 12px;
-    margin: 4px 0 10px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
+    display: none; background: var(--mist); border-radius: 12px; padding: 10px 12px;
+    margin: 4px 0 10px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch;
     animation: fadeIn 0.2s ease-out;
   }
   .week-hourly-wrapper::-webkit-scrollbar { display: none; }
   .week-hourly-wrapper.active { display: flex; gap: 14px; }
-  .week-hour-col {
-    display: flex; flex-direction: column; align-items: center; min-width: 40px; text-align: center; gap: 4px;
-  }
+  .week-hour-col { display: flex; flex-direction: column; align-items: center; min-width: 40px; text-align: center; gap: 4px; }
   .week-hour-time { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
   .week-hour-icon { font-size: 1rem; }
   .week-hour-val { font-size: 0.78rem; font-weight: 600; }
+
+  /* Estilos para Mapa y Aire */
+  #map-container { width: 100%; height: 320px; border-radius: 16px; overflow: hidden; margin-bottom: 12px; z-index: 10; }
+  .aqi-banner { padding: 16px; border-radius: 16px; text-align: center; color: #fff; font-weight: bold; margin-bottom: 16px; }
 
   .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 4px;font-weight: 600;}
   .visitas b{color:var(--ink);}
@@ -375,7 +355,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Activar notificaciones</span></div>
+    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Activar notificaciones Push</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -417,11 +397,13 @@
       <nav class="tabs" aria-label="Pestañas de pronóstico">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
         <button data-tab="semana" onclick="cambiarTab('semana')">Semana</button>
+        <button data-tab="aire" onclick="cambiarTab('aire')">Aire</button>
+        <button data-tab="mapa" onclick="cambiarTab('mapa')">Mapa</button>
       </nav>
     </div>
 
+    <!-- VISTA 1: HOY -->
     <div class="body tab-panel active" id="tab-hoy">
-      <!-- Tarjeta de sismos (oculta por defecto, solo aparece si hay sismo cercano) -->
       <div id="seismicAlerts" style="display: none;"></div>
 
       <div class="hourly-card">
@@ -476,9 +458,33 @@
       <button class="btn" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
     </div>
 
+    <!-- VISTA 2: SEMANA -->
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
       <button class="btn" style="margin-top: 14px;" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
+    </div>
+
+    <!-- VISTA 3: CALIDAD DEL AIRE -->
+    <div class="body tab-panel" id="tab-aire">
+      <div class="aqi-banner" id="aqiBanner" style="background:#15803d;">
+        <div style="font-size: 0.8rem;">ÍNDICE DE CALIDAD DEL AIRE</div>
+        <div style="font-size: 2rem; font-weight: 700;" id="aqiVal">--</div>
+        <div id="aqiDesc" style="font-size: 0.9rem;">Cargando...</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="label">PM2.5</div><div class="value" id="aqiPm25">--</div></div>
+        <div class="stat"><div class="label">PM10</div><div class="value" id="aqiPm10">--</div></div>
+        <div class="stat"><div class="label">CO</div><div class="value" id="aqiCo">--</div></div>
+        <div class="stat" style="grid-column: span 3;"><div class="label">Polen / Alérgenos</div><div class="value" id="aqiPollen">Bajo / Moderado</div></div>
+      </div>
+    </div>
+
+    <!-- VISTA 4: MAPA RADAR -->
+    <div class="body tab-panel" id="tab-mapa">
+      <div id="map-container"></div>
+      <div style="font-size: 0.75rem; text-align: center; color: var(--muted); margin-bottom: 12px;">
+        🌧️ Radar de lluvias y precipitaciones en tiempo real
+      </div>
     </div>
   </div>
 
@@ -487,11 +493,12 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.6.3 • Actualizado: 19 de Octubre de 2026
+    v1.5.0 • Actualizado: 19 de Octubre de 2026
   </div>
 
 </main>
 
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 function escapeHTML(str) {
   if (typeof str !== 'string') return str;
@@ -513,33 +520,34 @@ const WEATHER_CODES = {
 let datosClimaGlobal = null;
 let vistaHorariaActual = 'temp';
 let unidadActual = 'C';
-try {
-  unidadActual = localStorage.getItem('clima_unidad') || 'C';
-} catch(e) {}
+try { unidadActual = localStorage.getItem('clima_unidad') || 'C'; } catch(e) {}
 let editandoLista = false;
 let ubicacionGPSData = null;
+let leafletMap = null;
+let currentLat = -31.42, currentLon = -64.18;
 
+// PUSH NOTIFICATIONS PRO
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
   if (!('Notification' in window)) {
-    alert('Tu dispositivo o navegador no soporta notificaciones.');
+    alert('Tu navegador no soporta notificaciones.');
     return;
   }
 
   const permiso = await Notification.requestPermission();
   
   if (permiso === 'granted') {
-    alert('¡Notificaciones activadas! Ahora recibirás alertas del clima en tu dispositivo.');
+    enviarNotificacionClima('¡Notificaciones Activadas! 🔔', 'Recibirás alertas del tiempo en tiempo real.');
   } else if (permiso === 'denied') {
-    alert('Las notificaciones fueron bloqueadas. Podés habilitarlas desde la configuración de tu navegador.');
+    alert('Las notificaciones están bloqueadas en tu navegador.');
   }
 }
 
 function enviarNotificacionClima(titulo, mensaje) {
   if ('Notification' in window && Notification.permission === 'granted') {
     if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then((registration) => {
-        registration.showNotification(titulo, {
+      navigator.serviceWorker.ready.then((reg) => {
+        reg.showNotification(titulo, {
           body: mensaje,
           icon: 'favicon.svg',
           badge: 'favicon.svg',
@@ -547,23 +555,19 @@ function enviarNotificacionClima(titulo, mensaje) {
         });
       });
     } else {
-      new Notification(titulo, {
-        body: mensaje,
-        icon: 'favicon.svg'
-      });
+      new Notification(titulo, { body: mensaje, icon: 'favicon.svg' });
     }
   }
 }
 
 function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-
   const tempEntera = convertirTemp(tempC);
 
   if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weatherCode)) {
     enviarNotificacionClima(
       `Alerta de lluvia (${tempEntera}°${unidadActual}) 🌧️`,
-      'Se detectaron precipitaciones o tormentas en tu zona. ¡No te olvides el paraguas!'
+      'Precipitaciones o tormentas detectadas en tu zona. ¡Llevá paraguas!'
     );
   } else if (windSpeed >= 50) {
     enviarNotificacionClima(
@@ -596,9 +600,7 @@ document.addEventListener('click', (e) => {
 
 function cambiarUnidad(unidad) {
   unidadActual = unidad;
-  try {
-    localStorage.setItem('clima_unidad', unidad);
-  } catch(e) {}
+  try { localStorage.setItem('clima_unidad', unidad); } catch(e) {}
   document.getElementById('checkC').style.display = unidad === 'C' ? 'inline' : 'none';
   document.getElementById('checkF').style.display = unidad === 'F' ? 'inline' : 'none';
   document.getElementById('unitLabel').textContent = '°' + unidad;
@@ -636,9 +638,14 @@ function cambiarTab(tab){
   document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
   document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
+
+  if(tab === 'mapa') {
+    setTimeout(inicializarMapaRadar, 200);
+  }
 }
 
 async function cargarClima(lat, lon, nombreLugar, esGPS = false){
+  currentLat = lat; currentLon = lon;
   try{
     const [weather, place] = await Promise.all([
       fetchWeather(lat, lon),
@@ -648,6 +655,7 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
     if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
     
+    consultarCalidadAire(lat, lon);
     consultarAlertasGDACS(lat, lon);
     consultarSismosUSGS(lat, lon);
   }catch(e){
@@ -690,6 +698,55 @@ function actualizarUbicacionGPS(){
   }
 }
 
+/* API CALIDAD DEL AIRE DE OPEN-METEO */
+async function consultarCalidadAire(lat, lon) {
+  try {
+    const res = await fetch(`https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lon}&current=european_aqi,pm10,pm2_5,carbon_monoxide`);
+    if (!res.ok) return;
+    const data = await res.json();
+    const c = data.current;
+
+    const aqi = c.european_aqi || 20;
+    document.getElementById('aqiVal').textContent = aqi;
+    document.getElementById('aqiPm25').textContent = Math.round(c.pm2_5 || 0) + ' µg/m³';
+    document.getElementById('aqiPm10').textContent = Math.round(c.pm10 || 0) + ' µg/m³';
+    document.getElementById('aqiCo').textContent = Math.round(c.carbon_monoxide || 0) + ' µg/m³';
+
+    const banner = document.getElementById('aqiBanner');
+    const desc = document.getElementById('aqiDesc');
+
+    if(aqi <= 20) { banner.style.background = '#15803d'; desc.textContent = '🟢 Buena - Excelente calidad de aire'; }
+    else if(aqi <= 40) { banner.style.background = '#ca8a04'; desc.textContent = '🟡 Moderada - Aceptable para la mayoría'; }
+    else if(aqi <= 60) { banner.style.background = '#c2410c'; desc.textContent = '🟠 Regular - Personas sensibles deben cuidarse'; }
+    else { banner.style.background = '#b91c1c'; desc.textContent = '🔴 Mala - Evitar actividades intensas afuera'; }
+  } catch(e) {}
+}
+
+/* MAPA RADAR CON LEAFLET + RAINVIEWER */
+function inicializarMapaRadar() {
+  if (!leafletMap) {
+    leafletMap = L.map('map-container').setView([currentLat, currentLon], 8);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18,
+      attribution: '© OpenStreetMap'
+    }).addTo(leafletMap);
+
+    fetch('https://api.rainviewer.com/public/weather-maps.json')
+      .then(res => res.json())
+      .then(data => {
+        if(data.radar && data.radar.past && data.radar.past.length > 0) {
+          const lastFrame = data.radar.past[data.radar.past.length - 1];
+          L.tileLayer(`https://tilecache.rainviewer.com/v2/radar/${lastFrame.time}/256/{z}/{x}/{y}/2/1_1.png`, {
+            opacity: 0.65
+          }).addTo(leafletMap);
+        }
+      }).catch(() => {});
+  } else {
+    leafletMap.setView([currentLat, currentLon], 8);
+    leafletMap.invalidateSize();
+  }
+}
+
 function obtenerFavoritos() {
   try { return JSON.parse(localStorage.getItem('clima_favoritos')) || []; } 
   catch(e) { return []; }
@@ -700,9 +757,7 @@ function guardarEnFavoritos(nombre, lat, lon) {
   const coords = `${lat},${lon}`;
   if (!favs.some(f => f.coords === coords)) {
     favs.push({ nombre, coords, lat, lon });
-    try {
-      localStorage.setItem('clima_favoritos', JSON.stringify(favs));
-    } catch(e) {}
+    try { localStorage.setItem('clima_favoritos', JSON.stringify(favs)); } catch(e) {}
   }
 }
 
@@ -710,9 +765,7 @@ function eliminarFavorito(idx, event) {
   event.stopPropagation();
   let favs = obtenerFavoritos();
   favs.splice(idx, 1);
-  try {
-    localStorage.setItem('clima_favoritos', JSON.stringify(favs));
-  } catch(e) {}
+  try { localStorage.setItem('clima_favoritos', JSON.stringify(favs)); } catch(e) {}
   renderCiudadesGuardadas();
 }
 
@@ -1302,12 +1355,8 @@ function toggleSemanaHoras(idTarget) {
   const target = document.getElementById(idTarget);
   if (!target) return;
   const estaActivo = target.classList.contains('active');
-  
   document.querySelectorAll('.week-hourly-wrapper').forEach(el => el.classList.remove('active'));
-  
-  if (!estaActivo) {
-    target.classList.add('active');
-  }
+  if (!estaActivo) target.classList.add('active');
 }
 
 function renderWeek(d, todayIdx = 0, hourly = null){
@@ -1321,9 +1370,7 @@ function renderWeek(d, todayIdx = 0, hourly = null){
     if (hourly && hourly.time) {
       const horasDelDia = [];
       for (let h = 0; h < hourly.time.length; h++) {
-        if (hourly.time[h].startsWith(dateStr)) {
-          horasDelDia.push(h);
-        }
+        if (hourly.time[h].startsWith(dateStr)) horasDelDia.push(h);
       }
 
       horasHTML = horasDelDia.map(hIdx => {
@@ -1357,9 +1404,12 @@ function renderWeek(d, todayIdx = 0, hourly = null){
   document.getElementById('weekList').innerHTML = rows;
 }
 
+// REGISTRO DEL SERVICE WORKER CON PUSH
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    navigator.serviceWorker.register('./sw.js')
+      .then((reg) => { console.log('Service Worker registrado con éxito', reg); })
+      .catch((err) => { console.error('Error al registrar Service Worker', err); });
   });
 }
 </script>
