@@ -472,13 +472,13 @@
           <div class="value" id="alertValue">🟢 Verde: No te preocupes</div>
         </div>
       </div>
-      <button class="btn" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
+      <button class="btn" onclick="obtenerUbicacionGPSDirecto()">Actualizar clima</button>
     </div>
 
     <!-- VISTA 2: SEMANA -->
     <div class="week-list tab-panel" id="tab-semana">
       <div id="weekList"></div>
-      <button class="btn" style="margin-top: 14px;" onclick="actualizarUbicacionGPS()">Actualizar clima</button>
+      <button class="btn" style="margin-top: 14px;" onclick="obtenerUbicacionGPSDirecto()">Actualizar clima</button>
     </div>
 
     <!-- VISTA 3: CALIDAD DEL AIRE -->
@@ -638,6 +638,9 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
     if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
     
+    // Función para actualizar la ubicación activa y permitir alertas dinámicas globales
+    actualizarUbicacionActiva(lat, lon, place);
+
     consultarCalidadAire(lat, lon);
     consultarAlertasGDACS(lat, lon);
     consultarSismosUSGS(lat, lon);
@@ -646,38 +649,32 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  cambiarUnidad(unidadActual);
-  obtenerUbicacionIP();
-});
-
-function obtenerUbicacionIP(){
-  document.getElementById('place').textContent = "Buscando ubicación...";
-  fetch('https://ipapi.co/json/')
-    .then(res => res.json())
-    .then(data => {
-      if(data.latitude && data.longitude){
-        const nombreLugar = `${data.city || 'Mi ubicación'}, ${data.country_name || ''}`;
-        cargarClima(data.latitude, data.longitude, nombreLugar, true);
-      } else {
-        document.getElementById('place').textContent = "Ubicación no disponible";
-      }
-    })
-    .catch(() => {
-      document.getElementById('place').textContent = "Ubicación no disponible";
-    });
+// Guarda la ubicación actual en localStorage para uso dinámico global
+function actualizarUbicacionActiva(lat, lon, lugar) {
+  try {
+    const ubicacionInfo = { lat: lat, lon: lon, lugar: lugar };
+    localStorage.setItem('clima_ubicacion_actual', JSON.stringify(ubicacionInfo));
+  } catch(e) {}
 }
 
-function actualizarUbicacionGPS(){
+window.addEventListener('DOMContentLoaded', () => {
+  cambiarUnidad(unidadActual);
+  // Solicita el GPS directo al iniciar sin usar IP
+  obtenerUbicacionGPSDirecto();
+});
+
+function obtenerUbicacionGPSDirecto(){
   document.getElementById('place').textContent = "Obteniendo ubicación GPS...";
   if(navigator.geolocation){
     navigator.geolocation.getCurrentPosition(
       (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null, true),
-      () => obtenerUbicacionIP(),
+      (error) => {
+        document.getElementById('place').textContent = "Permiso de GPS denegado o no disponible";
+      },
       { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
     );
   } else { 
-    obtenerUbicacionIP(); 
+    document.getElementById('place').textContent = "GPS no compatible en este navegador";
   }
 }
 
