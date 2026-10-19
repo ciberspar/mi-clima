@@ -5,13 +5,18 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
 
-<!-- OneSignal Web Push SDK -->
+<!-- Favicon y Logo dinámico de Clima G -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
+
+<!-- SDK de Notificaciones Push OneSignal -->
 <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
 <script>
   window.OneSignalDeferred = window.OneSignalDeferred || [];
   window.OneSignalDeferred.push(async function(OneSignal) {
     await OneSignal.init({
       appId: "5ed0b035-422e-4a25-8e51-38ef6ce21a12",
+      language: "es",
       notifyButton: {
         enable: true,
       },
@@ -19,11 +24,7 @@
   });
 </script>
 
-<!-- Favicon y Logo dinámico de Clima G -->
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
-<link rel="apple-touch-icon" href="favicon.svg">
-
-<!-- Datos Estructurados para SEO y Nombre del Sitio en Google -->
+<!-- Datos Estructurados para SEO -->
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -41,7 +42,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#1c2a4f">
 
-<!-- Compatibilidad específica para iOS / Safari -->
+<!-- Compatibilidad para iOS / Safari -->
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Clima G">
@@ -345,7 +346,7 @@
   .week-hour-icon { font-size: 1rem; }
   .week-hour-val { font-size: 0.78rem; font-weight: 600; }
 
-  /* Estilos para Mapa interactivo estilo Apple Weather y Aire */
+  /* Mapa y Aire */
   .map-controls { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
   .map-controls::-webkit-scrollbar { display: none; }
   .map-btn { background: var(--mist); border: 1px solid var(--line); border-radius: 12px; padding: 6px 12px; font-size: 0.78rem; font-weight: 600; color: var(--ink); cursor: pointer; white-space: nowrap; }
@@ -507,7 +508,7 @@
         <iframe id="map-iframe" src="about:blank" title="Mapa del clima interactivo"></iframe>
       </div>
       <div style="font-size: 0.75rem; text-align: center; color: var(--muted); margin-bottom: 12px; font-weight: 600;">
-        🗺️ Mapa interactivo estilo Apple Weather
+        🗺️ Mapa interactivo en vivo estilo Apple Weather
       </div>
     </div>
   </div>
@@ -552,51 +553,10 @@ let capaMapaActual = 'rain';
 // NOTIFICACIONES PUSH
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
-  if (!('Notification' in window)) {
-    alert('Tu navegador no soporta notificaciones.');
-    return;
-  }
-
-  const permiso = await Notification.requestPermission();
-  
-  if (permiso === 'granted') {
-    enviarNotificacionClima('¡Notificaciones Activadas! 🔔', 'Recibirás alertas del tiempo en tiempo real.');
-  } else if (permiso === 'denied') {
-    alert('Las notificaciones están bloqueadas en tu navegador.');
-  }
-}
-
-function enviarNotificacionClima(titulo, mensaje) {
-  if ('Notification' in window && Notification.permission === 'granted') {
-    if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-      navigator.serviceWorker.ready.then((reg) => {
-        reg.showNotification(titulo, {
-          body: mensaje,
-          icon: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
-          badge: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
-          vibrate: [200, 100, 200]
-        });
-      });
-    } else {
-      new Notification(titulo, { body: mensaje, icon: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png' });
-    }
-  }
-}
-
-function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
-  if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  const tempEntera = convertirTemp(tempC);
-
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weatherCode)) {
-    enviarNotificacionClima(
-      `Alerta de lluvia (${tempEntera}°${unidadActual}) 🌧️`,
-      'Precipitaciones o tormentas detectadas en tu zona. ¡Llevá paraguas!'
-    );
-  } else if (windSpeed >= 50) {
-    enviarNotificacionClima(
-      `Vientos fuertes (${Math.round(windSpeed)} km/h) 🌬️`,
-      'Ráfagas intensas detectadas en tu ubicación.'
-    );
+  if (window.OneSignalDeferred) {
+    window.OneSignalDeferred.push(function(OneSignal) {
+      OneSignal.Notifications.requestPermission();
+    });
   }
 }
 
@@ -745,7 +705,7 @@ async function consultarCalidadAire(lat, lon) {
   } catch(e) {}
 }
 
-/* MAPA TIPO APPLE WEATHER (WINDY) */
+/* MAPA INTERACTIVO ESTILO APPLE WEATHER */
 function cargarIframeMapa(overlay) {
   const iframe = document.getElementById('map-iframe');
   if (!iframe) return;
@@ -1329,7 +1289,6 @@ function renderWeather(data, place){
   document.getElementById('desc').textContent = desc;
   
   actualizarGlobitoRojoPWA(c.temperature_2m);
-  verificarAlertasParaNotificacion(weatherCode, c.temperature_2m, c.wind_speed_10m);
 
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
   const sunsetISO = d && d.sunset ? d.sunset[0] : null;
