@@ -39,19 +39,20 @@
     --sky-600:#33507f;
     --sky-400:#7095c4;
     --mist:#eef2f8;
-    --amber:#e2a33d;
+    --amber:#b45309;
     --ink:#12203a;
-    --muted:#46546d;
+    --muted:#334155;
     --card:#ffffff;
-    --line:#dbe3ef;
+    --line:#cbd5e1;
   }
   @media (prefers-color-scheme: dark){
     :root:not([data-theme="light"]){
       --mist:#0b1120;
       --card:#151f38;
-      --ink:#e8edf7;
-      --muted:#9aa6c1;
-      --line:#26314f;
+      --ink:#f8fafc;
+      --muted:#cbd5e1;
+      --line:#334155;
+      --amber:#fbbf24;
     }
   }
 
@@ -86,17 +87,17 @@
     display: flex; justify-content: space-between; z-index: 20;
   }
   .icon-btn {
-    background: rgba(255,255,255,0.2); border: none; color: #fff; width: 36px; height: 36px;
+    background: rgba(255,255,255,0.25); border: none; color: #fff; width: 36px; height: 36px;
     border-radius: 50%; font-size: 1.1rem; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(8px); transition: background 0.2s;
   }
-  .icon-btn:hover { background: rgba(255,255,255,0.3); }
+  .icon-btn:hover { background: rgba(255,255,255,0.4); }
 
   .menu-dropdown {
     display: none; position: absolute; top: 58px; right: 16px;
-    background: rgba(21, 31, 56, 0.95); backdrop-filter: blur(12px);
-    border: 1px solid rgba(255,255,255,0.15); border-radius: 16px;
+    background: rgba(15, 23, 48, 0.98); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
     width: 230px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     overflow: hidden; color: #fff; animation: fadeIn 0.15s ease-out;
   }
@@ -106,10 +107,10 @@
   .menu-item {
     padding: 12px 16px; font-size: 0.88rem; display: flex;
     align-items: center; justify-content: space-between; cursor: pointer;
-    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-bottom: 1px solid rgba(255,255,255,0.1);
   }
   .menu-item:last-child { border-bottom: none; }
-  .menu-item:hover { background: rgba(255,255,255,0.1); }
+  .menu-item:hover { background: rgba(255,255,255,0.15); }
   .menu-item .check { font-weight: bold; color: var(--amber); }
 
   .cities-view {
@@ -130,13 +131,13 @@
   }
   .city-card-item.gps-card {
     background: linear-gradient(135deg, #0284c7, #1d4ed8);
-    border: 1px solid rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.3);
   }
-  .city-card-info h4 { margin: 0 0 4px; font-size: 1rem; }
-  .city-card-info p { margin: 0; font-size: 0.75rem; opacity: 0.9; }
-  .city-card-temp { font-size: 1.8rem; font-weight: 700; }
+  .city-card-info h4 { margin: 0 0 4px; font-size: 1rem; color: #fff; }
+  .city-card-info p { margin: 0; font-size: 0.75rem; color: rgba(255,255,255,0.9); }
+  .city-card-temp { font-size: 1.8rem; font-weight: 700; color: #fff; }
   .btn-delete-city {
-    background: rgba(239, 68, 68, 0.3); border: none; color: #ef4444;
+    background: rgba(239, 68, 68, 0.4); border: none; color: #fff;
     padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; cursor: pointer; display: none;
   }
   .editing .btn-delete-city { display: block; }
@@ -144,12 +145,12 @@
   .search-bottom-bar { position: absolute; bottom: 16px; left: 16px; right: 16px; }
   .search-input-box { position: relative; display: flex; align-items: center; }
   .search-input-box input {
-    width: 100%; background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 20px;
+    width: 100%; background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 20px;
     padding: 10px 16px 10px 38px; color: #fff; font-size: 0.85rem; outline: none; backdrop-filter: blur(10px);
   }
-  .search-input-box input::placeholder { color: rgba(255,255,255,0.6); }
-  .search-icon { position: absolute; left: 14px; font-size: 0.9rem; opacity: 0.7; }
+  .search-input-box input::placeholder { color: rgba(255,255,255,0.8); }
+  .search-icon { position: absolute; left: 14px; font-size: 0.9rem; }
 
   #sugerencias-box {
     position: absolute; bottom: 100%; left: 0; right: 0; background: var(--card);
@@ -161,21 +162,21 @@
   }
   .sugerencia-item:hover { background: var(--mist); }
 
-  .place{font-size:1.1rem;font-weight:600;min-height:1.2em;margin-top: 14px;}
-  .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;}
+  .place{font-size:1.1rem;font-weight:600;min-height:1.4em;margin-top: 14px;color:#fff;}
+  .temp{font-size:4.2rem;font-weight:700;line-height:1;margin:10px 0 4px;color:#fff;min-height: 70px;}
   .temp .unit{font-size:2.1rem;font-weight:600;vertical-align:top;}
-  .desc{font-size:0.95rem;opacity:0.95;}
+  .desc{font-size:0.95rem;color:#fff;}
   .emoji{font-size:2.2rem;margin-top:4px;}
   
   .yesterday-badge {
     display: inline-block; margin-top: 8px; padding: 4px 10px;
-    background: rgba(255, 255, 255, 0.22); backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.28); backdrop-filter: blur(8px);
     border-radius: 12px; font-size: 0.78rem; font-weight: 500; color: #fff;
   }
 
   .weather-window {
     position: relative; width: 100%; min-height: 100px; margin-top: 14px; padding: 14px;
-    background: rgba(0, 0, 0, 0.2); border: 1px solid rgba(255, 255, 255, 0.25);
+    background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 18px; overflow: hidden; display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(12px); box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
   }
@@ -183,14 +184,14 @@
     position: relative; z-index: 4; font-size: 0.88rem; font-weight: 600; color: #fff;
     text-shadow: 0 2px 6px rgba(0,0,0,0.5); display: flex; flex-direction: column; align-items: center; gap: 4px;
   }
-  .window-sub { font-size: 0.72rem; opacity: 0.9; font-weight: 400; }
-  .window-outfit { font-size: 0.76rem; color: #fde047; font-weight: 500; margin-top: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
+  .window-sub { font-size: 0.72rem; color: #f8fafc; font-weight: 400; }
+  .window-outfit { font-size: 0.76rem; color: #fef08a; font-weight: 600; margin-top: 2px; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
 
   .env-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; overflow: hidden; }
 
   .realistic-rain {
-    position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.85));
-    width: 1.5px; height: 22px; opacity: 0.7; transform: rotate(15deg);
+    position: absolute; background: linear-gradient(transparent, rgba(255,255,255,0.9));
+    width: 1.5px; height: 22px; opacity: 0.8; transform: rotate(15deg);
     animation: realRainFall linear infinite;
   }
   @keyframes realRainFall {
@@ -199,7 +200,7 @@
   }
 
   .realistic-snow {
-    position: absolute; background: #fff; border-radius: 50%; opacity: 0.85;
+    position: absolute; background: #fff; border-radius: 50%; opacity: 0.9;
     animation: snowFall linear infinite;
   }
   @keyframes snowFall {
@@ -209,7 +210,7 @@
   }
 
   .realistic-cloud {
-    position: absolute; font-size: 1.8rem; opacity: 0.85;
+    position: absolute; font-size: 1.8rem; opacity: 0.9;
     animation: cloudDrift linear infinite; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
   }
   @keyframes cloudDrift {
@@ -219,12 +220,12 @@
 
   .realistic-fog {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-    background: rgba(255, 255, 255, 0.35); backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.4); backdrop-filter: blur(4px);
     animation: fogPulse 4s ease-in-out infinite alternate;
   }
   @keyframes fogPulse {
-    0% { opacity: 0.5; }
-    100% { opacity: 0.9; }
+    0% { opacity: 0.6; }
+    100% { opacity: 0.95; }
   }
 
   .realistic-sun {
@@ -232,7 +233,7 @@
     animation: sunPulse 4s ease-in-out infinite;
   }
   @keyframes sunPulse {
-    0%, 100% { transform: scale(1); opacity: 0.85; }
+    0%, 100% { transform: scale(1); opacity: 0.9; }
     50% { transform: scale(1.15); opacity: 1; }
   }
 
@@ -241,20 +242,20 @@
     animation: starTwinkle ease-in-out infinite;
   }
   @keyframes starTwinkle {
-    0%, 100% { opacity: 0.4; transform: scale(0.8); }
+    0%, 100% { opacity: 0.5; transform: scale(0.8); }
     50% { opacity: 1; transform: scale(1.3); }
   }
 
   .adverse-alerts { margin-top: 12px; display: flex; flex-direction: column; gap: 6px; text-align: left; }
   .alert-box {
-    background: rgba(239, 68, 68, 0.2); border: 1px solid rgba(239, 68, 68, 0.6);
-    color: #f87171; padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600;
+    background: rgba(239, 68, 68, 0.3); border: 1px solid rgba(239, 68, 68, 0.8);
+    color: #fca5a5; padding: 8px 12px; border-radius: 8px; font-size: 0.78rem; font-weight: 600;
   }
 
   .body{padding:20px 24px 24px;}
   .stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:18px;}
   .stat{text-align:center;background:var(--mist);border-radius:12px;padding:12px 6px;transition: background 0.3s, color 0.3s;}
-  .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:4px;text-transform: uppercase;}
+  .stat .label{font-size:0.7rem;color:var(--muted);margin-bottom:4px;text-transform: uppercase;font-weight: 700;}
   .stat .value{font-size:0.95rem;font-weight:600;}
 
   .stat-alert {
@@ -264,51 +265,51 @@
     text-align: center;
   }
   .stat-alert.alert-verde {
-    background: #16a34a; color: #ffffff;
+    background: #15803d; color: #ffffff;
   }
-  .stat-alert.alert-verde .label { color: rgba(255,255,255,0.85); }
+  .stat-alert.alert-verde .label { color: rgba(255,255,255,0.9); }
   
   .stat-alert.alert-amarilla {
-    background: #eab308; color: #0f172a;
+    background: #ca8a04; color: #ffffff;
   }
-  .stat-alert.alert-amarilla .label { color: rgba(15, 23, 42, 0.8); }
+  .stat-alert.alert-amarilla .label { color: rgba(255,255,255,0.9); }
 
   .stat-alert.alert-naranja {
-    background: #f97316; color: #ffffff;
+    background: #c2410c; color: #ffffff;
   }
-  .stat-alert.alert-naranja .label { color: rgba(255,255,255,0.85); }
+  .stat-alert.alert-naranja .label { color: rgba(255,255,255,0.9); }
 
   .stat-alert.alert-roja {
-    background: #dc2626; color: #ffffff;
+    background: #b91c1c; color: #ffffff;
   }
-  .stat-alert.alert-roja .label { color: rgba(255,255,255,0.85); }
+  .stat-alert.alert-roja .label { color: rgba(255,255,255,0.9); }
 
   .seismic-card {
     grid-column: span 3;
     padding: 12px;
     border-radius: 14px;
-    background: #b91c1c;
+    background: #991b1b;
     color: #ffffff;
     text-align: center;
     font-size: 0.85rem;
     font-weight: 600;
     margin-bottom: 10px;
-    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.4);
+    box-shadow: 0 4px 12px rgba(153, 27, 27, 0.4);
     animation: fadeIn 0.3s ease-out;
   }
 
-  .hourly-card { background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px; }
+  .hourly-card { background: var(--mist); border-radius: 16px; padding: 14px; margin-bottom: 18px; min-height: 120px; }
   .hourly-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
   .hourly-title { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; color: var(--muted); }
-  .hourly-sub { font-size: 0.7rem; color: var(--muted); }
+  .hourly-sub { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
   .hourly-toggles { display: flex; background: var(--card); border-radius: 20px; padding: 2px; gap: 2px; border: 1px solid var(--line); }
-  .hourly-toggles button { background: transparent; border: none; border-radius: 16px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--muted); }
+  .hourly-toggles button { background: transparent; border: none; border-radius: 16px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; color: var(--muted); font-weight: 600; }
   .hourly-toggles button.active { background: var(--sky-800); color: #fff; }
   
   .hourly-scroll { display: flex; overflow-x: auto; gap: 16px; padding-bottom: 6px; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .hourly-scroll::-webkit-scrollbar { display: none; }
   .hour-col { display: flex; flex-direction: column; align-items: center; min-width: 44px; text-align: center; gap: 6px; }
-  .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 600; }
+  .hour-time { font-size: 0.75rem; color: var(--muted); font-weight: 700; }
   .hour-icon { font-size: 1.1rem; min-height: 22px; display: flex; align-items: center; justify-content: center; }
   .hour-val { font-size: 0.82rem; font-weight: 600; }
 
@@ -320,9 +321,9 @@
   .tab-panel{display:none;}
   .tab-panel.active{display:block;}
 
-  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.15);margin-top:18px;}
+  nav.tabs{display:flex;border-top:1px solid rgba(255,255,255,0.2);margin-top:18px;}
   nav.tabs button{
-    flex:1;background:transparent;border:none;color:rgba(255,255,255,0.6);
+    flex:1;background:transparent;border:none;color:rgba(255,255,255,0.7);
     padding:12px 0;font-size:0.85rem;cursor:pointer;font-weight:600; border-bottom:2px solid transparent;
   }
   nav.tabs button.active{color:#fff;border-bottom-color:var(--amber);}
@@ -333,8 +334,8 @@
   .day-row{display:flex;align-items:center;gap:10px;padding:11px 0;cursor:pointer;}
   .day-row .day-name{flex:1;font-size:0.9rem;font-weight:600;text-transform:capitalize;}
   .day-row .day-emoji{font-size:1.3rem;width:28px;text-align:center;}
-  .day-row .day-precip{font-size:0.75rem;color:var(--muted);width:44px;}
-  .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;}
+  .day-row .day-precip{font-size:0.75rem;color:var(--muted);width:44px;font-weight:600;}
+  .day-row .day-range{font-size:0.88rem;color:var(--muted);width:78px;text-align:right;font-weight:600;}
   .day-row .day-range b{color:var(--ink);}
 
   .week-hourly-wrapper {
@@ -353,23 +354,23 @@
   .week-hour-col {
     display: flex; flex-direction: column; align-items: center; min-width: 40px; text-align: center; gap: 4px;
   }
-  .week-hour-time { font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+  .week-hour-time { font-size: 0.7rem; color: var(--muted); font-weight: 700; }
   .week-hour-icon { font-size: 1rem; }
   .week-hour-val { font-size: 0.78rem; font-weight: 600; }
 
-  .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 4px;}
+  .visitas{text-align:center;font-size:0.78rem;color:var(--muted);padding:0 24px 4px;font-weight: 600;}
   .visitas b{color:var(--ink);}
-  .contacto{text-align:center;font-size:0.75rem;color:var(--muted);padding:0 24px 4px;}
-  .contacto a{color:var(--sky-600);text-decoration:none;font-weight:600;}
-  .footer-info{text-align:center;font-size:0.7rem;color:var(--muted);padding:0 24px 18px;opacity:0.8;}
+  .contacto{text-align:center;font-size:0.75rem;color:var(--muted);padding:0 24px 4px;font-weight: 600;}
+  .contacto a{color:var(--sky-600);text-decoration:none;font-weight:700;}
+  .footer-info{text-align:center;font-size:0.7rem;color:var(--muted);padding:0 24px 18px;font-weight: 600;}
 </style>
 </head>
 <body>
 <main class="card">
 
   <div class="header-actions">
-    <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades">📋</button>
-    <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración">•••</button>
+    <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades" aria-label="Abrir mis ciudades">📋</button>
+    <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración" aria-label="Abrir configuración">•••</button>
   </div>
 
   <div class="menu-dropdown" id="menuConfig">
@@ -383,7 +384,7 @@
   <div class="cities-view" id="citiesView">
     <div class="cities-header">
       <h2 class="cities-title">Clima</h2>
-      <button class="icon-btn" onclick="cerrarListaCiudades()">✕</button>
+      <button class="icon-btn" onclick="cerrarListaCiudades()" aria-label="Cerrar lista de ciudades">✕</button>
     </div>
     <div class="cities-list" id="citiesList"></div>
     <div class="search-bottom-bar">
@@ -413,7 +414,7 @@
       
       <div class="adverse-alerts" id="adverseAlerts"></div>
       
-      <nav class="tabs">
+      <nav class="tabs" aria-label="Pestañas de pronóstico">
         <button data-tab="hoy" class="active" onclick="cambiarTab('hoy')">Hoy</button>
         <button data-tab="semana" onclick="cambiarTab('semana')">Semana</button>
       </nav>
@@ -430,9 +431,9 @@
             <div class="hourly-sub" id="hourlySub">Temperatura</div>
           </div>
           <div class="hourly-toggles">
-            <button class="active" onclick="cambiarVistaHoraria('temp', this)">☁️</button>
-            <button onclick="cambiarVistaHoraria('lluvia', this)">💧</button>
-            <button onclick="cambiarVistaHoraria('viento', this)">🌬️</button>
+            <button class="active" onclick="cambiarVistaHoraria('temp', this)" aria-label="Ver temperatura por hora">☁️</button>
+            <button onclick="cambiarVistaHoraria('lluvia', this)" aria-label="Ver lluvia por hora">💧</button>
+            <button onclick="cambiarVistaHoraria('viento', this)" aria-label="Ver viento por hora">🌬️</button>
           </div>
         </div>
         <div class="hourly-scroll" id="hourlyScroll"></div>
@@ -518,7 +519,6 @@ try {
 let editandoLista = false;
 let ubicacionGPSData = null;
 
-/* Notificaciones Web Universales */
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
   if (!('Notification' in window)) {
@@ -573,7 +573,6 @@ function verificarAlertasParaNotificacion(weatherCode, tempC, windSpeed) {
   }
 }
 
-/* Inserta el globito rojo (badge) con los grados en el icono de la PWA */
 function actualizarGlobitoRojoPWA(tempC) {
   const tempEntera = convertirTemp(tempC);
   if ('setAppBadge' in navigator) {
@@ -1003,17 +1002,17 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
   }
 
   if (code === 3) {
-    headerBg.style.background = 'linear-gradient(160deg, #94a3b8, #cbd5e1)';
-  } else if ([45, 48].includes(code)) {
     headerBg.style.background = 'linear-gradient(160deg, #64748b, #94a3b8)';
+  } else if ([45, 48].includes(code)) {
+    headerBg.style.background = 'linear-gradient(160deg, #475569, #64748b)';
   } else if ([51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(code)) {
-    headerBg.style.background = 'linear-gradient(160deg, #334155, #475569)';
+    headerBg.style.background = 'linear-gradient(160deg, #1e293b, #334155)';
   } else if ([71, 73, 75].includes(code)) {
-    headerBg.style.background = 'linear-gradient(160deg, #475569, #94a3b8)';
+    headerBg.style.background = 'linear-gradient(160deg, #334155, #64748b)';
   } else if (esDeNoche) {
-    headerBg.style.background = 'linear-gradient(160deg, #0c1830, #1e3a8a)';
+    headerBg.style.background = 'linear-gradient(160deg, #090d16, #1e293b)';
   } else if (esAtardecer) {
-    headerBg.style.background = 'linear-gradient(160deg, #38121e, #d97706)';
+    headerBg.style.background = 'linear-gradient(160deg, #2a0813, #b45309)';
   } else {
     headerBg.style.background = 'linear-gradient(160deg, #0284c7, #38bdf8)';
   }
@@ -1037,7 +1036,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     sun.className = 'realistic-sun';
     sun.style.width = '60px'; sun.style.height = '60px';
     sun.style.background = esAtardecer 
-      ? 'radial-gradient(circle, rgba(251,146,60,0.85) 0%, transparent 75%)' 
+      ? 'radial-gradient(circle, rgba(251,146,60,0.9) 0%, transparent 75%)' 
       : 'radial-gradient(circle, rgba(254,240,138,0.95) 0%, transparent 75%)';
     sun.style.top = '10px'; sun.style.right = '20px';
     envLayer.appendChild(sun);
@@ -1103,7 +1102,7 @@ function actualizarEntornoRealista(code, dataTimeISO, sunriseISO, sunsetISO) {
     cloud.className = 'realistic-cloud';
     cloud.textContent = '☁️';
     cloud.style.top = '15px';
-    cloud.style.opacity = '0.5';
+    cloud.style.opacity = '0.6';
     cloud.style.animationDuration = '25s';
     envLayer.appendChild(cloud);
 
@@ -1255,10 +1254,7 @@ function renderWeather(data, place){
   document.getElementById('temp').textContent = convertirTemp(c.temperature_2m);
   document.getElementById('desc').textContent = desc;
   
-  // Muestra el globito rojo con los grados en el icono de la PWA
   actualizarGlobitoRojoPWA(c.temperature_2m);
-  
-  // Comprueba si hay alertas para mandar notificación push
   verificarAlertasParaNotificacion(weatherCode, c.temperature_2m, c.wind_speed_10m);
 
   const sunriseISO = d && d.sunrise ? d.sunrise[0] : null;
@@ -1350,7 +1346,7 @@ function renderWeek(d, todayIdx = 0, hourly = null){
         <div class="day-row" onclick="toggleSemanaHoras('${wrapperId}')">
           <div class="day-name">${escapeHTML(fmtDiaSemana(dateStr, i))}</div>
           <div class="day-emoji">${emoji}</div>
-          <div class="svg-precip">${d.precipitation_sum[actualIdx]} mm</div>
+          <div class="day-precip">${d.precipitation_sum[actualIdx]} mm</div>
           <div class="day-range"><b>${convertirTemp(d.temperature_2m_max[actualIdx])}°</b> / ${convertirTemp(d.temperature_2m_min[actualIdx])}°</div>
         </div>
         <div class="week-hourly-wrapper" id="${wrapperId}">
