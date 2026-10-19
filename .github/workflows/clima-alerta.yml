@@ -1,0 +1,72 @@
+name: Revisar Clima y Alertas
+
+on:
+  schedule:
+    # Revisa cada 20 minutos
+    - cron: '*/20 * * * *'
+  workflow_dispatch: 
+
+jobs:
+  verificar-clima:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Obtener datos del clima y evaluar notificaciones
+        env:
+          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
+          ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+        run: |
+          # Coordenadas de Córdoba y consulta extendida
+          RESPONSE=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=-31.42&longitude=-64.18&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FCordoba")
+          
+          TEMP_ACTUAL=$(echo $RESPONSE | jq '.current.temperature_2m | round')
+          WEATHER_CODE=$(echo $RESPONSE | jq '.current.weather_code')
+          WIND_SPEED=$(echo $RESPONSE | jq '.current.wind_speed_10m | round')
+          
+          TEMP_MAX=$(echo $RESPONSE | jq '.daily.temperature_2m_max[0] | round')
+          TEMP_MIN=$(echo $RESPONSE | jq '.daily.temperature_2m_min[0] | round')
+
+          # Obtener la hora actual en Argentina (formato 00-23 y minuto)
+          HORA_ARG=$(date -u -d '3 hours ago' +%H)
+          MINUTO_ARG=$(date -u -d '3 hours ago' +%M)
+
+          # 1. NOTIFICACIÓN DIARIA DE TEMPERATURA (A las 09:00 AM)
+          if [ "$HORA_ARG" -eq 9 ] && [ "$MINUTO_ARG" -lt 20 ]; then
+            echo "Enviando resumen diario de temperatura..."
+            
+            curl --location 'https://onesignal.com/api/v1/notifications' \
+            --header "Authorization: Key $ONESIGNAL_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data '{
+              "app_id": "'"$ONESIGNAL_APP_ID"'",
+              "included_segments": ["Subscribed Users"],
+              "headings": {"es": "🌤️ Clima del Día"},
+              "contents": {"es": "Hoy en Córdoba hace '"$TEMP_ACTUAL"'°C (Mín: '"$TEMP_MIN"'°C / Máx: '"$TEMP_MAX"'°C)"}
+            }'
+          fi
+
+          # 2. ALERTAS DE MAL TIEMPO (Cada 20 min)
+          MENSAJE_ALERTA=""
+
+          if [ "$WEATHER_CODE" -eq 95 ] || [ "$WEATHER_CODE" -eq 96 ] || [ "$WEATHER_CODE" -eq 99 ]; then
+            MENSAJE_ALERTA="⚠️ Tormenta eléctrica detectada en Córdoba. Hace $TEMP_ACTUAL°C"
+          elif [ "$WEATHER_CODE" -ge 61 ] && [ "$WEATHER_CODE" -le 65 ]; then
+            MENSAJE_ALERTA="🌧️ Lluvia activa en Córdoba. Hace $TEMP_ACTUAL°C"
+          elif [ $(echo "$WIND_SPEED > 50" | bc) -eq 1 ]; then
+            MENSAJE_ALERTA="🌬️ Ráfagas de viento de $WIND_SPEED km/h en Córdoba. Hace $TEMP_ACTUAL°C"
+          fi
+
+          if [ -n "$MENSAJE_ALERTA" ]; then
+            echo "Enviando alerta: $MENSAJE_ALERTA"
+            
+            curl --location 'https://onesignal.com/api/v1/notifications' \
+            --header "Authorization: Key $ONESIGNAL_API_KEY" \
+            --header 'Content-Type: application/json' \
+            --data '{
+              "app_id": "'"$ONESIGNAL_APP_ID"'",
+              "included_segments": ["Subscribed Users"],
+              "headings": {"es": "⚠️ Alerta Meteorológica"},
+              "contents": {"es": "'"$MENSAJE_ALERTA"'"}
+            }'
+          else
+            echo "Sin alertas de mal tiempo."
+          fi
