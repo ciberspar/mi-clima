@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>Clima G - El tiempo en vivo</title>
 
+<!-- WIDGET IMPERIAL DE BACO -->
+<div id="baco-oracle" style="
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin: 12px 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+">
+  <div id="baco-emoji" style="font-size: 2.2rem;">🐢</div>
+  <div style="text-align: left; flex: 1;">
+    <div style="font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; color: #fef08a; font-weight: 700;">
+      Decreto Imperial de Baco
+    </div>
+    <div id="baco-status" style="font-size: 0.88rem; font-weight: 600; margin-top: 2px;">
+      Analizando balcón...
+    </div>
+  </div>
+</div>
+
 <!-- Favicon y Logo dinámico de Clima G -->
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
@@ -19,6 +43,31 @@
   "url": "https://climag.duckdns.org/"
 }
 </script>
+
+function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
+  const emojiEl = document.getElementById('baco-emoji');
+  const statusEl = document.getElementById('baco-status');
+  if (!emojiEl || !statusEl) return;
+
+  const esLluvia = [51, 53, 55, 61, 63, 65, 80, 81, 82, 95, 96, 99].includes(weatherCode);
+
+  if (esLluvia) {
+    emojiEl.textContent = '🌧️🐢';
+    statusEl.textContent = 'Baco se resguardó en el caparazón. Repliegue táctico por lluvia.';
+  } else if (tempC >= 23 && uvIndex < 8) {
+    emojiEl.textContent = '☀️🐢';
+    statusEl.textContent = 'Día óptimo. Baco está tomando sol en el balcón a capacidad máxima.';
+  } else if (tempC < 15) {
+    emojiEl.textContent = '❄️🐢';
+    statusEl.textContent = 'Fresco en la zona. Baco declaró estado de ahorro de energía.';
+  } else if (uvIndex >= 8) {
+    emojiEl.textContent = '🕶️🐢';
+    statusEl.textContent = 'UV elevado. Baco exige sombra y agua fresca para todos.';
+  } else {
+    emojiEl.textContent = '🚶‍♂️🐢';
+    statusEl.textContent = 'Clima templado. Baco realiza la inspección de rutina del balcón.';
+  }
+}
 
 <meta name="description" content="Consulta el clima en vivo, pronóstico actualizado y estado del tiempo en tiempo real.">
 <meta name="google-site-verification" content="Xeu9Yb11U91i6zXqhXr1MODmBtybdt7Ytvm9xBR-IQI" />
