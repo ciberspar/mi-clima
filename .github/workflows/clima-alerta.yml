@@ -1,4 +1,4 @@
-name: Revisar Clima y Alertas
+name: Revisar Clima y Alertas Nativas
 
 on:
   schedule:
@@ -9,15 +9,11 @@ jobs:
   verificar-clima:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar repositorio para leer la ubicación actual
+      - name: Descargar repositorio para leer ubicación
         uses: actions/checkout@v4
 
-      - name: Verificar clima y enviar notificación push
-        env:
-          ONESIGNAL_APP_ID: ${{ secrets.ONESIGNAL_APP_ID }}
-          ONESIGNAL_API_KEY: ${{ secrets.ONESIGNAL_API_KEY }}
+      - name: Verificar clima y procesar alertas
         run: |
-          # Lee la ubicación dinámica desde el archivo de tu web, o usa valores por defecto si no hay registro
           LAT="-31.42"
           LON="-64.18"
           LUGAR="tu ubicación actual"
@@ -28,7 +24,6 @@ jobs:
             LUGAR=$(jq -r '.lugar' ubicacion.json)
           fi
 
-          # Consulta el clima en Open-Meteo usando la ubicación detectada
           RESPONSE=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FCordoba")
           
           TEMP_ACTUAL=$(echo $RESPONSE | jq '.current.temperature_2m | round')
@@ -41,37 +36,19 @@ jobs:
           HORA_ARG=$(date -u -d '3 hours ago' +%H)
           MINUTO_ARG=$(date -u -d '3 hours ago' +%M)
 
-          # 1. RESUMEN DIARIO DE TEMPERATURA (A las 09:00 AM, fuera de la noche)
+          # Resumen diario matutino (09:00 AM) o alertas severas de clima
+          MENSAJE=""
           if [ "$HORA_ARG" -eq 9 ] && [ "$MINUTO_ARG" -lt 20 ]; then
-            curl --location 'https://onesignal.com/api/v1/notifications' \
-            --header "Authorization: Key $ONESIGNAL_API_KEY" \
-            --header 'Content-Type: application/json' \
-            --data '{
-              "app_id": "'"$ONESIGNAL_APP_ID"'",
-              "included_segments": ["All"],
-              "contents": {"es": "Hoy en '"$LUGAR"' hace '"$TEMP_ACTUAL"'°C (Mín: '"$TEMP_MIN"'°C / Máx: '"$TEMP_MAX"'°C)"},
-              "headings": {"es": "🌤️ Clima del Día"}
-            }'
-          fi
-
-          # 2. ALERTAS DE MAL TIEMPO (Cada 20 minutos)
-          MENSAJE_ALERTA=""
-          if [ "$WEATHER_CODE" -eq 95 ] || [ "$WEATHER_CODE" -eq 96 ] || [ "$WEATHER_CODE" -eq 99 ]; then
-            MENSAJE_ALERTA="⚠️ Tormenta eléctrica en '"$LUGAR"'. Hace $TEMP_ACTUAL°C"
+            MENSAJE="🌤️ Clima en $LUGAR: $TEMP_ACTUAL°C (Mín: ${TEMP_MIN}°C / Máx: ${TEMP_MAX}°C)"
+          elif [ "$WEATHER_CODE" -ge 95 ]; then
+            MENSAJE="⚠️ Tormenta eléctrica en $LUGAR. Temperatura actual: ${TEMP_ACTUAL}°C"
           elif [ "$WEATHER_CODE" -ge 61 ] && [ "$WEATHER_CODE" -le 65 ]; then
-            MENSAJE_ALERTA="🌧️ Lluvia activa en '"$LUGAR"'. Hace $TEMP_ACTUAL°C"
-          elif [ $(echo "$WIND_SPEED > 50" | bc) -eq 1 ]; then
-            MENSAJE_ALERTA="🌬️ Vientos fuertes de $WIND_SPEED km/h en '"$LUGAR"'. Hace $TEMP_ACTUAL°C"
+            MENSAJE="🌧️ Lluvia activa en $LUGAR. Temperatura actual: ${TEMP_ACTUAL}°C"
           fi
 
-          if [ -n "$MENSAJE_ALERTA" ]; then
-            curl --location 'https://onesignal.com/api/v1/notifications' \
-            --header "Authorization: Key $ONESIGNAL_API_KEY" \
-            --header 'Content-Type: application/json' \
-            --data '{
-              "app_id": "'"$ONESIGNAL_APP_ID"'",
-              "included_segments": ["All"],
-              "contents": {"es": "'"$MENSAJE_ALERTA"'"},
-              "headings": {"es": "⚠️ Alerta Meteorológica"}
-            }'
+          if [ -n "$MENSAJE" ]; then
+            echo "Alerta generada: $MENSAJE"
+            # Aquí se pueden despachar las notificaciones nativas a las suscripciones guardadas
+          else
+            echo "Sin alertas meteorológicas críticas en este ciclo."
           fi
