@@ -1,10 +1,9 @@
-const CACHE_NAME = 'clima-gps-v2';
+const CACHE_NAME = 'clima-gps-v3';
 const ASSETS_TO_CACHE = [
   './',
   './index.html',
   './manifest.json',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css',
-  'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js'
+  './favicon.svg'
 ];
 
 // 1. Instalación: Guarda los recursos clave en el caché
@@ -35,12 +34,15 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// 3. Interceptar peticiones (Fetch): Red primero, fallback a caché (omitiendo APIs externas de clima)
+// 3. Interceptar peticiones (Fetch): Red primero, fallback a caché (omitiendo APIs externas)
 self.addEventListener('fetch', (event) => {
   if (event.request.url.includes('api.open-meteo.com') || 
       event.request.url.includes('air-quality-api.open-meteo.com') ||
       event.request.url.includes('rainviewer.com') ||
-      event.request.url.includes('nominatim.openstreetmap.org')) {
+      event.request.url.includes('nominatim.openstreetmap.org') ||
+      event.request.url.includes('windy.com') ||
+      event.request.url.includes('gdacs.org') ||
+      event.request.url.includes('usgs.gov')) {
     return;
   }
 
@@ -52,20 +54,28 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Manejo de Notificaciones Push
+// 4. Manejo de Notificaciones Push Nativas
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : { title: 'Clima G', body: 'Actualización del clima disponible.' };
+  let datos = { title: 'Clima G', body: 'Actualización del clima disponible.' };
   
+  if (event.data) {
+    try {
+      datos = event.data.json();
+    } catch (e) {
+      datos.body = event.data.text();
+    }
+  }
+
   const options = {
-    body: data.body,
-    icon: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
-    badge: 'https://img.icons8.com/color/192/partly-cloudy-day--v1.png',
+    body: datos.body || datos.mensaje,
+    icon: 'favicon.svg',
+    badge: 'favicon.svg',
     vibrate: [200, 100, 200],
     data: { dateOfArrival: Date.now() }
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title, options)
+    self.registration.showNotification(datos.title || datos.titulo || 'Clima G', options)
   );
 });
 
