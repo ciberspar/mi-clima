@@ -98,7 +98,7 @@
     display: none; position: absolute; top: 58px; right: 16px;
     background: rgba(15, 23, 48, 0.98); backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
-    width: 230px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    width: 250px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     overflow: hidden; color: #fff; animation: fadeIn 0.15s ease-out;
   }
   .menu-dropdown.active { display: block; }
@@ -357,7 +357,8 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="probarnTfyManual()"><span>🔔 Enviar notificación Push de prueba</span></div>
+    <div class="menu-item" onclick="guardarTopicoNtfy()"><span>⚙️ Configurar Canal ntfy</span></div>
+    <div class="menu-item" onclick="probarnTfyManual()"><span>🔔 Notificación Push de prueba</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -527,31 +528,60 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.27.0 • Actualizado: 20 de Octubre de 2026
+    v1.28.0 • Actualizado: 20 de Octubre de 2026
   </div>
 
 </main>
 
 <script>
-// 🔔 TÓPICO DE NTFY (REEMPLAZALO SI CAMBIASTE EL NOMBRE EN TU APP)
-const NTFY_TOPIC = 'climag_baco_gero_882';
+// 🔔 GESTIÓN DE NOTIFICACIONES PUSH CON NTFY.SH
+let NTFY_TOPIC = localStorage.getItem('clima_ntfy_topic') || 'climag_baco_gero_882';
 
-function enviarNotificacionNtfy(lugar, tempC, estadoBaco, emoji) {
+function guardarTopicoNtfy() {
+  document.getElementById('menuConfig').classList.remove('active');
+  const canal = prompt("Ingresá el nombre exacto de tu canal de ntfy.sh (el que creaste en la app del iPhone):", NTFY_TOPIC);
+  if (canal && canal.trim() !== "") {
+    NTFY_TOPIC = canal.trim();
+    localStorage.setItem('clima_ntfy_topic', NTFY_TOPIC);
+    alert(`✅ Canal guardado correctamente: "${NTFY_TOPIC}"`);
+  }
+}
+
+function enviarNotificacionNtfy(lugar, tempC, estadoBaco, emoji, esPrueba = false) {
+  if (!NTFY_TOPIC) return;
+
   fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
     method: 'POST',
     headers: {
-      'Title': `🐢 Baco en ${lugar}`,
-      'Tags': 'turtle,partly_sunny',
-      'Priority': 'default'
+      'Title': esPrueba ? '🧪 Prueba de Notificación - Clima G' : `🐢 Baco en ${lugar}`,
+      'Tags': esPrueba ? 'test,turtle' : 'turtle,partly_sunny',
+      'Priority': esPrueba ? 'high' : 'default'
     },
-    body: `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`
-  }).catch(err => console.log('Error enviando push a ntfy:', err));
+    body: esPrueba 
+      ? '¡Conexión imperial exitosa! El sistema de avisos de Baco está activo en tu iPhone. 🚀🐢'
+      : `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`
+  })
+  .then(res => {
+    if (res.ok && esPrueba) {
+      alert(`¡Notificación enviada con éxito al canal "${NTFY_TOPIC}"! Revisá tu celular.`);
+    }
+  })
+  .catch(err => console.log('Error enviando push a ntfy:', err));
 }
 
 function probarnTfyManual() {
   document.getElementById('menuConfig').classList.remove('active');
-  enviarNotificacionNtfy('Prueba de Notificación', 25, '¡El sistema de avisos de Baco funciona al 100%!', '🚀🐢');
-  alert("¡Notificación Push enviada! Revisá tu celular.");
+  
+  // Si nunca configuró un canal personalizado, se lo pide la primera vez
+  if (!localStorage.getItem('clima_ntfy_topic')) {
+    const canal = prompt("Para recibir la prueba, ingresá el nombre de tu canal de ntfy.sh:", NTFY_TOPIC);
+    if (canal && canal.trim() !== "") {
+      NTFY_TOPIC = canal.trim();
+      localStorage.setItem('clima_ntfy_topic', NTFY_TOPIC);
+    }
+  }
+  
+  enviarNotificacionNtfy('Prueba', 25, '', '🚀🐢', true);
 }
 
 function escapeHTML(str) {
@@ -605,10 +635,13 @@ function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
     statusEl.textContent = 'Clima templado. Baco realiza la inspección de rutina del balcón.';
   }
 
-  // Notificamos dinámicamente el clima de la ubicación actual por ntfy
-  const lugarActual = document.getElementById('place').textContent;
-  if (lugarActual && lugarActual !== 'Detectando ubicación...' && lugarActual !== 'Error al cargar') {
-    enviarNotificacionNtfy(lugarActual, tempC, statusEl.textContent, emojiEl.textContent);
+  // 🔔 NOTIFICACIÓN INTELIGENTE AUTOMÁTICA
+  // Solo se envía si hay lluvia, tormenta o condiciones extremas
+  if (esLluvia || tempC >= 32 || tempC <= 5 || uvIndex >= 8) {
+    const lugarActual = document.getElementById('place').textContent;
+    if (lugarActual && lugarActual !== 'Detectando ubicación...' && lugarActual !== 'Error al cargar') {
+      enviarNotificacionNtfy(lugarActual, tempC, statusEl.textContent, emojiEl.textContent, false);
+    }
   }
 }
 
