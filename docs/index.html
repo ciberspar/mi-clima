@@ -503,7 +503,7 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.12.0 • Actualizado: 19 de Octubre de 2026
+    v1.6.0 • Actualizado: 19 de Octubre de 2026
   </div>
 
 </main>
@@ -535,7 +535,7 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// 🔔 NOTIFICACIONES PUSH NATIVAS (Sin intermediarios ni 8000 botones)
+// 🔔 NOTIFICACIONES PUSH NATIVAS CON TU CLAVE VAPID
 async function solicitarPermisoNotificacionesNativas() {
   document.getElementById('menuConfig').classList.remove('active');
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
@@ -551,21 +551,21 @@ async function solicitarPermisoNotificacionesNativas() {
     }
 
     const registro = await navigator.serviceWorker.ready;
-    // Clave pública VAPID estándar (placeholder que se puede autogenerar)
+    const publicKeyVapid = "BH4qZgdLt6uX_k8Fc4XHWtQjXZIg_JVuKEjtvRddnMibKwTSTyNqL5Qhxo2DzA4Ezis3T_xiE9wETsc3GN73AI0";
+
     const subscription = await registro.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array("BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nxh8uI")
+      applicationServerKey: urlB64ToUint8Array(publicKeyVapid)
     });
 
-    console.log("Suscripción Web Push obtenida:", JSON.stringify(subscription));
-    alert("¡Notificaciones nativas activadas con éxito!");
+    console.log("Objeto de suscripción Web Push:", JSON.stringify(subscription));
+    alert("¡Notificaciones nativas activadas con éxito! Dispositivo suscripto.");
   } catch (err) {
     console.error("Error al suscribirse a Push:", err);
-    alert("Error al activar las notificaciones.");
+    alert("Hubo un error al activar las notificaciones.");
   }
 }
 
-// Utilidad para convertir clave VAPID
 function urlB64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
   const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
