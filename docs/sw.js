@@ -1,26 +1,29 @@
-const CACHE_NAME = 'clima-gps-v4';
-const ASSETS_TO_CACHE = [
-  './',
-  './index.html',
-  './manifest.json',
-  './favicon.svg'
+const CACHE_NAME = 'clima-g-v1.31.0';
+
+// Lista blanca de dominios permitidos para las APIs (Validación estricta de hostname)
+const DOMINIOS_APIS = [
+  'api.open-meteo.com',
+  'air-quality-api.open-meteo.com',
+  'nominatim.openstreetmap.org',
+  'windy.com',
+  'gdacs.org',
+  'usgs.gov'
 ];
 
-// Instalación y caché
+// Instalación del Service Worker
 self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(ASSETS_TO_CACHE))
-  );
   self.skipWaiting();
 });
 
-// Activación y limpieza
+// Activación y limpieza de cachés antiguas
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
+    caches.keys().then((keys) => {
       return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) return caches.delete(cache);
+        keys.map((key) => {
+          if (key !== CACHE_NAME) {
+            return caches.delete(key);
+          }
         })
       );
     })
@@ -28,53 +31,25 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Interceptar peticiones omitiendo APIs externas
+// Intercepción de peticiones de red con seguridad mejorada
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('api.open-meteo.com') || 
-      event.request.url.includes('air-quality-api.open-meteo.com') ||
-      event.request.url.includes('nominatim.openstreetmap.org') ||
-      event.request.url.includes('windy.com') ||
-      event.request.url.includes('gdacs.org') ||
-      event.request.url.includes('usgs.gov')) {
-    return;
+  const url = new URL(event.request.url);
+
+  // Validación robusta contra falsificaciones de URL (Soluciona alerta de CodeQL)
+  if (DOMINIOS_APIS.includes(url.hostname)) {
+    event.respondWith(
+      caches.open(CACHE_NAME).then((cache) => {
+        return fetch(event.request)
+          .then((response) => {
+            // Actualizamos la caché con la respuesta fresca de la red
+            cache.put(event.request, response.clone());
+            return response;
+          })
+          .catch(() => {
+            // Si no hay conexión, recurrimos a lo que tengamos en caché
+            return cache.match(event.request);
+          });
+      })
+    );
   }
-  event.respondWith(
-    fetch(event.request).catch(() => caches.match(event.request))
-  );
-});
-
-// 🔔 RECEPCIÓN DE WEB PUSH NATIVO (Desde la nube / GitHub Actions)
-self.addEventListener('push', (event) => {
-  let data = { title: '🐢 Clima G - Imperio de Baco', body: 'Actualización meteorológica.' };
-  
-  if (event.data) {
-    try {
-      data = event.data.json();
-    } catch (e) {
-      data.body = event.data.text();
-    }
-  }
-
-  const options = {
-    body: data.body,
-    icon: './favicon.svg',
-    badge: './favicon.svg',
-    vibrate: [200, 100, 200],
-    data: { url: './' }
-  };
-
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
-});
-
-// Abrir la PWA al hacer clic en la notificación
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      if (clientList.length > 0) return clientList[0].focus();
-      return clients.openWindow('./');
-    })
-  );
 });
