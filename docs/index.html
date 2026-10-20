@@ -9,21 +9,6 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <link rel="apple-touch-icon" href="favicon.svg">
 
-<!-- SDK de Notificaciones Push OneSignal -->
-<script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
-<script>
-  window.OneSignalDeferred = window.OneSignalDeferred || [];
-  window.OneSignalDeferred.push(async function(OneSignal) {
-    await OneSignal.init({
-      appId: "5ed0b035-422e-4a25-8e51-38ef6ce21a12",
-      language: "es",
-      notifyButton: {
-        enable: true,
-      },
-    });
-  });
-</script>
-
 <!-- Datos Estructurados para SEO -->
 <script type="application/ld+json">
 {
@@ -372,7 +357,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="solicitarPermisoNotificaciones()"><span>🔔 Activar notificaciones Push</span></div>
+    <div class="menu-item" onclick="solicitarPermisoNotificacionesNativas()"><span>🔔 Activar notificaciones Push</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -518,7 +503,7 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.11.0 • Actualizado: 19 de Octubre de 2026
+    v1.12.0 • Actualizado: 19 de Octubre de 2026
   </div>
 
 </main>
@@ -550,18 +535,46 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// NOTIFICACIONES PUSH FORZANDO SUSCRIPCIÓN ACTIVA
-async function solicitarPermisoNotificaciones() {
+// 🔔 NOTIFICACIONES PUSH NATIVAS (Sin intermediarios ni 8000 botones)
+async function solicitarPermisoNotificacionesNativas() {
   document.getElementById('menuConfig').classList.remove('active');
-  if (window.OneSignalDeferred) {
-    window.OneSignalDeferred.push(async function(OneSignal) {
-      await OneSignal.Notifications.requestPermission();
-      if (OneSignal.User && OneSignal.User.PushSubscription) {
-        await OneSignal.User.PushSubscription.optIn();
-      }
-      alert("¡Notificaciones activadas con éxito!");
-    });
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    alert("Tu navegador no soporta notificaciones Push nativas.");
+    return;
   }
+
+  try {
+    const permiso = await Notification.requestPermission();
+    if (permiso !== 'granted') {
+      alert("Permiso de notificaciones denegado.");
+      return;
+    }
+
+    const registro = await navigator.serviceWorker.ready;
+    // Clave pública VAPID estándar (placeholder que se puede autogenerar)
+    const subscription = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlB64ToUint8Array("BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nxh8uI")
+    });
+
+    console.log("Suscripción Web Push obtenida:", JSON.stringify(subscription));
+    alert("¡Notificaciones nativas activadas con éxito!");
+  } catch (err) {
+    console.error("Error al suscribirse a Push:", err);
+    alert("Error al activar las notificaciones.");
+  }
+}
+
+// Utilidad para convertir clave VAPID
+function urlB64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
 }
 
 function actualizarGlobitoRojoPWA(tempC) {
@@ -1382,7 +1395,7 @@ function renderWeek(d, todayIdx = 0, hourly = null){
   document.getElementById('weekList').innerHTML = rows;
 }
 
-// REGISTRO DEL SERVICE WORKER CON PUSH
+// REGISTRO DEL SERVICE WORKER
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js')
