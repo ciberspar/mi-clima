@@ -54,7 +54,26 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// 4. Manejo de Notificaciones Push Nativas
+// 4. Recibir mensajes desde la PWA para mostrar notificaciones nativas locales
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'DISPARAR_NOTIFICACION') {
+    const { titulo, cuerpo } = event.data;
+    
+    const options = {
+      body: cuerpo,
+      icon: 'favicon.svg',
+      badge: 'favicon.svg',
+      vibrate: [200, 100, 200],
+      data: { dateOfArrival: Date.now() }
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(titulo, options)
+    );
+  }
+});
+
+// 5. Manejo de Notificaciones Push Web Estándar
 self.addEventListener('push', (event) => {
   let datos = { title: 'Clima G', body: 'Actualización del clima disponible.' };
   
@@ -79,7 +98,7 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// 5. Abrir la app al hacer clic en la notificación
+// 6. Abrir la app al hacer clic en la notificación
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
