@@ -357,7 +357,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="probarnTfyManual()"><span>🔔 Notificación Push de prueba</span></div>
+    <div class="menu-item" onclick="solicitarPermisoNotificacionesNativas()"><span>🔔 Activar notificaciones</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -527,30 +527,47 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.30.0 • Actualizado: 20 de Octubre de 2026
+    v1.31.0 • Actualizado: 20 de Octubre de 2026
   </div>
 
 </main>
 
 <script>
-// 🔔 CANAL FIJO DE NTFY ANTI-BLOQUEO CORS
-const NTFY_TOPIC = 'climag_baco_gero_882';
+// 🔔 GESTIÓN DE NOTIFICACIONES NATIVAS WEB VIA SERVICE WORKER
+async function solicitarPermisoNotificacionesNativas() {
+  document.getElementById('menuConfig').classList.remove('active');
+  
+  if (!('Notification' in window)) {
+    alert("Tu navegador no soporta notificaciones nativas.");
+    return;
+  }
 
-function enviarNotificacionNtfy(lugar, tempC, estadoBaco, emoji, esPrueba = false) {
-  const titulo = encodeURIComponent(esPrueba ? '🧪 Prueba Imperial' : `🐢 Baco en ${lugar}`);
-  const mensaje = encodeURIComponent(esPrueba ? '¡Conexión exitosa! El Imperio de Baco está activo.' : `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`);
-  
-  // Truco infalible de imagen para evitar bloqueos de CORS en navegadores móviles
-  new Image().src = `https://ntfy.sh/${NTFY_TOPIC}?title=${titulo}&message=${mensaje}`;
-  
-  if (esPrueba) {
-    alert("¡Orden de notificación enviada! Mirá si suena el celular.");
+  if (!('serviceWorker' in navigator)) {
+    alert("Tu navegador no soporta Service Workers.");
+    return;
+  }
+
+  const permiso = await Notification.requestPermission();
+  if (permiso === 'granted') {
+    alert("¡Notificaciones activadas con éxito! Recibirás alertas del clima en este dispositivo.");
+    
+    // Disparamos prueba inmediata con la ubicación actual
+    const lugarActual = document.getElementById('place').textContent || 'Tu ubicación';
+    const tempActual = document.getElementById('temp').textContent || '--';
+    dispararNotificacionNativa(`🐢 Baco en ${lugarActual}`, `Temperatura actual: ${tempActual}°C. Sistema de alertas nativas activado.`);
+  } else {
+    alert("Permiso de notificaciones denegado. Puedes activarlas desde la configuración de tu navegador.");
   }
 }
 
-function probarnTfyManual() {
-  document.getElementById('menuConfig').classList.remove('active');
-  enviarNotificacionNtfy('Prueba', 25, '', '🚀🐢', true);
+function dispararNotificacionNativa(titulo, cuerpo) {
+  if (Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'DISPARAR_NOTIFICACION',
+      titulo: titulo,
+      cuerpo: cuerpo
+    });
+  }
 }
 
 function escapeHTML(str) {
@@ -579,7 +596,7 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// 🐢 FUNCION IMPERIAL DE BACO
+// 🐢 FUNCION IMPERIAL DE BACO CON NOTIFICACIÓN NATIVA AUTOMÁTICA
 function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
   const emojiEl = document.getElementById('baco-emoji');
   const statusEl = document.getElementById('baco-status');
@@ -604,11 +621,11 @@ function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
     statusEl.textContent = 'Clima templado. Baco realiza la inspección de rutina del balcón.';
   }
 
-  // 🔔 NOTIFICACIÓN INTELIGENTE AUTOMÁTICA
+  // Notificación nativa automática inteligente si hay mal tiempo o extremos
   if (esLluvia || tempC >= 32 || tempC <= 5 || uvIndex >= 8) {
     const lugarActual = document.getElementById('place').textContent;
     if (lugarActual && lugarActual !== 'Detectando ubicación...' && lugarActual !== 'Error al cargar') {
-      enviarNotificacionNtfy(lugarActual, tempC, statusEl.textContent, emojiEl.textContent, false);
+      dispararNotificacionNativa(`${emojiEl.textContent} Alerta Baco en ${lugarActual}`, statusEl.textContent);
     }
   }
 }
