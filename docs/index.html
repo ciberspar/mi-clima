@@ -357,7 +357,6 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
-    <div class="menu-item" onclick="solicitarPermisoNotificacionesNativas()"><span>🔔 Activar notificaciones Push</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -527,14 +526,12 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.25.0 • Actualizado: 20 de Octubre de 2026
+    v1.26.0 • Actualizado: 20 de Octubre de 2026
   </div>
 
 </main>
 
 <script>
-const GITHUB_REPO = "ciberspar/mi-clima";
-
 function escapeHTML(str) {
   if (typeof str !== 'string') return str;
   return str.replace(/[&<>'"]/g, 
@@ -561,7 +558,7 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// 🐢 FUNCION IMPERIAL DE BACO
+// 🐢 FUNCION IMPERIAL DE BACO (EVALUA TEMPERATURA LOCAL)
 function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
   const emojiEl = document.getElementById('baco-emoji');
   const statusEl = document.getElementById('baco-status');
@@ -585,80 +582,6 @@ function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
     emojiEl.textContent = '🚶‍♂️🐢';
     statusEl.textContent = 'Clima templado. Baco realiza la inspección de rutina del balcón.';
   }
-}
-
-// 🔔 NOTIFICACIONES PUSH NATIVAS Y REGISTRO SEGURO
-async function guardarSuscripcionEnGithub(nuevaSuscripcion) {
-  try {
-    const res = await fetch(`https://api.github.com/repos/${GITHUB_REPO}/dispatches`, {
-      method: 'POST',
-      headers: {
-        'Accept': 'application/vnd.github.v3+json',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        event_type: 'nueva_suscripcion',
-        client_payload: nuevaSuscripcion
-      })
-    });
-    return true;
-  } catch (err) {
-    console.error("Error al notificar registro:", err);
-    return false;
-  }
-}
-
-async function solicitarPermisoNotificacionesNativas() {
-  const menuConfig = document.getElementById('menuConfig');
-  if (menuConfig) menuConfig.classList.remove('active');
-
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert("Tu navegador no soporta notificaciones Push nativas.");
-    return;
-  }
-
-  try {
-    const permiso = await Notification.requestPermission();
-    if (permiso !== 'granted') {
-      alert("Permiso de notificaciones denegado.");
-      return;
-    }
-
-    const registro = await navigator.serviceWorker.ready;
-    const publicKeyVapid = "BH4qZgdLt6uX_k8Fc4XHWtQjXZIg_JVuKEjtvRddnMibKwTSTyNqL5Qhxo2DzA4Ezis3T_xiE9wETsc3GN73AI0";
-
-    const subscription = await registro.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlB64ToUint8Array(publicKeyVapid)
-    });
-
-    const placeElem = document.getElementById('place');
-    const nombreLugar = placeElem ? placeElem.textContent : 'Mi ubicación';
-    
-    const suscripcionGlobal = {
-      ...subscription.toJSON(),
-      lat: currentLat,
-      lon: currentLon,
-      lugar: nombreLugar,
-      fecha: new Date().toISOString()
-    };
-
-    await guardarSuscripcionEnGithub(suscripcionGlobal);
-    alert(`¡Notificaciones activadas desde ${nombreLugar}!`);
-  } catch (err) {
-    alert("Hubo un error al activar las notificaciones.");
-  }
-}
-
-function urlB64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
-  const rawData = window.atob(base64);
-  const outputArray = new Uint8Array(rawData.length);
-  for (let i = 0; i < rawData.length; ++i) {
-    outputArray[i] = rawData.charCodeAt(i);
-  }
-  return outputArray;
 }
 
 function actualizarGlobitoRojoPWA(tempC) {
@@ -767,12 +690,20 @@ function obtenerUbicacionGPSDirecto(){
     navigator.geolocation.getCurrentPosition(
       (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null, true),
       (error) => {
-        document.getElementById('place').textContent = "Permiso de GPS denegado o no disponible";
+        // Si no hay GPS activo o se niega el permiso, se busca la última guardada o Córdoba
+        try {
+          const u = JSON.parse(localStorage.getItem('clima_ubicacion_actual'));
+          if (u && u.lat && u.lon) {
+            cargarClima(u.lat, u.lon, u.lugar);
+            return;
+          }
+        } catch(e) {}
+        cargarClima(-31.42, -64.18, "Córdoba (Predeterminado)");
       },
       { enableHighAccuracy:true, timeout:10000, maximumAge:0 }
     );
   } else { 
-    document.getElementById('place').textContent = "GPS no compatible en este navegador";
+    cargarClima(-31.42, -64.18, "Córdoba (Predeterminado)");
   }
 }
 
