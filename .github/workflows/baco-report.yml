@@ -1,16 +1,15 @@
-name: 🐢 Baco Report Global (Sectores de Usuarios)
+name: 🐢 Baco Report Global (Sectores)
 
 on:
   schedule:
-    # Corre automáticamente todos los días a las 08:00 UTC
     - cron: '0 8 * * *'
-  workflow_dispatch: # Permite dispararlo a mano desde GitHub
+  workflow_dispatch:
 
 jobs:
   generar-reporte-global:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # Permite guardar el JSON en el repositorio
+      contents: write
     steps:
       - name: 📥 Clonar repositorio
         uses: actions/checkout@v4
@@ -20,34 +19,23 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: ⚙️ Ejecutar escaneo imperial de usuarios
+      - name: ⚙️ Ejecutar escaneo imperial
         run: |
           python3 -c "
           import json
           import urllib.request
-          import os
           from datetime import datetime
 
-          # 1. Leer suscripciones.json con las coordenadas reales de los usuarios
-          suscripciones = []
-          if os.path.exists('suscripciones.json'):
-              try:
-                  with open('suscripciones.json', 'r', encoding='utf-8') as f:
-                      suscripciones = json.load(f)
-              except Exception as e:
-                  print('Error leyendo suscripciones:', e)
+          # Definición de sectores imperiales de monitoreo
+          sectores = [
+              {'lugar': 'Córdoba (Base Central)', 'lat': -31.42, 'lon': -64.18},
+              {'lugar': 'Villa Carlos Paz', 'lat': -31.41, 'lon': -64.49},
+              {'lugar': 'Buenos Aires', 'lat': -34.60, 'lon': -58.38}
+          ]
 
-          # Si todavía está vacío, usamos Córdoba como base imperial por defecto
-          if not suscripciones:
-              suscripciones = [{'lat': -31.42, 'lon': -64.18, 'lugar': 'Córdoba (Base Central Imperial)'}]
-
-          # 2. Recorrer cada sector/usuario registrado
           reportes_por_sector = []
-          for sub in suscripciones:
-              lat = sub.get('lat', -31.42)
-              lon = sub.get('lon', -64.18)
-              lugar = sub.get('lugar', 'Sector Desconocido')
-
+          for sec in sectores:
+              lat, lon, lugar = sec['lat'], sec['lon'], sec['lugar']
               url = f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,uv_index&daily=uv_index_max'
               try:
                   req = urllib.request.urlopen(url)
@@ -58,15 +46,14 @@ jobs:
               except Exception:
                   temp, code, uv = 20, 0, 5
 
-              # 3. Lógica del Decreto de Baco por cada zona
               if code in [51,53,55,61,63,65,80,81,82,95,96,99]:
-                  estado = 'Refugio Acorazado (Lluvia o Tormenta en el sector)'
+                  estado = 'Refugio Acorazado (Lluvia o Tormenta)'
                   emoji = '🌧️🐢'
               elif temp >= 23:
                   estado = 'Absorción Solar Máxima (Balcón apto)'
                   emoji = '☀️🐢'
               elif temp < 15:
-                  estado = 'Hibernación Táctica (Fresco en la zona)'
+                  estado = 'Hibernación Táctica (Fresco)'
                   emoji = '❄️🐢'
               else:
                   estado = 'Patrulla de Balcón de rutina'
@@ -81,24 +68,21 @@ jobs:
                   'icono': emoji
               })
 
-          # 4. Estructurar el reporte global del imperio
           reporte_global = {
               'fecha_actualizacion': datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC'),
               'emperador': 'Baco 🐢',
-              'total_sectores_monitoreados': len(reportes_por_sector),
+              'total_sectores': len(reportes_por_sector),
               'sectores': reportes_por_sector
           }
 
-          # 5. Guardar el archivo final
           with open('baco-report.json', 'w', encoding='utf-8') as f:
               json.dump(reporte_global, f, ensure_ascii=False, indent=2)
-          print('¡Baco report global de usuarios generado con éxito!')
           "
 
-      - name: 🚀 Subir cambios al repositorio
+      - name: 🚀 Commit y Push
         run: |
           git config --global user.name "Baco Bot Imperial"
           git config --global user.email "baco-bot@users.noreply.github.com"
           git add baco-report.json
-          git commit -m "🐢 Actualización del Baco Report basada en las coordenadas de los usuarios" || exit 0
+          git commit -m "🐢 Actualización automática de Baco Report" || exit 0
           git push
