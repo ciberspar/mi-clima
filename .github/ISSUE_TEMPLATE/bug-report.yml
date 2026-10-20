@@ -1,0 +1,25 @@
+name: 🐛 Reporte de Bug en la PWA
+description: Reportá un fallo visual, de geolocalización o en el Service Worker.
+title: "[BUG]: "
+labels: ["bug", "pwa"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Gracias por reportar el error! Ayudanos a mantener Clima G funcionando a la perfección.
+  - type: input
+    id: dispositivo
+    attributes:
+      label: Dispositivo / Navegador
+      description: ¿En qué dispositivo o navegador estás probando? (Ej: iPhone 11 con Firefox / Safari).
+      placeholder: Ej. iPhone 11 - iOS 17
+    validations:
+      required: true
+  - type: textarea
+    id: descripcion
+    attributes:
+      label: Descripción del problema
+      description: Contanos detalladamente qué pasó.
+      placeholder: Explicá los pasos para reproducir el fallo...
+    validations:
+      required: true
