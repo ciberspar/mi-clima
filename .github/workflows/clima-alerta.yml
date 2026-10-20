@@ -20,14 +20,14 @@ jobs:
       - name: Instalar dependencia web-push
         run: npm install web-push
 
-      - name: Ejecutar script de notificaciones
+      - name: Ejecutar script de notificaciones desde docs
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-        run: node enviar-push.js
+        run: node docs/enviar-push.js
 
-      - name: Guardar cambios si se limpiaron suscripciones inactivas
+      - name: Guardar cambios en suscripciones
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "Auto: Actualizar lista de suscripciones push"
-          file_pattern: "suscripciones.json"
+          file_pattern: "docs/suscripciones.json"
