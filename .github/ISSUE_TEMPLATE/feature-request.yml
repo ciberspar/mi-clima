@@ -1,0 +1,17 @@
+name: ✨ Solicitud de Nueva Función
+description: Sugerí una nueva característica para Clima G o los scripts de Baco.
+title: "[FEATURE]: "
+labels: ["enhancement", "baco-empire"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ¡Las ideas para mejorar el sistema siempre son bienvenidas!
+  - type: textarea
+    id: propuesta
+    attributes:
+      label: ¿Qué te gustaría agregar?
+      description: Describí la función de forma clara.
+      placeholder: Ej. Agregar un indicador de presión atmosférica o alertas de viento...
+    validations:
+      required: true
