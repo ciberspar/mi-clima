@@ -558,13 +558,23 @@ async function solicitarPermisoNotificacionesNativas() {
       applicationServerKey: urlB64ToUint8Array(publicKeyVapid)
     });
 
-    console.log("Objeto de suscripción Web Push:", JSON.stringify(subscription));
-    alert("¡Notificaciones nativas activadas con éxito! Dispositivo suscripto.");
+    // Creamos un objeto completo que incluye el token y tu ubicación actual (currentLat, currentLon, y el lugar)
+    const nombreLugar = document.getElementById('place').textContent || 'Mi ubicación';
+    const suscripcionGlobal = {
+      ...subscription.toJSON(),
+      lat: currentLat,
+      lon: currentLon,
+      lugar: nombreLugar
+    };
+
+    console.log("Copiá este objeto JSON para tu suscripciones.json:", JSON.stringify(suscripcionGlobal, null, 2));
+    alert("¡Notificaciones nativas activadas! Revisá la consola para copiar tu registro global.");
   } catch (err) {
     console.error("Error al suscribirse a Push:", err);
     alert("Hubo un error al activar las notificaciones.");
   }
 }
+
 
 function urlB64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
