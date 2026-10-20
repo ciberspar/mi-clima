@@ -1,0 +1,57 @@
+name: 🔔 Registrar Nueva Suscripción Push
+
+on:
+  repository_dispatch:
+    types: [nueva_suscripcion]
+
+jobs:
+  guardar-datos:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Permite modificar y hacer commit en suscripciones.json
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v4
+
+      - name: 🐍 Registrar cliente en suscripciones.json
+        run: |
+          python3 -c "
+          import json
+          import os
+
+          # Datos enviados desde la PWA
+          payload = '''${{ toJson(github.event.client_payload) }}'''
+          nueva_sub = json.loads(payload)
+
+          # Ruta del archivo de suscripciones
+          file_path = 'docs/suscripciones.json'
+          if not os.path.exists(file_path):
+              file_path = 'suscripciones.json'
+
+          suscripciones = []
+          if os.path.exists(file_path):
+              try:
+                  with open(file_path, 'r', encoding='utf-8') as f:
+                      suscripciones = json.load(f)
+              except Exception:
+                  suscripciones = []
+
+          # Evitar duplicados por endpoint
+          endpoint_nuevo = nueva_sub.get('endpoint')
+          suscripciones = [s for s in suscripciones if s.get('endpoint') != endpoint_nuevo]
+          suscripciones.append(nueva_sub)
+
+          # Guardar archivo actualizado
+          with open(file_path, 'w', encoding='utf-8') as f:
+              json.dump(suscripciones, f, ensure_ascii=False, indent=2)
+
+          print(f'Suscripción guardada con éxito para {nueva_sub.get(\"lugar\", \"Ubicación desconocida\")}')
+          "
+
+      - name: 🚀 Commit y Push automático a GitHub
+        run: |
+          git config --global user.name "Baco Bot Imperial"
+          git config --global user.email "baco-bot@users.noreply.github.com"
+          git add docs/suscripciones.json suscripciones.json || true
+          git commit -m "🔔 Nueva suscripción Push agregada automáticamente" || exit 0
+          git push
