@@ -1,9 +1,15 @@
 const webpush = require('web-push');
 const fs = require('fs');
+const path = require('path');
 
-// Configura tus credenciales VAPID desde las variables de entorno de GitHub Actions
+// Claves VAPID desde GitHub Secrets
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY;
 const privateVapidKey = process.env.VAPID_PRIVATE_KEY;
+
+if (!publicVapidKey || !privateVapidKey) {
+  console.error("Faltan las claves VAPID en las variables de entorno.");
+  process.exit(1);
+}
 
 webpush.setVapidDetails(
   'mailto:tu-correo@gmail.com',
@@ -12,28 +18,29 @@ webpush.setVapidDetails(
 );
 
 async function enviarNotificaciones() {
-  // Archivo donde se guardarán las suscripciones de los usuarios
-  const archivoSuscripciones = 'suscripciones.json';
+  // Ruta absoluta al archivo dentro de la carpeta docs
+  const archivoSuscripciones = path.join(__dirname, 'suscripciones.json');
   
   if (!fs.existsSync(archivoSuscripciones)) {
-    console.log("No hay suscripciones registradas todavía.");
+    console.log("No existe el archivo suscripciones.json en docs.");
     return;
   }
 
   let suscripciones = [];
   try {
-    suscripciones = JSON.parse(fs.readFileSync(archivoSuscripciones, 'utf8'));
+    const contenido = fs.readFileSync(archivoSuscripciones, 'utf8');
+    suscripciones = JSON.parse(contenido);
   } catch (e) {
     console.log("Error al leer el archivo de suscripciones.");
     return;
   }
 
-  if (suscripciones.length === 0) {
+  if (!Array.isArray(suscripciones) || suscripciones.length === 0) {
     console.log("La lista de suscripciones está vacía.");
     return;
   }
 
-  // Obtenemos el clima actual de Córdoba (o de la ubicación dinámica) usando Open-Meteo
+  // Clima de Córdoba con Open-Meteo
   const lat = -31.42;
   const lon = -64.18;
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FCordoba`);
@@ -45,7 +52,7 @@ async function enviarNotificaciones() {
   const tempMin = Math.round(data.daily.temperature_2m_min[0]);
 
   let titulo = "🌤️ Clima G";
-  let mensaje = `Temperatura actual: ${tempActual}°C (Máx: ${tempMax}° / Mín: ${tempMin}°)`;
+  let mensaje = `Temperatura actual: ${tempActual}°C (Mín: ${tempMin}° / Máx: ${tempMax}°)`;
 
   if (code >= 95) {
     titulo = "⚠️ Alerta de Tormenta";
@@ -57,15 +64,13 @@ async function enviarNotificaciones() {
 
   const payload = JSON.stringify({ title: titulo, body: mensaje });
 
-  // Enviamos la notificación a cada dispositivo suscripto
   for (let i = 0; i < suscripciones.length; i++) {
-    const sub = suscripciones.get ? suscripciones[i] : suscripciones[i];
+    const sub = suscripciones[i];
     try {
       await webpush.sendNotification(sub, payload);
       console.log(`Notificación enviada con éxito al dispositivo ${i + 1}`);
     } catch (error) {
       console.error(`Error al enviar al dispositivo ${i + 1}:`, error);
-      // Si la suscripción expiró o el usuario bloqueó las notificaciones, la podemos remover
       if (error.statusCode === 410 || error.statusCode === 404) {
         suscripciones.splice(i, 1);
         i--;
@@ -73,7 +78,6 @@ async function enviarNotificaciones() {
     }
   }
 
-  // Actualizamos el archivo de suscripciones limpiando las inactivas
   fs.writeFileSync(archivoSuscripciones, JSON.stringify(suscripciones, null, 2));
 }
 
