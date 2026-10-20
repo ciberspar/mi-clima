@@ -16,7 +16,7 @@ jobs:
       - name: Use Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '18'
 
       - name: Install Lighthouse CI
         run: npm install -g @lhci/cli
@@ -32,4 +32,8 @@ jobs:
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add .lighthouseci/
           git commit -m "chore: actualiza reporte de Lighthouse CI [skip ci]" || echo "No hay cambios nuevos en los reportes"
+          
+          # Sincroniza con el repositorio remoto antes de empujar para evitar conflictos
+          git pull origin main --rebase || echo "No hubo conflictos en el pull"
+          
           git push
