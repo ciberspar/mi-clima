@@ -527,33 +527,25 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.29.0 • Actualizado: 20 de Octubre de 2026
+    v1.30.0 • Actualizado: 20 de Octubre de 2026
   </div>
 
 </main>
 
 <script>
-// 🔔 TU CANAL DE NOTIFICACIONES PUSH FIJO
+// 🔔 CANAL FIJO DE NTFY ANTI-BLOQUEO CORS
 const NTFY_TOPIC = 'climag_baco_gero_882';
 
 function enviarNotificacionNtfy(lugar, tempC, estadoBaco, emoji, esPrueba = false) {
-  fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
-    method: 'POST',
-    headers: {
-      'Title': esPrueba ? '🧪 Prueba de Notificación - Clima G' : `🐢 Baco en ${lugar}`,
-      'Tags': esPrueba ? 'test,turtle' : 'turtle,partly_sunny',
-      'Priority': esPrueba ? 'high' : 'default'
-    },
-    body: esPrueba 
-      ? '¡Conexión imperial exitosa! Notificación Push funcionando perfecto en tu iPhone. 🚀🐢'
-      : `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`
-  })
-  .then(res => {
-    if (res.ok && esPrueba) {
-      alert("¡Notificación enviada con éxito! Revisá la app en tu iPhone.");
-    }
-  })
-  .catch(err => console.log('Error enviando push:', err));
+  const titulo = encodeURIComponent(esPrueba ? '🧪 Prueba Imperial' : `🐢 Baco en ${lugar}`);
+  const mensaje = encodeURIComponent(esPrueba ? '¡Conexión exitosa! El Imperio de Baco está activo.' : `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`);
+  
+  // Truco infalible de imagen para evitar bloqueos de CORS en navegadores móviles
+  new Image().src = `https://ntfy.sh/${NTFY_TOPIC}?title=${titulo}&message=${mensaje}`;
+  
+  if (esPrueba) {
+    alert("¡Orden de notificación enviada! Mirá si suena el celular.");
+  }
 }
 
 function probarnTfyManual() {
@@ -613,7 +605,6 @@ function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
   }
 
   // 🔔 NOTIFICACIÓN INTELIGENTE AUTOMÁTICA
-  // Solo se envía si hay lluvia, tormenta o frío/calor extremo
   if (esLluvia || tempC >= 32 || tempC <= 5 || uvIndex >= 8) {
     const lugarActual = document.getElementById('place').textContent;
     if (lugarActual && lugarActual !== 'Detectando ubicación...' && lugarActual !== 'Error al cargar') {
