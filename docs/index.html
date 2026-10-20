@@ -518,7 +518,7 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.10.0 • Actualizado: 19 de Octubre de 2026
+    v1.5.0 • Actualizado: 19 de Octubre de 2026
   </div>
 
 </main>
@@ -550,12 +550,16 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// NOTIFICACIONES PUSH
+// NOTIFICACIONES PUSH FORZANDO SUSCRIPCIÓN ACTIVA
 async function solicitarPermisoNotificaciones() {
   document.getElementById('menuConfig').classList.remove('active');
   if (window.OneSignalDeferred) {
-    window.OneSignalDeferred.push(function(OneSignal) {
-      OneSignal.Notifications.requestPermission();
+    window.OneSignalDeferred.push(async function(OneSignal) {
+      await OneSignal.Notifications.requestPermission();
+      if (OneSignal.User && OneSignal.User.PushSubscription) {
+        await OneSignal.User.PushSubscription.optIn();
+      }
+      alert("¡Notificaciones activadas con éxito!");
     });
   }
 }
@@ -638,7 +642,6 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
     if (esGPS) ubicacionGPSData = { lat, lon, nombre: place, weather };
     renderWeather(weather, place);
     
-    // Función para actualizar la ubicación activa y permitir alertas dinámicas globales
     actualizarUbicacionActiva(lat, lon, place);
 
     consultarCalidadAire(lat, lon);
@@ -649,7 +652,6 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false){
   }
 }
 
-// Guarda la ubicación actual en localStorage para uso dinámico global
 function actualizarUbicacionActiva(lat, lon, lugar) {
   try {
     const ubicacionInfo = { lat: lat, lon: lon, lugar: lugar };
@@ -659,7 +661,6 @@ function actualizarUbicacionActiva(lat, lon, lugar) {
 
 window.addEventListener('DOMContentLoaded', () => {
   cambiarUnidad(unidadActual);
-  // Solicita el GPS directo al iniciar sin usar IP
   obtenerUbicacionGPSDirecto();
 });
 
