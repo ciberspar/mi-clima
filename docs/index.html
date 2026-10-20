@@ -357,6 +357,7 @@
 
   <div class="menu-dropdown" id="menuConfig">
     <div class="menu-item" onclick="modoEdicionLista()"><span>✏️ Editar lista</span></div>
+    <div class="menu-item" onclick="probarnTfyManual()"><span>🔔 Enviar notificación Push de prueba</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
@@ -526,12 +527,33 @@
     Consultas en el <a href="https://github.com/ciberspar/mi-clima" target="_blank" rel="noopener noreferrer">repositorio de GitHub</a>
   </div>
   <div class="footer-info">
-    v1.26.0 • Actualizado: 20 de Octubre de 2026
+    v1.27.0 • Actualizado: 20 de Octubre de 2026
   </div>
 
 </main>
 
 <script>
+// 🔔 TÓPICO DE NTFY (REEMPLAZALO SI CAMBIASTE EL NOMBRE EN TU APP)
+const NTFY_TOPIC = 'climag_baco_gero_882';
+
+function enviarNotificacionNtfy(lugar, tempC, estadoBaco, emoji) {
+  fetch(`https://ntfy.sh/${NTFY_TOPIC}`, {
+    method: 'POST',
+    headers: {
+      'Title': `🐢 Baco en ${lugar}`,
+      'Tags': 'turtle,partly_sunny',
+      'Priority': 'default'
+    },
+    body: `${emoji} Temperatura: ${tempC}°C\n${estadoBaco}`
+  }).catch(err => console.log('Error enviando push a ntfy:', err));
+}
+
+function probarnTfyManual() {
+  document.getElementById('menuConfig').classList.remove('active');
+  enviarNotificacionNtfy('Prueba de Notificación', 25, '¡El sistema de avisos de Baco funciona al 100%!', '🚀🐢');
+  alert("¡Notificación Push enviada! Revisá tu celular.");
+}
+
 function escapeHTML(str) {
   if (typeof str !== 'string') return str;
   return str.replace(/[&<>'"]/g, 
@@ -558,7 +580,7 @@ let ubicacionGPSData = null;
 let currentLat = -31.42, currentLon = -64.18;
 let capaMapaActual = 'rain';
 
-// 🐢 FUNCION IMPERIAL DE BACO (EVALUA TEMPERATURA LOCAL)
+// 🐢 FUNCION IMPERIAL DE BACO
 function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
   const emojiEl = document.getElementById('baco-emoji');
   const statusEl = document.getElementById('baco-status');
@@ -581,6 +603,12 @@ function actualizarDecretoBaco(tempC, weatherCode, uvIndex) {
   } else {
     emojiEl.textContent = '🚶‍♂️🐢';
     statusEl.textContent = 'Clima templado. Baco realiza la inspección de rutina del balcón.';
+  }
+
+  // Notificamos dinámicamente el clima de la ubicación actual por ntfy
+  const lugarActual = document.getElementById('place').textContent;
+  if (lugarActual && lugarActual !== 'Detectando ubicación...' && lugarActual !== 'Error al cargar') {
+    enviarNotificacionNtfy(lugarActual, tempC, statusEl.textContent, emojiEl.textContent);
   }
 }
 
@@ -690,7 +718,6 @@ function obtenerUbicacionGPSDirecto(){
     navigator.geolocation.getCurrentPosition(
       (pos) => cargarClima(pos.coords.latitude, pos.coords.longitude, null, true),
       (error) => {
-        // Si no hay GPS activo o se niega el permiso, se busca la última guardada o Córdoba
         try {
           const u = JSON.parse(localStorage.getItem('clima_ubicacion_actual'));
           if (u && u.lat && u.lon) {
