@@ -1,4 +1,4 @@
-name: Revisar Clima y Alertas Nativas
+name: Enviar Push Nativo Propio
 
 on:
   schedule:
@@ -6,49 +6,28 @@ on:
   workflow_dispatch: 
 
 jobs:
-  verificar-clima:
+  disparar-push:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar repositorio para leer ubicación
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Verificar clima y procesar alertas
-        run: |
-          LAT="-31.42"
-          LON="-64.18"
-          LUGAR="tu ubicación actual"
-          
-          if [ -f "ubicacion.json" ]; then
-            LAT=$(jq -r '.lat' ubicacion.json)
-            LON=$(jq -r '.lon' ubicacion.json)
-            LUGAR=$(jq -r '.lugar' ubicacion.json)
-          fi
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
 
-          RESPONSE=$(curl -s "https://api.open-meteo.com/v1/forecast?latitude=$LAT&longitude=$LON&current=temperature_2m,wind_speed_10m,weather_code&daily=temperature_2m_max,temperature_2m_min&timezone=America%2FArgentina%2FCordoba")
-          
-          TEMP_ACTUAL=$(echo $RESPONSE | jq '.current.temperature_2m | round')
-          WEATHER_CODE=$(echo $RESPONSE | jq '.current.weather_code')
-          WIND_SPEED=$(echo $RESPONSE | jq '.current.wind_speed_10m | round')
-          
-          TEMP_MAX=$(echo $RESPONSE | jq '.daily.temperature_2m_max[0] | round')
-          TEMP_MIN=$(echo $RESPONSE | jq '.daily.temperature_2m_min[0] | round')
+      - name: Instalar dependencia web-push
+        run: npm install web-push
 
-          HORA_ARG=$(date -u -d '3 hours ago' +%H)
-          MINUTO_ARG=$(date -u -d '3 hours ago' +%M)
+      - name: Ejecutar script de notificaciones
+        env:
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: node enviar-push.js
 
-          # Resumen diario matutino (09:00 AM) o alertas severas de clima
-          MENSAJE=""
-          if [ "$HORA_ARG" -eq 9 ] && [ "$MINUTO_ARG" -lt 20 ]; then
-            MENSAJE="🌤️ Clima en $LUGAR: $TEMP_ACTUAL°C (Mín: ${TEMP_MIN}°C / Máx: ${TEMP_MAX}°C)"
-          elif [ "$WEATHER_CODE" -ge 95 ]; then
-            MENSAJE="⚠️ Tormenta eléctrica en $LUGAR. Temperatura actual: ${TEMP_ACTUAL}°C"
-          elif [ "$WEATHER_CODE" -ge 61 ] && [ "$WEATHER_CODE" -le 65 ]; then
-            MENSAJE="🌧️ Lluvia activa en $LUGAR. Temperatura actual: ${TEMP_ACTUAL}°C"
-          fi
-
-          if [ -n "$MENSAJE" ]; then
-            echo "Alerta generada: $MENSAJE"
-            # Aquí se pueden despachar las notificaciones nativas a las suscripciones guardadas
-          else
-            echo "Sin alertas meteorológicas críticas en este ciclo."
-          fi
+      - name: Guardar cambios si se limpiaron suscripciones inactivas
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Auto: Actualizar lista de suscripciones push"
+          file_pattern: "suscripciones.json"
