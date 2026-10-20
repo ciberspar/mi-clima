@@ -1,33 +1,67 @@
-name: Enviar Push Nativo Propio
+name: ⚠️ Monitor de Alertas Meteorológicas (ntfy)
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
-  workflow_dispatch: 
+    - cron: '0 */6 * * *' # Revisa cada 6 horas
+  workflow_dispatch:
 
 jobs:
-  disparar-push:
+  verificar-alertas:
     runs-on: ubuntu-latest
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
+      - name: 🐍 Monitorear mal tiempo y enviar Push por ntfy
+        run: |
+          python3 -c "
+          import json
+          import urllib.request
 
-      - name: Configurar Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+          # Tópico de ntfy
+          NTFY_TOPIC = 'climag_baco_gero_882'
 
-      - name: Instalar dependencia web-push
-        run: npm install web-push
+          # Coordenadas base de Córdoba
+          lat, lon = -31.42, -64.18
+          url = f'https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,weather_code,wind_speed_10m&daily=precipitation_sum,wind_speed_10m_max'
 
-      - name: Ejecutar script de notificaciones desde docs
-        env:
-          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-        run: node docs/enviar-push.js
+          try:
+              req = urllib.request.urlopen(url)
+              data = json.loads(req.read().decode())
+              c = data['current']
+              code = c['weather_code']
+              viento = c['wind_speed_10m']
+              precip = data['daily']['precipitation_sum'][0] if 'daily' in data else 0
 
-      - name: Guardar cambios en suscripciones
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto: Actualizar lista de suscripciones push"
-          file_pattern: "docs/suscripciones.json"
+              # Evaluación de alerta extrema
+              alerta_activa = False
+              titulo = ''
+              mensaje = ''
+
+              if code in [95, 96, 99]:
+                  alerta_activa = True
+                  titulo = '⛈️ ¡Alerta de Tormenta Eléctrica en Córdoba!'
+                  mensaje = f'Baco detectó riesgo de tormenta o granizo. Viento: {viento} km/h.'
+              elif viento >= 50:
+                  alerta_activa = True
+                  titulo = '🌬️ ¡Alerta de Vientos Fuertes!'
+                  mensaje = f'Ráfagas intensas registradas en la zona: {viento} km/h.'
+              elif precip >= 30:
+                  alerta_activa = True
+                  titulo = '🌧️ ¡Alerta de Lluvias Torrenciales!'
+                  mensaje = f'Acumulados de lluvia previstos: {precip} mm.'
+
+              if alerta_activa:
+                  req_push = urllib.request.Request(
+                      f'https://ntfy.sh/{NTFY_TOPIC}',
+                      data=mensaje.encode('utf-8'),
+                      headers={
+                          'Title': titulo,
+                          'Priority': 'high',
+                          'Tags': 'warning,thunderstorm'
+                      }
+                  )
+                  urllib.request.urlopen(req_push)
+                  print('¡Alerta enviada a ntfy exitosamente!')
+              else:
+                  print('Condiciones estables. No se requirió envío de alerta.')
+          except Exception as e:
+              print('Error en el monitor de alertas:', e)
+          "
