@@ -1,17 +1,17 @@
 {
-  "fecha_actualizacion": "2026-10-20 10:43:50 UTC",
+  "fecha_actualizacion": "2026-10-21 13:18:58 UTC",
   "emperador": "Baco 🐢",
-  "total_sectores_monitoreados": 1,
   "sectores": [
     {
-      "lugar": "Córdoba (Base Central Imperial)",
-      "coordenadas": [
-        -31.42,
-        -64.18
-      ],
+      "lugar": "Córdoba (Base Central)",
       "temperatura_actual": 20,
-      "uv_maximo": 5,
-      "decreto_baco": "Patrulla de Balcón de rutina",
+      "decreto_baco": "Patrulla de Balcón",
+      "icono": "🚶‍♂️🐢"
+    },
+    {
+      "lugar": "Villa Carlos Paz",
+      "temperatura_actual": 20,
+      "decreto_baco": "Patrulla de Balcón",
       "icono": "🚶‍♂️🐢"
     }
   ]
