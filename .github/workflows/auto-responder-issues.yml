@@ -1,0 +1,19 @@
+name: 🤖 Auto-responder de Issues
+
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  responder:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Comentar automáticamente en el Issue
+        uses: peter-evans/create-issue-response@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.issue.number }}
+          body: |
+            Gracias por este comentario 🐢🐢🫃🏻🇺🇸👹🫃🏻🫃🏻
