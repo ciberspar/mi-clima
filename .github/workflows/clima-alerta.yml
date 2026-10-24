@@ -18,6 +18,10 @@ jobs:
         with:
           node-version: '18'
 
+      - name: 📦 Instalar dependencias necesarias
+        run: |
+          npm install web-push
+
       - name: 🌤️ Consultar Clima y Enviar Web Push Nativo
         env:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
