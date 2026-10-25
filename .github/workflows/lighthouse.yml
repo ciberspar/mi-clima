@@ -5,7 +5,7 @@ on:
     branches: [ "main", "master" ]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   lighthouse:
@@ -26,14 +26,9 @@ jobs:
           # Audita directamente la carpeta docs localmente antes de publicar
           lhci collect --static-dist-dir=docs
 
-      - name: Save and Commit Report
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add .lighthouseci/
-          git commit -m "chore: actualiza reporte de Lighthouse CI [skip ci]" || echo "No hay cambios nuevos en los reportes"
-          
-          # Sincroniza con el repositorio remoto antes de empujar para evitar conflictos
-          git pull origin main --rebase || echo "No hubo conflictos en el pull"
-          
-          git push
+      - name: Upload Lighthouse Report Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: .lighthouseci/
+          retention-days: 30
