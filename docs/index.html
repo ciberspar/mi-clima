@@ -98,16 +98,17 @@
     display: none; position: absolute; top: 58px; right: 16px;
     background: rgba(15, 23, 48, 0.98); backdrop-filter: blur(12px);
     border: 1px solid rgba(255,255,255,0.2); border-radius: 16px;
-    width: 250px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    width: 270px; z-index: 100; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
     overflow: hidden; color: #fff; animation: fadeIn 0.15s ease-out;
   }
   .menu-dropdown.active { display: block; }
   @keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }
 
   .menu-item {
-    padding: 12px 16px; font-size: 0.88rem; display: flex;
+    padding: 12px 16px; font-size: 0.85rem; display: flex;
     align-items: center; justify-content: space-between; cursor: pointer;
     border-bottom: 1px solid rgba(255,255,255,0.1);
+    color: #fff; text-decoration: none;
   }
   .menu-item:last-child { border-bottom: none; }
   .menu-item:hover { background: rgba(255,255,255,0.15); }
@@ -360,6 +361,8 @@
     <div class="menu-item" onclick="solicitarPermisoNotificacionesNativas()"><span>🔔 Activar notificaciones</span></div>
     <div class="menu-item" onclick="cambiarUnidad('C')"><span>°C Celsius</span><span class="check" id="checkC">✓</span></div>
     <div class="menu-item" onclick="cambiarUnidad('F')"><span>°F Fahrenheit</span><span class="check" id="checkF" style="display:none;">✓</span></div>
+    <a class="menu-item" href="https://cafecito.app/TU_USUARIO" target="_blank" rel="noopener noreferrer"><span>☕ Me podrías ayudar con 1.000 pesos ar porfa</span></a>
+    <a class="menu-item" href="https://www.buymeacoffee.com/TU_USUARIO" target="_blank" rel="noopener noreferrer"><span>🌍 Me podrías ayudar con 5 dólares</span></a>
     <div class="menu-item" onclick="window.open('https://github.com/ciberspar/mi-clima', '_blank')"><span>💬 Reportar un problema</span></div>
   </div>
 
