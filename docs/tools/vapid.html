@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clima G — VAPID Generator</title>
+<style>
+body {
+  font-family: system-ui;
+  max-width: 600px;
+  margin: 40px auto;
+  padding: 20px;
+  background: #f4faf8;
+  color: #173b34;
+}
+button {
+  padding: 14px;
+  border: 0;
+  border-radius: 12px;
+  background: #087f68;
+  color: white;
+  font-size: 16px;
+}
+textarea {
+  width: 100%;
+  min-height: 75px;
+  margin: 10px 0;
+  box-sizing: border-box;
+}
+</style>
+</head>
+<body>
+<h1>🐢 Clima G VAPID</h1>
+<p>Generador local de claves Web Push.</p>
+<button id="generate">Generar claves</button>
+
+<h3>Clave pública</h3>
+<textarea id="public" readonly></textarea>
+
+<h3>Clave privada</h3>
+<textarea id="private" readonly></textarea>
+
+<p id="status"></p>
+
+<script>
+function base64url(bytes) {
+  let binary = "";
+  bytes.forEach(b => binary += String.fromCharCode(b));
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+document.getElementById("generate").onclick =
+async function () {
+  const status = document.getElementById("status");
+
+  try {
+    const keys = await crypto.subtle.generateKey(
+      {
+        name: "ECDSA",
+        namedCurve: "P-256"
+      },
+      true,
+      ["sign", "verify"]
+    );
+
+    const jwk = await crypto.subtle.exportKey(
+      "jwk",
+      keys.privateKey
+    );
+
+    const x = Uint8Array.from(
+      atob(jwk.x.replace(/-/g, "+").replace(/_/g, "/")),
+      c => c.charCodeAt(0)
+    );
+
+    const y = Uint8Array.from(
+      atob(jwk.y.replace(/-/g, "+").replace(/_/g, "/")),
+      c => c.charCodeAt(0)
+    );
+
+    const publicKey = new Uint8Array(65);
+    publicKey[0] = 4;
+    publicKey.set(x, 1);
+    publicKey.set(y, 33);
+
+    document.getElementById("public").value =
+      base64url(publicKey);
+
+    document.getElementById("private").value = jwk.d;
+
+    status.textContent =
+      "Claves generadas en este navegador. Guárdalas de forma segura.";
+  } catch (error) {
+    status.textContent = "Error: " + error.message;
+  }
+};
+</script>
+</body>
+</html>
