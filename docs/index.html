@@ -505,22 +505,44 @@
       </div>
     </div>
 
-    <!-- VISTA 4: MAPA TIPO APPLE WEATHER -->
-    <div class="body tab-panel" id="tab-mapa">
-      <div class="map-controls">
-        <button class="map-btn active" onclick="cambiarCapaMapa('rain', this)">🌧️ Precipitación</button>
-        <button class="map-btn" onclick="cambiarCapaMapa('temp', this)">🌡️ Temperatura</button>
-        <button class="map-btn" onclick="cambiarCapaMapa('wind', this)">🌬️ Viento</button>
-        <button class="map-btn" onclick="cambiarCapaMapa('air', this)">🌫️ Calidad del aire</button>
-      </div>
-      <div id="map-container">
-        <iframe id="map-iframe" src="about:blank" title="Mapa del clima interactivo"></iframe>
-      </div>
-      <div style="font-size: 0.75rem; text-align: center; color: var(--muted); margin-bottom: 12px; font-weight: 600;">
-        🗺️ Mapa interactivo en vivo estilo Apple Weather
-      </div>
-    </div>
+<!-- VISTA 4: MAPA PROPIO DE CLIMA G -->
+<div class="body tab-panel" id="tab-mapa">
+  <div class="map-controls">
+    <button class="map-btn active" data-layer="rain"
+      onclick="cambiarCapaMapa('rain', this)">
+      🌧️ Precipitación
+    </button>
+
+    <button class="map-btn" data-layer="temp"
+      onclick="cambiarCapaMapa('temp', this)">
+      🌡️ Temperatura
+    </button>
+
+    <button class="map-btn" data-layer="wind"
+      onclick="cambiarCapaMapa('wind', this)">
+      🌬️ Viento
+    </button>
+
+    <button class="map-btn" data-layer="air"
+      onclick="cambiarCapaMapa('air', this)">
+      🌫️ Calidad del aire
+    </button>
+
+    <button class="map-btn" data-layer="quakes"
+      onclick="cambiarCapaMapa('quakes', this)">
+      🌎 Sismos
+    </button>
   </div>
+
+  <div id="map-container">
+    <div id="climag-map"></div>
+  </div>
+
+  <div style="font-size:.75rem;text-align:center;
+    color:var(--muted);margin-bottom:12px;font-weight:600;">
+    🗺️ Mapa meteorológico de Clima G
+  </div>
+</div>
 
   <div class="visitas">👀 Visitas: <b id="visitas">…</b></div>
   <div class="contacto">
