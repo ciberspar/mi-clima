@@ -739,14 +739,14 @@ function modoEdicionLista() {
   document.getElementById('citiesList').classList.add('editing');
 }
 
-function cambiarTab(tab){
-  document.querySelectorAll('nav.tabs button').forEach(b =>
-    b.classList.toggle('active', b.dataset.tab === tab)
-  );
+function cambiarTab(tab) {
+  document.querySelectorAll('nav.tabs button').forEach(b => {
+    b.classList.toggle('active', b.dataset.tab === tab);
+  });
 
-  document.querySelectorAll('.tab-panel').forEach(p =>
-    p.classList.remove('active')
-  );
+  document.querySelectorAll('.tab-panel').forEach(p => {
+    p.classList.remove('active');
+  });
 
   document.getElementById('tab-' + tab).classList.add('active');
 
