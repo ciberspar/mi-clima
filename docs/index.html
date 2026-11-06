@@ -525,6 +525,7 @@
 
 <!-- VISTA 4: MAPA PROPIO DE CLIMA G -->
 <div class="body tab-panel" id="tab-mapa">
+
   <div class="map-controls">
     <button class="map-btn active" data-layer="rain"
       onclick="cambiarCapaMapa('rain', this)">
@@ -551,6 +552,17 @@
       🌎 Sismos
     </button>
   </div>
+
+  <div id="map-container">
+    <div id="climag-map"></div>
+  </div>
+
+  <div style="font-size:.75rem;text-align:center;
+    color:var(--muted);margin-bottom:12px;font-weight:600;">
+    🗺️ Mapa meteorológico de Clima G
+  </div>
+
+</div>
 
   <div id="map-container">
     <div id="climag-map"></div>
