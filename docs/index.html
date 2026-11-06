@@ -728,12 +728,20 @@ function modoEdicionLista() {
 }
 
 function cambiarTab(tab){
-  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
-  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('nav.tabs button').forEach(b =>
+    b.classList.toggle('active', b.dataset.tab === tab)
+  );
 
-  if(tab === 'mapa') {
-    cargarIframeMapa(capaMapaActual);
+  document.querySelectorAll('.tab-panel').forEach(p =>
+    p.classList.remove('active')
+  );
+
+  document.getElementById('tab-' + tab).classList.add('active');
+
+  if (tab === 'mapa') {
+    if (typeof inicializarMapaClima === 'function') {
+      inicializarMapaClima();
+    }
   }
 }
 
@@ -1508,6 +1516,8 @@ if ('serviceWorker' in navigator) {
   });
 }
 </script>
+
+<script src="mapa.js" defer></script>
 
 <script data-goatcounter="https://gero.goatcounter.com/count" async src="//gc.zgo.at/count.js"></script>
 <script>
