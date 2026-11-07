@@ -1,9 +1,8 @@
 
-/* ==========================================================
-   CLIMA G — MOTOR DEL MAPA PROPIO
-   Leaflet + Open-Meteo + USGS
-   5 capas + pronóstico horario de 24 horas.
-   ========================================================== */
+/* ============================================================
+   CLIMA G — MAPA METEOROLÓGICO
+   Leaflet + Leaflet.heat + Open-Meteo + USGS + OpenStreetMap
+   ============================================================ */
 
 (() => {
   'use strict';
@@ -11,18 +10,52 @@
   const CONFIG = {
     defaultLat: -31.42,
     defaultLon: -64.18,
-    gridSize: 5,
-    gridStep: 0.30,
+    gridSize: 7,
+    gridStep: 0.18,
     forecastHours: 24,
-    animationSpeed: 900
+    animationSpeed: 1100,
+    zoom: 7
   };
 
-  const LAYERS = {
-    rain: '🌧️ Precipitación',
-    temp: '🌡️ Temperatura',
-    wind: '🌬️ Viento',
-    air: '🌫️ Calidad del aire',
-    quakes: '🌎 Sismos'
+  const LAYER_NAMES = {
+    rain: 'Precipitación',
+    temp: 'Temperatura',
+    wind: 'Viento',
+    air: 'Calidad del aire',
+    quakes: 'Sismos'
+  };
+
+  const GRADIENTS = {
+    rain: {
+      0.10: '#d7f4ff',
+      0.25: '#83d8f5',
+      0.45: '#3eafe9',
+      0.65: '#3479df',
+      0.82: '#6653cb',
+      1: '#a44bb9'
+    },
+    temp: {
+      0: '#4777d9',
+      0.20: '#56b7e7',
+      0.40: '#55c69b',
+      0.60: '#d5d65d',
+      0.78: '#eea04e',
+      1: '#d9505d'
+    },
+    wind: {
+      0.10: '#65d4b2',
+      0.30: '#4bbbc8',
+      0.50: '#568edc',
+      0.72: '#8d72d1',
+      1: '#d95d91'
+    },
+    air: {
+      0.10: '#58bd8b',
+      0.30: '#a6c95e',
+      0.50: '#e2ca5d',
+      0.72: '#e99a52',
+      1: '#d85d62'
+    }
   };
 
   const state = {
@@ -33,21 +66,19 @@
     forecast: [],
     selectedHour: 0,
     playing: false,
-    animation: null,
+    timer: null,
     loading: false,
-    lastUpdate: null
+    requestId: 0
   };
 
   const $ = id => document.getElementById(id);
 
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
   // UBICACIÓN
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
 
-  function coordinates() {
-    if (state.center) {
-      return { ...state.center };
-    }
+  function getCenter() {
+    if (state.center) return { ...state.center };
 
     const lat = typeof currentLat !== 'undefined'
       ? Number(currentLat)
@@ -63,213 +94,7 @@
     };
   }
 
-  // ----------------------------------------------------------
-  // ESTADO Y MENSAJES
-  // ----------------------------------------------------------
-
-  function status(message, error = false) {
-    const element = $('climag-map-status');
-    if (!element) return;
-
-    element.textContent = message;
-    element.style.color = error ? '#d9534f' : '';
-  }
-
-  function escapeHTML(value) {
-    return String(value ?? '').replace(/[&<>"']/g, char => ({
-      '&': '&amp;',
-      '<': '&lt;',
-      '>': '&gt;',
-      '"': '&quot;',
-      "'": '&#39;'
-    })[char]);
-  }
-
-  // ----------------------------------------------------------
-  // LEAFLET
-  // ----------------------------------------------------------
-
-  function loadLeaflet() {
-    if (!document.querySelector('[data-climag-css]')) {
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href =
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      css.dataset.climagCss = 'true';
-      document.head.appendChild(css);
-    }
-
-    if (window.L) return Promise.resolve();
-
-    if (window.climagLeafletPromise) {
-      return window.climagLeafletPromise;
-    }
-
-    window.climagLeafletPromise = new Promise((resolve, reject) => {
-      const script = document.createElement('script');
-
-      script.src =
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-
-      script.onload = () => {
-        if (window.L) {
-          resolve();
-        } else {
-          reject(new Error('Leaflet no disponible'));
-        }
-      };
-
-      script.onerror = () => {
-        window.climagLeafletPromise = null;
-        reject(new Error('No se pudo cargar Leaflet'));
-      };
-
-      document.head.appendChild(script);
-    });
-
-    return window.climagLeafletPromise;
-  }
-
-  // ----------------------------------------------------------
-  // INTERFAZ
-  // ----------------------------------------------------------
-
-  function prepareInterface() {
-    const container = $('map-container');
-
-    if (!container) {
-      throw new Error('No existe map-container');
-    }
-
-    // No reconstruir el mapa si ya existe.
-    if (!$('climag-map')) {
-      const mapElement = document.createElement('div');
-      mapElement.id = 'climag-map';
-      mapElement.style.cssText =
-        'height:100%;min-height:360px;width:100%;';
-
-      container.appendChild(mapElement);
-    }
-
-    let timeline = $('climag-timeline');
-
-    if (!timeline) {
-      timeline = document.createElement('section');
-      timeline.id = 'climag-timeline';
-
-      timeline.style.cssText = `
-        background:var(--mist, #f3f6fa);
-        border:1px solid var(--line, #dce3eb);
-        border-radius:16px;
-        padding:13px;
-        margin:0 0 12px;
-        color:var(--ink, #263445);
-      `;
-
-      timeline.innerHTML = `
-        <div id="climag-timeline-controls">
-
-          <div style="display:flex;justify-content:space-between;
-            align-items:center;gap:10px;margin-bottom:10px;">
-
-            <div>
-              <div style="font-size:.75rem;
-                color:var(--muted, #778494);
-                font-weight:600;">
-                PRONÓSTICO DEL MAPA
-              </div>
-
-              <div id="climag-hour"
-                style="font-size:1.35rem;font-weight:800;">
-                Cargando...
-              </div>
-            </div>
-
-            <button id="climag-play" type="button"
-              style="border:0;border-radius:12px;
-              padding:10px 15px;
-              background:var(--sky-800, #3478b9);
-              color:white;font-weight:700;">
-              ▶ Reproducir
-            </button>
-
-          </div>
-
-          <input id="climag-slider" type="range"
-            min="0" max="23" value="0" step="1"
-            aria-label="Hora del pronóstico"
-            style="width:100%;accent-color:var(--sky-800, #3478b9);">
-
-          <div style="display:flex;justify-content:space-between;
-            font-size:.7rem;color:var(--muted, #778494);">
-            <span id="climag-start">--</span>
-            <span id="climag-end">--</span>
-          </div>
-
-        </div>
-
-        <div id="climag-map-status"
-          style="font-size:.72rem;
-          color:var(--muted, #778494);
-          text-align:center;margin-top:9px;">
-          Preparando mapa...
-        </div>
-      `;
-
-      container.parentNode.insertBefore(timeline, container);
-    }
-
-    // Registrar eventos una sola vez.
-    if (timeline.dataset.climagBound !== 'true') {
-      $('climag-slider').addEventListener('input', event => {
-        stopAnimation();
-        state.selectedHour = Number(event.target.value);
-        renderSelectedHour();
-      });
-
-      $('climag-play').addEventListener('click', () => {
-        state.playing
-          ? stopAnimation()
-          : startAnimation();
-      });
-
-      timeline.dataset.climagBound = 'true';
-    }
-  }
-
-  // ----------------------------------------------------------
-  // CREAR MAPA
-  // ----------------------------------------------------------
-
-  function createMap() {
-    if (state.map) return;
-
-    const { lat, lon } = coordinates();
-
-    state.map = L.map('climag-map', {
-      zoomControl: true
-    }).setView([lat, lon], 7);
-
-    L.tileLayer(
-      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-      {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap contributors'
-      }
-    ).addTo(state.map);
-
-    Object.keys(LAYERS).forEach(key => {
-      state.layers[key] = L.layerGroup();
-    });
-
-    state.layers[state.currentLayer].addTo(state.map);
-  }
-
-  // ----------------------------------------------------------
-  // GRILLA METEOROLÓGICA
-  // ----------------------------------------------------------
-
-  function makeGrid(lat, lon) {
+  function createGrid(lat, lon) {
     const points = [];
     const half = Math.floor(CONFIG.gridSize / 2);
 
@@ -285,253 +110,606 @@
     return points;
   }
 
-  // ----------------------------------------------------------
-  // CONEXIÓN CON APIS
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // CARGA DE LIBRERÍAS
+  // ------------------------------------------------------------
 
-  async function fetchJSON(url) {
-    const response = await fetch(url, {
-      cache: 'no-store'
+  function loadScript(src, marker) {
+    if (window[marker]) return Promise.resolve();
+
+    if (window[marker + 'Promise']) {
+      return window[marker + 'Promise'];
+    }
+
+    window[marker + 'Promise'] = new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.src = src;
+      script.async = true;
+
+      script.onload = () => {
+        window[marker] = true;
+        resolve();
+      };
+
+      script.onerror = () => {
+        window[marker + 'Promise'] = null;
+        reject(new Error('No se pudo cargar ' + marker));
+      };
+
+      document.head.appendChild(script);
     });
 
+    return window[marker + 'Promise'];
+  }
+
+  async function loadLibraries() {
+    if (!document.querySelector('[data-climag-leaflet-css]')) {
+      const css = document.createElement('link');
+      css.rel = 'stylesheet';
+      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      css.dataset.climagLeafletCss = 'true';
+      document.head.appendChild(css);
+    }
+
+    if (!window.L) {
+      await loadScript(
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+        'climagLeafletLoaded'
+      );
+    }
+
+    if (typeof L.heatLayer !== 'function') {
+      await loadScript(
+        'https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js',
+        'climagHeatLoaded'
+      );
+    }
+
+    if (!window.L || typeof L.heatLayer !== 'function') {
+      throw new Error('Las librerías del mapa no están disponibles');
+    }
+  }
+
+  // ------------------------------------------------------------
+  // ESTILOS
+  // ------------------------------------------------------------
+
+  function installStyles() {
+    if ($('climag-map-styles')) return;
+
+    const style = document.createElement('style');
+    style.id = 'climag-map-styles';
+
+    style.textContent = `
+      #map-container {
+        position:relative;
+        overflow:hidden;
+        border-radius:22px;
+        background:#e9f0f5;
+        isolation:isolate;
+      }
+
+      #climag-map {
+        width:100%;
+        height:100%;
+        min-height:380px;
+        background:#e9f0f5;
+      }
+
+      #climag-timeline {
+        margin:0 0 13px;
+        padding:15px;
+        border:1px solid var(--line,#dce3eb);
+        border-radius:20px;
+        background:var(--card,#fff);
+        color:var(--ink,#253246);
+        box-shadow:0 5px 20px rgba(30,50,75,.055);
+      }
+
+      #climag-topline {
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+      }
+
+      #climag-hour {
+        font-size:1.45rem;
+        font-weight:800;
+        letter-spacing:-.04em;
+      }
+
+      #climag-play {
+        border:0;
+        border-radius:14px;
+        padding:10px 15px;
+        color:white;
+        background:var(--sky-800,#347bb7);
+        font-weight:700;
+        cursor:pointer;
+      }
+
+      #climag-slider {
+        width:100%;
+        margin:15px 0 5px;
+        accent-color:var(--sky-800,#347bb7);
+      }
+
+      #climag-time-labels {
+        display:flex;
+        justify-content:space-between;
+        font-size:.72rem;
+        color:var(--muted,#7d8997);
+      }
+
+      #climag-status {
+        text-align:center;
+        font-size:.72rem;
+        color:var(--muted,#7d8997);
+        margin-top:10px;
+      }
+
+      #climag-legend {
+        display:flex;
+        align-items:center;
+        gap:8px;
+        margin-top:12px;
+        font-size:.7rem;
+        color:var(--muted,#7d8997);
+      }
+
+      #climag-legend-bar {
+        flex:1;
+        height:7px;
+        border-radius:10px;
+      }
+
+      .climag-wind-arrow {
+        color:#fff;
+        font-size:19px;
+        font-weight:900;
+        text-shadow:0 1px 4px rgba(0,0,0,.65);
+        text-align:center;
+        line-height:22px;
+      }
+
+      .climag-quake-marker {
+        border-radius:50%;
+        border:2px solid white;
+        box-shadow:0 2px 9px rgba(0,0,0,.3);
+      }
+
+      .leaflet-popup-content-wrapper {
+        border-radius:14px;
+      }
+
+      .leaflet-control-zoom a {
+        color:#26394b !important;
+      }
+
+      @media(max-width:480px) {
+        #climag-map { min-height:360px; }
+        #climag-timeline { padding:12px; }
+      }
+    `;
+
+    document.head.appendChild(style);
+  }
+
+  // ------------------------------------------------------------
+  // INTERFAZ
+  // ------------------------------------------------------------
+
+  function prepareInterface() {
+    const container = $('map-container');
+
+    if (!container) {
+      throw new Error('No existe #map-container');
+    }
+
+    installStyles();
+
+    if (!$('climag-map')) {
+      const map = document.createElement('div');
+      map.id = 'climag-map';
+      container.appendChild(map);
+    }
+
+    let timeline = $('climag-timeline');
+
+    if (!timeline) {
+      timeline = document.createElement('section');
+      timeline.id = 'climag-timeline';
+
+      timeline.innerHTML = `
+        <div id="climag-topline">
+          <div>
+            <div style="font-size:.7rem;font-weight:700;
+              color:var(--muted,#7d8997);">
+              PRONÓSTICO POR HORA
+            </div>
+            <div id="climag-hour">Cargando...</div>
+          </div>
+          <button id="climag-play" type="button">
+            ▶ Reproducir
+          </button>
+        </div>
+
+        <input id="climag-slider" type="range"
+          min="0" max="23" value="0" step="1"
+          aria-label="Hora del pronóstico">
+
+        <div id="climag-time-labels">
+          <span id="climag-start">--:--</span>
+          <span id="climag-end">--:--</span>
+        </div>
+
+        <div id="climag-legend">
+          <span id="climag-legend-min">Bajo</span>
+          <div id="climag-legend-bar"></div>
+          <span id="climag-legend-max">Alto</span>
+        </div>
+
+        <div id="climag-status">Preparando mapa...</div>
+      `;
+
+      container.parentNode.insertBefore(timeline, container);
+    }
+
+    if (timeline.dataset.bound !== 'true') {
+      $('climag-slider').addEventListener('input', event => {
+        stopAnimation();
+        state.selectedHour = Number(event.target.value);
+        renderHour();
+      });
+
+      $('climag-play').addEventListener('click', () => {
+        state.playing ? stopAnimation() : startAnimation();
+      });
+
+      timeline.dataset.bound = 'true';
+    }
+  }
+
+  function setStatus(message, error = false) {
+    const element = $('climag-status');
+    if (!element) return;
+
+    element.textContent = message;
+    element.style.color = error ? '#d9534f' : '';
+  }
+
+  function updateLegend(layer) {
+    const bar = $('climag-legend-bar');
+    const min = $('climag-legend-min');
+    const max = $('climag-legend-max');
+
+    if (!bar || !min || !max) return;
+
+    if (layer === 'rain') {
+      bar.style.background =
+        'linear-gradient(90deg,#d7f4ff,#83d8f5,#3eafe9,#3479df,#6653cb,#a44bb9)';
+      min.textContent = 'Ligera';
+      max.textContent = 'Intensa';
+    } else if (layer === 'temp') {
+      bar.style.background =
+        'linear-gradient(90deg,#4777d9,#56b7e7,#55c69b,#d5d65d,#eea04e,#d9505d)';
+      min.textContent = 'Frío';
+      max.textContent = 'Calor';
+    } else if (layer === 'wind') {
+      bar.style.background =
+        'linear-gradient(90deg,#65d4b2,#4bbbc8,#568edc,#8d72d1,#d95d91)';
+      min.textContent = 'Suave';
+      max.textContent = 'Fuerte';
+    } else if (layer === 'air') {
+      bar.style.background =
+        'linear-gradient(90deg,#58bd8b,#a6c95e,#e2ca5d,#e99a52,#d85d62)';
+      min.textContent = 'Buena';
+      max.textContent = 'Mala';
+    } else {
+      bar.style.background = 'linear-gradient(90deg,#e2bd58,#dc7a4c,#d85d62)';
+      min.textContent = 'Menor';
+      max.textContent = 'Mayor';
+    }
+  }
+
+  // ------------------------------------------------------------
+  // CREAR MAPA
+  // ------------------------------------------------------------
+
+  function createMap() {
+    if (state.map) return;
+
+    const center = getCenter();
+
+    state.map = L.map('climag-map', {
+      zoomControl: true,
+      preferCanvas: true
+    }).setView([center.lat, center.lon], CONFIG.zoom);
+
+    L.tileLayer(
+      'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+      {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap contributors'
+      }
+    ).addTo(state.map);
+
+    Object.keys(LAYER_NAMES).forEach(name => {
+      state.layers[name] = L.layerGroup();
+    });
+
+    state.layers[state.currentLayer].addTo(state.map);
+  }
+
+  // ------------------------------------------------------------
+  // PETICIONES
+  // ------------------------------------------------------------
+
+  async function fetchJSON(url) {
+    const response = await fetch(url, { cache: 'no-store' });
+
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      throw new Error('Error HTTP ' + response.status);
     }
 
     return response.json();
   }
 
-  function getPointData(data, index) {
+  function itemAt(data, index) {
     return Array.isArray(data) ? data[index] : data;
   }
 
-  // ----------------------------------------------------------
-  // PRONÓSTICO OPEN-METEO
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // OPEN-METEO: PRONÓSTICO
+  // ------------------------------------------------------------
 
   async function loadForecast() {
-    const center = coordinates();
-    const points = makeGrid(center.lat, center.lon);
+    const center = getCenter();
+    const points = createGrid(center.lat, center.lon);
 
-    const latitudes = points.map(p => p.lat).join(',');
-    const longitudes = points.map(p => p.lon).join(',');
+    const lat = points.map(p => p.lat).join(',');
+    const lon = points.map(p => p.lon).join(',');
 
     const url =
       'https://api.open-meteo.com/v1/forecast' +
-      `?latitude=${latitudes}` +
-      `&longitude=${longitudes}` +
+      `?latitude=${lat}` +
+      `&longitude=${lon}` +
       '&hourly=temperature_2m,precipitation,' +
       'precipitation_probability,wind_speed_10m,' +
       'wind_direction_10m' +
       '&forecast_days=2&timezone=auto';
 
     const data = await fetchJSON(url);
+    const first = itemAt(data, 0);
 
-    const first = getPointData(data, 0);
-    const times = first?.hourly?.time;
-
-    if (!times?.length) {
-      throw new Error('Pronóstico horario vacío');
+    if (!first?.hourly?.time) {
+      throw new Error('Pronóstico no disponible');
     }
 
-    state.forecast = times
-      .slice(0, CONFIG.forecastHours)
-      .map((time, hour) => ({
-        time,
+    const hours = Math.min(
+      CONFIG.forecastHours,
+      first.hourly.time.length
+    );
+
+    state.forecast = [];
+
+    for (let hour = 0; hour < hours; hour++) {
+      state.forecast.push({
+        time: first.hourly.time[hour],
         points: points.map((point, index) => {
-          const item = getPointData(data, index);
-          const hourly = item?.hourly;
+          const item = itemAt(data, index);
+          const hourly = item?.hourly || {};
 
           return {
             ...point,
-            temperature: hourly?.temperature_2m?.[hour],
-            precipitation: hourly?.precipitation?.[hour],
-            probability:
-              hourly?.precipitation_probability?.[hour],
-            wind: hourly?.wind_speed_10m?.[hour],
-            direction: hourly?.wind_direction_10m?.[hour]
+            temperature: hourly.temperature_2m?.[hour],
+            precipitation: hourly.precipitation?.[hour],
+            probability: hourly.precipitation_probability?.[hour],
+            wind: hourly.wind_speed_10m?.[hour],
+            direction: hourly.wind_direction_10m?.[hour]
           };
         })
-      }));
+      });
+    }
 
-    $('climag-slider').max =
-      Math.max(0, state.forecast.length - 1);
+    state.selectedHour = 0;
+
+    $('climag-slider').max = Math.max(0, hours - 1);
+    $('climag-slider').value = 0;
 
     $('climag-start').textContent =
       formatTime(state.forecast[0].time);
 
     $('climag-end').textContent =
-      formatTime(state.forecast[state.forecast.length - 1].time);
-
-    state.selectedHour = 0;
-    $('climag-slider').value = 0;
+      formatTime(state.forecast[hours - 1].time);
   }
 
-  // ----------------------------------------------------------
-  // FORMATO DE FECHAS
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // FORMATO
+  // ------------------------------------------------------------
 
   function formatTime(value) {
-    const time = String(value).split('T')[1];
-    return time ? time.slice(0, 5) : '--:--';
+    const part = String(value).split('T')[1];
+    return part ? part.slice(0, 5) : '--:--';
   }
 
-  function formatDateTime(value) {
-    const [date, time] = String(value).split('T');
+  function formatDate(value) {
+    const parts = String(value).split('T');
+    if (parts.length < 2) return value;
 
-    if (!date || !time) return value;
-
-    const [year, month, day] = date.split('-');
-
-    return `${day}/${month} · ${time.slice(0, 5)}`;
+    const date = parts[0].split('-');
+    return `${date[2]}/${date[1]} · ${parts[1].slice(0, 5)}`;
   }
 
-  // ----------------------------------------------------------
-  // COLORES METEOROLÓGICOS
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // CAPAS DE CALOR
+  // ------------------------------------------------------------
 
-  function temperatureColor(value) {
-    if (value < 0) return '#6489ed';
-    if (value < 10) return '#55b8e5';
-    if (value < 20) return '#55bd9b';
-    if (value < 30) return '#efb75c';
-    return '#e96e61';
+  function drawHeatLayer(name, points, maximum) {
+    const layer = state.layers[name];
+    layer.clearLayers();
+
+    const heatPoints = points
+      .filter(p => Number.isFinite(p.value))
+      .map(p => [
+        p.lat,
+        p.lon,
+        Math.max(0.03, Math.min(1, p.value / maximum))
+      ]);
+
+    if (!heatPoints.length) return;
+
+    L.heatLayer(heatPoints, {
+      radius: 58,
+      blur: 48,
+      maxZoom: 11,
+      minOpacity: 0.28,
+      max: 1,
+      gradient: GRADIENTS[name]
+    }).addTo(layer);
   }
 
-  function rainColor(value) {
-    if (value < 0.5) return '#8fc9e9';
-    if (value < 2) return '#50a9e1';
-    if (value < 5) return '#367ed0';
-    if (value < 10) return '#655acb';
-    return '#a04fc2';
+  // ------------------------------------------------------------
+  // FLECHAS DE VIENTO
+  // ------------------------------------------------------------
+
+  function drawWindArrows(points) {
+    const layer = state.layers.wind;
+
+    points.forEach((point, index) => {
+      if (index % 2 !== 0) return;
+      if (!Number.isFinite(point.direction)) return;
+
+      const arrow = L.divIcon({
+        className: '',
+        html: `
+          <div class="climag-wind-arrow"
+            style="transform:rotate(${point.direction}deg)">
+            ↑
+          </div>
+        `,
+        iconSize: [22, 22],
+        iconAnchor: [11, 11]
+      });
+
+      L.marker([point.lat, point.lon], {
+        icon: arrow,
+        interactive: false,
+        keyboard: false
+      }).addTo(layer);
+    });
   }
 
-  function windColor(value) {
-    if (value < 10) return '#65c99e';
-    if (value < 25) return '#49b8b8';
-    if (value < 40) return '#e4b35b';
-    return '#e66d65';
-  }
-
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
   // DIBUJAR PRONÓSTICO
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
 
   function drawForecast() {
     const frame = state.forecast[state.selectedHour];
     if (!frame) return;
 
-    const layer = state.layers[state.currentLayer];
-    if (!layer) return;
+    const name = state.currentLayer;
 
-    layer.clearLayers();
+    if (!['rain', 'temp', 'wind'].includes(name)) return;
 
-    frame.points.forEach(point => {
+    let maximum = 1;
+
+    const points = frame.points.map(point => {
       let value;
-      let unit;
-      let color;
-      let label;
 
-      if (state.currentLayer === 'rain') {
+      if (name === 'rain') {
         value = point.precipitation;
-        unit = 'mm/h';
-        color = rainColor(value || 0);
-        label = 'Precipitación horaria';
-      } else if (state.currentLayer === 'temp') {
+        maximum = 15;
+      } else if (name === 'temp') {
         value = point.temperature;
-        unit = '°C';
-        color = temperatureColor(value ?? 0);
-        label = 'Temperatura';
-      } else if (state.currentLayer === 'wind') {
+        maximum = 40;
+      } else {
         value = point.wind;
-        unit = 'km/h';
-        color = windColor(value || 0);
-        label = 'Velocidad del viento';
+        maximum = 60;
       }
 
-      if (!Number.isFinite(value)) return;
+      return { ...point, value };
+    });
 
-      const circle = L.circle(
-        [point.lat, point.lon],
-        {
-          radius: 19000,
-          color,
-          fillColor: color,
-          fillOpacity: 0.38,
-          weight: 1
-        }
-      );
+    drawHeatLayer(name, points, maximum);
 
-      circle.bindPopup(`
-        <strong>${label}</strong><br>
-        ${value} ${unit}<br>
-        Probabilidad de lluvia:
-        ${point.probability ?? 'Sin datos'}%<br>
+    if (name === 'wind') {
+      drawWindArrows(frame.points);
+    }
+
+    frame.points.forEach(point => {
+      const content = `
+        <strong>${LAYER_NAMES[name]}</strong><br>
+        Temperatura: ${point.temperature ?? '--'} °C<br>
+        Precipitación: ${point.precipitation ?? '--'} mm/h<br>
+        Probabilidad: ${point.probability ?? '--'}%<br>
         Viento: ${point.wind ?? '--'} km/h<br>
         Dirección: ${point.direction ?? '--'}°<br>
         <small>Open-Meteo · ${formatTime(frame.time)}</small>
-      `);
+      `;
 
-      circle.addTo(layer);
+      L.circleMarker([point.lat, point.lon], {
+        radius: 2,
+        stroke: false,
+        fillOpacity: 0
+      }).bindPopup(content).addTo(state.layers[name]);
     });
   }
 
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
   // CALIDAD DEL AIRE
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
 
   async function loadAir() {
-    const center = coordinates();
-    const points = makeGrid(center.lat, center.lon);
+    const center = getCenter();
+    const points = createGrid(center.lat, center.lon);
 
-    const latitudes = points.map(p => p.lat).join(',');
-    const longitudes = points.map(p => p.lon).join(',');
+    const lat = points.map(p => p.lat).join(',');
+    const lon = points.map(p => p.lon).join(',');
 
     const url =
       'https://air-quality-api.open-meteo.com/v1/air-quality' +
-      `?latitude=${latitudes}` +
-      `&longitude=${longitudes}` +
+      `?latitude=${lat}&longitude=${lon}` +
       '&current=european_aqi,pm2_5,pm10&timezone=auto';
 
     const data = await fetchJSON(url);
-    const layer = state.layers.air;
 
-    layer.clearLayers();
+    const values = points.map((point, index) => {
+      const current = itemAt(data, index)?.current || {};
 
-    points.forEach((point, index) => {
-      const item = getPointData(data, index);
-      const current = item?.current;
-      const aqi = current?.european_aqi;
-
-      if (!Number.isFinite(aqi)) return;
-
-      const color = aqi <= 20 ? '#55b98c'
-        : aqi <= 40 ? '#a9c85c'
-        : aqi <= 60 ? '#e4c35a'
-        : aqi <= 80 ? '#e79550'
-        : '#d65e5e';
-
-      L.circle([point.lat, point.lon], {
-        radius: 19000,
-        color,
-        fillColor: color,
-        fillOpacity: 0.42,
-        weight: 1
-      }).bindPopup(`
-        <strong>Calidad del aire</strong><br>
-        Índice europeo: ${aqi}<br>
-        PM2.5: ${current.pm2_5 ?? '--'} µg/m³<br>
-        PM10: ${current.pm10 ?? '--'} µg/m³<br>
-        <small>Open-Meteo Air Quality</small>
-      `).addTo(layer);
+      return {
+        ...point,
+        value: current.european_aqi,
+        pm25: current.pm2_5,
+        pm10: current.pm10
+      };
     });
 
-    status('Calidad del aire · Índice europeo · Open-Meteo');
+    drawHeatLayer('air', values, 100);
+
+    values.forEach(point => {
+      if (!Number.isFinite(point.value)) return;
+
+      L.circleMarker([point.lat, point.lon], {
+        radius: 3,
+        stroke: false,
+        fillOpacity: 0
+      }).bindPopup(`
+        <strong>Calidad del aire</strong><br>
+        Índice europeo: ${point.value}<br>
+        PM2.5: ${point.pm25 ?? '--'} µg/m³<br>
+        PM10: ${point.pm10 ?? '--'} µg/m³<br>
+        <small>Open-Meteo Air Quality</small>
+      `).addTo(state.layers.air);
+    });
+
+    setStatus('Calidad del aire · Open-Meteo');
   }
 
-  // ----------------------------------------------------------
-  // SISMOS USGS
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // SISMOS
+  // ------------------------------------------------------------
 
   async function loadEarthquakes() {
     const url =
@@ -553,43 +731,57 @@
 
       if (!Number.isFinite(magnitude)) return;
 
-      const color = magnitude >= 5 ? '#d84c4c'
-        : magnitude >= 3 ? '#e5a04e'
-        : '#e4c35a';
+      const color = magnitude >= 5
+        ? '#d94e4e'
+        : magnitude >= 3
+          ? '#e69c4e'
+          : '#e3c45b';
 
-      L.circleMarker([lat, lon], {
-        radius: Math.max(5, Math.min(16, magnitude * 2.3)),
-        color,
+      const marker = L.circleMarker([lat, lon], {
+        radius: Math.max(5, Math.min(17, magnitude * 2.5)),
+        color: '#fff',
+        weight: 2,
         fillColor: color,
-        fillOpacity: 0.78,
-        weight: 1
-      }).bindPopup(`
+        fillOpacity: 0.9
+      });
+
+      marker.bindPopup(`
         <strong>Sismo M${magnitude.toFixed(1)}</strong><br>
-        Lugar: ${escapeHTML(properties.place || 'Desconocido')}<br>
+        ${escapeHTML(properties.place || 'Lugar desconocido')}<br>
         Profundidad: ${Number(depth).toFixed(1)} km<br>
         Fecha: ${properties.time
           ? new Date(properties.time).toLocaleString()
           : 'Sin fecha'}<br>
         <small>USGS · Últimas 24 horas</small>
-      `).addTo(layer);
+      `);
+
+      marker.addTo(layer);
     });
 
-    status(
+    setStatus(
       `${(data.features || []).length} eventos · USGS · Últimas 24 horas`
     );
   }
 
-  // ----------------------------------------------------------
-  // LÍNEA DE TIEMPO
-  // ----------------------------------------------------------
+  function escapeHTML(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    })[char]);
+  }
 
-  function renderSelectedHour() {
+  // ------------------------------------------------------------
+  // LÍNEA DE TIEMPO
+  // ------------------------------------------------------------
+
+  function renderHour() {
     const frame = state.forecast[state.selectedHour];
     if (!frame) return;
 
-    $('climag-hour').textContent =
-      formatDateTime(frame.time);
-
+    $('climag-hour').textContent = formatDate(frame.time);
     $('climag-slider').value = state.selectedHour;
 
     if (['rain', 'temp', 'wind'].includes(state.currentLayer)) {
@@ -600,15 +792,13 @@
   function stopAnimation() {
     state.playing = false;
 
-    if (state.animation) {
-      clearInterval(state.animation);
-      state.animation = null;
+    if (state.timer) {
+      clearInterval(state.timer);
+      state.timer = null;
     }
 
-    const button = $('climag-play');
-
-    if (button) {
-      button.textContent = '▶ Reproducir';
+    if ($('climag-play')) {
+      $('climag-play').textContent = '▶ Reproducir';
     }
   }
 
@@ -624,78 +814,85 @@
     state.playing = true;
     $('climag-play').textContent = 'Ⅱ Pausar';
 
-    state.animation = setInterval(() => {
+    state.timer = setInterval(() => {
       state.selectedHour++;
 
       if (state.selectedHour >= state.forecast.length) {
         state.selectedHour = 0;
       }
 
-      renderSelectedHour();
+      renderHour();
     }, CONFIG.animationSpeed);
   }
 
-  // ----------------------------------------------------------
-  // CAMBIAR CAPAS
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // CAMBIO DE CAPAS
+  // ------------------------------------------------------------
 
-  async function changeLayer(layer) {
-    if (!LAYERS[layer] || !state.map) return;
+  async function changeLayer(name) {
+    if (!LAYER_NAMES[name] || !state.map) return;
 
     stopAnimation();
 
-    state.currentLayer = layer;
+    state.currentLayer = name;
 
     Object.keys(state.layers).forEach(key => {
       state.map.removeLayer(state.layers[key]);
     });
 
-    state.layers[layer].addTo(state.map);
+    state.layers[name].addTo(state.map);
 
     document.querySelectorAll('.map-btn').forEach(button => {
-      button.classList.toggle(
-        'active',
-        button.dataset.layer === layer ||
-        button.getAttribute('onclick')?.includes(`'${layer}'`)
-      );
+      const selected =
+        button.dataset.layer === name ||
+        button.getAttribute('onclick')?.includes(`'${name}'`);
+
+      button.classList.toggle('active', Boolean(selected));
     });
 
-    // Mantener visible el estado incluso en aire y sismos.
-    const controls = $('climag-timeline-controls');
+    const timelineControls = $('climag-topline');
 
-    if (controls) {
-      controls.style.display =
-        layer === 'air' || layer === 'quakes' ? 'none' : '';
+    if (timelineControls) {
+      timelineControls.style.display =
+        name === 'air' || name === 'quakes' ? 'none' : '';
     }
 
+    const slider = $('climag-slider');
+
+    if (slider) {
+      slider.style.display =
+        name === 'air' || name === 'quakes' ? 'none' : '';
+    }
+
+    updateLegend(name);
+
     try {
-      if (layer === 'air') {
-        status('Consultando calidad del aire...');
+      if (name === 'air') {
+        setStatus('Consultando calidad del aire...');
         await loadAir();
 
-      } else if (layer === 'quakes') {
-        status('Consultando sismos...');
+      } else if (name === 'quakes') {
+        setStatus('Consultando sismos...');
         await loadEarthquakes();
 
       } else {
         if (!state.forecast.length) {
-          status('Descargando pronóstico...');
+          setStatus('Descargando pronóstico...');
           await loadForecast();
         }
 
-        renderSelectedHour();
-        status('Pronóstico horario · Open-Meteo');
+        renderHour();
+        setStatus('Pronóstico horario · Open-Meteo');
       }
-
     } catch (error) {
       console.error('[Clima G] Error de capa:', error);
-      status('No se pudieron cargar los datos de esta capa.', true);
+      setStatus('No se pudieron cargar los datos.', true);
     }
   }
 
-  // ----------------------------------------------------------
-  // INICIALIZAR MAPA
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
+  // INICIALIZACIÓN
+  // ------------------------------------------------------------
 
   async function inicializarMapaClima() {
     if (state.loading) return;
@@ -704,101 +901,78 @@
 
     try {
       prepareInterface();
+      setStatus('Preparando mapa meteorológico...');
 
-      status('Iniciando mapa...');
-
-      await loadLeaflet();
+      await loadLibraries();
 
       createMap();
 
-      const center = coordinates();
-
-      state.map.setView(
-        [center.lat, center.lon],
-        7
-      );
+      const center = getCenter();
+      state.map.setView([center.lat, center.lon], CONFIG.zoom);
 
       if (!state.forecast.length) {
-        status('Descargando pronóstico horario...');
         await loadForecast();
       }
 
       await changeLayer(state.currentLayer);
 
       setTimeout(() => {
-        if (state.map) {
-          state.map.invalidateSize();
-        }
+        if (state.map) state.map.invalidateSize();
       }, 250);
 
-      state.lastUpdate = Date.now();
-
     } catch (error) {
-      console.error('[Clima G] Error al iniciar mapa:', error);
-      status(
-        'No se pudo iniciar el mapa. Revisá la conexión.',
-        true
-      );
+      console.error('[Clima G] Error de inicialización:', error);
+      setStatus('No se pudo iniciar el mapa. Revisá la conexión.', true);
 
     } finally {
       state.loading = false;
     }
   }
 
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
   // ACTUALIZAR UBICACIÓN
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
 
   async function actualizarCentroMapaClima(lat, lon) {
     lat = Number(lat);
     lon = Number(lon);
 
-    if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-      return;
-    }
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return;
 
-    // Guardar la nueva ubicación para todas las capas.
     state.center = { lat, lon };
-
     state.forecast = [];
     state.selectedHour = 0;
-
-    if (!state.map) return;
-
-    state.map.setView([lat, lon], 7);
+    state.requestId++;
 
     stopAnimation();
 
+    if (!state.map) return;
+
+    state.map.setView([lat, lon], CONFIG.zoom);
+
+    const request = state.requestId;
+
     try {
-      status('Actualizando ubicación...');
+      setStatus('Actualizando ubicación...');
 
       await loadForecast();
 
+      if (request !== state.requestId) return;
+
       await changeLayer(state.currentLayer);
 
-      state.lastUpdate = Date.now();
-
     } catch (error) {
-      console.error(
-        '[Clima G] Error al cambiar ubicación:',
-        error
-      );
-
-      status('No se pudo actualizar la ubicación.', true);
+      console.error('[Clima G] Error de ubicación:', error);
+      setStatus('No se pudo actualizar la ubicación.', true);
     }
   }
 
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
   // API PÚBLICA
-  // ----------------------------------------------------------
+  // ------------------------------------------------------------
 
-  window.inicializarMapaClima =
-    inicializarMapaClima;
-
-  window.actualizarCentroMapaClima =
-    actualizarCentroMapaClima;
-
-  window.cambiarCapaMapa =
-    changeLayer;
+  window.inicializarMapaClima = inicializarMapaClima;
+  window.actualizarCentroMapaClima = actualizarCentroMapaClima;
+  window.cambiarCapaMapa = changeLayer;
 
 })();
