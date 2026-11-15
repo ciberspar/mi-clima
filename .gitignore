@@ -1,6 +1,15 @@
-# Reportes de rendimiento
-.lighthouseci/
+# Secretos locales
+claves.env
+.env
+.env.*
+!.env.example
 
-# Archivos del sistema operativo
+# Dependencias
+node_modules/
+
+reportes
+lighthouse/
+
+# Archivos temporales
+*.log
 .DS_Store
-Thumbs.db
