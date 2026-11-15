@@ -1,6 +1,7 @@
 
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
+import { evaluarClima } from "../../docs/clima-g-core.mjs";
 
 export const config = {
   schedule: "0 * * * *"
@@ -13,50 +14,7 @@ const TAMANO_LOTE = 20;
 const CONCURRENCIA_LOTES = 2;
 const CONCURRENCIA_PUSH = 4;
 
-function obtenerAlerta(clima) {
-  const actual = clima?.current;
-  if (!actual) return null;
-
-  const codigo = Number(actual.weather_code);
-  const viento = Number(actual.wind_speed_10m);
-  const temperatura = Number(actual.temperature_2m);
-
-  if ([95, 96, 99].includes(codigo)) {
-    return {
-      id: `tormenta-${codigo}`,
-      title: "⛈️ Alerta meteorológica - Clima G",
-      body: "Se detectó una tormenta eléctrica en tu zona."
-    };
-  }
-
-  if (Number.isFinite(viento) && viento >= 60) {
-    return {
-      id: "viento-fuerte",
-      title: "🌬️ Alerta meteorológica - Clima G",
-      body: `Se detectó viento fuerte: ${Math.round(viento)} km/h.`
-    };
-  }
-
-  if (Number.isFinite(temperatura) && temperatura >= 40) {
-    return {
-      id: "temperatura-alta",
-      title: "🌡️ Alerta meteorológica - Clima G",
-      body: `Temperatura elevada: ${Math.round(temperatura)} °C.`
-    };
-  }
-
-  if (Number.isFinite(temperatura) && temperatura <= -5) {
-    return {
-      id: "temperatura-baja",
-      title: "❄️ Alerta meteorológica - Clima G",
-      body: `Temperatura muy baja: ${Math.round(temperatura)} °C.`
-    };
-  }
-
-  return null;
-}
-
-async function ejecutarConLimite(items, limite, tarea) {
+function ejecutarConLimite(items, limite, tarea) {
   let indice = 0;
 
   const trabajadores = Array.from(
@@ -69,12 +27,13 @@ async function ejecutarConLimite(items, limite, tarea) {
     }
   );
 
-  await Promise.all(trabajadores);
+  return Promise.all(trabajadores);
 }
 
 function claveUbicacion(dispositivo) {
   const lat = Number(dispositivo.latitude).toFixed(4);
   const lon = Number(dispositivo.longitude).toFixed(4);
+
   return `${lat},${lon}`;
 }
 
@@ -96,12 +55,19 @@ async function consultarClima(grupos) {
     "temperature_2m,wind_speed_10m,weather_code"
   );
 
+  url.searchParams.set(
+    "daily",
+    "precipitation_sum,uv_index_max"
+  );
+
   url.searchParams.set("wind_speed_unit", "kmh");
   url.searchParams.set("timezone", "auto");
 
   const response = await fetch(url, {
-    signal: AbortSignal.timeout(10000),
-    headers: { "Accept": "application/json" }
+    signal: AbortSignal.timeout(15000),
+    headers: {
+      Accept: "application/json"
+    }
   });
 
   if (!response.ok) {
@@ -120,42 +86,130 @@ async function consultarClima(grupos) {
   return resultados;
 }
 
+function obtenerIds(alertas) {
+  return alertas
+    .map(alerta => alerta.id)
+    .sort();
+}
+
+function crearFirma(ids) {
+  return ids.length ? ids.join("|") : null;
+}
+
+function obtenerAlertasNuevas(alertas, idsAnteriores) {
+  const anteriores = new Set(idsAnteriores);
+
+  return alertas.filter(
+    alerta => !anteriores.has(alerta.id)
+  );
+}
+
+function crearMensaje(alertas) {
+  const principales = alertas.slice(0, 3);
+
+  const texto = principales
+    .map(alerta => alerta.message)
+    .join(" ");
+
+  const adicionales = alertas.length - principales.length;
+
+  return adicionales > 0
+    ? `${texto} Y ${adicionales} alertas adicionales.`
+    : texto;
+}
+
 async function procesarDispositivo(
   item,
   dispositivo,
-  alerta,
+  evaluacion,
   contadores
 ) {
   const key = item.key;
+  const alertas = evaluacion.alerts || [];
 
-  if (!alerta) {
-    if (dispositivo.lastAlertSignature != null) {
+  const idsActuales = obtenerIds(alertas);
+  const firmaActual = crearFirma(idsActuales);
+
+  if (alertas.length === 0) {
+    if (
+      dispositivo.lastAlertSignature != null ||
+      Array.isArray(dispositivo.lastAlertIds)
+    ) {
       dispositivo.lastAlertSignature = null;
+      dispositivo.lastAlertIds = [];
       dispositivo.updatedAt = new Date().toISOString();
+
       await store.setJSON(key, dispositivo);
     }
+
     return;
   }
 
-  if (dispositivo.lastAlertSignature === alerta.id) {
+  // Compatibilidad con registros anteriores.
+  const idsAnteriores = Array.isArray(dispositivo.lastAlertIds)
+    ? dispositivo.lastAlertIds
+    : dispositivo.lastAlertSignature
+      ? [dispositivo.lastAlertSignature]
+      : [];
+
+  const alertasNuevas = obtenerAlertasNuevas(
+    alertas,
+    idsAnteriores
+  );
+
+  // No repetir notificaciones de alertas que ya estaban activas.
+  if (alertasNuevas.length === 0) {
+    if (firmaActual !== dispositivo.lastAlertSignature) {
+      dispositivo.lastAlertSignature = firmaActual;
+      dispositivo.lastAlertIds = idsActuales;
+      dispositivo.updatedAt = new Date().toISOString();
+
+      await store.setJSON(key, dispositivo);
+    }
+
     return;
   }
+
+  const principal = alertasNuevas[0];
+
+  const payload = {
+    title: `${principal.emoji} ${principal.title} - Clima G`,
+    body: crearMensaje(alertasNuevas),
+
+    url: "/",
+
+    source: "Clima G",
+    version: evaluacion.version,
+
+    severity: principal.severity,
+    color: principal.color,
+
+    alerts: alertasNuevas.map(alerta => ({
+      id: alerta.id,
+      type: alerta.type,
+      severity: alerta.severity,
+      title: alerta.title,
+      message: alerta.message,
+      emoji: alerta.emoji,
+      color: alerta.color
+    }))
+  };
 
   try {
     await webpush.sendNotification(
       dispositivo.subscription,
-      JSON.stringify({
-        title: alerta.title,
-        body: alerta.body,
-        url: "https://climag.duckdns.org/"
-      }),
-      { TTL: 3600 }
+      JSON.stringify(payload),
+      {
+        TTL: 3600
+      }
     );
 
-    dispositivo.lastAlertSignature = alerta.id;
+    dispositivo.lastAlertSignature = firmaActual;
+    dispositivo.lastAlertIds = idsActuales;
     dispositivo.updatedAt = new Date().toISOString();
 
     await store.setJSON(key, dispositivo);
+
     contadores.enviados++;
 
   } catch (error) {
@@ -163,6 +217,7 @@ async function procesarDispositivo(
 
     if (status === 404 || status === 410) {
       await store.delete(key);
+
       contadores.suscripcionesEliminadas++;
       return;
     }
@@ -192,16 +247,23 @@ export default async () => {
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json"
+        }
       }
     );
   }
 
-  webpush.setVapidDetails(subject, publicKey, privateKey);
+  webpush.setVapidDetails(
+    subject,
+    publicKey,
+    privateKey
+  );
 
   const contadores = {
     dispositivosRevisados: 0,
     ubicacionesConsultadas: 0,
+    alertasEvaluadas: 0,
     enviados: 0,
     suscripcionesEliminadas: 0,
     errores: 0
@@ -234,14 +296,19 @@ export default async () => {
             dispositivo.longitude > 180
           ) {
             contadores.errores++;
+
             console.error(
               "Registro de dispositivo inválido:",
               item.key
             );
+
             return;
           }
 
-          dispositivos.push({ item, dispositivo });
+          dispositivos.push({
+            item,
+            dispositivo
+          });
 
         } catch (error) {
           contadores.errores++;
@@ -255,6 +322,7 @@ export default async () => {
       }
     );
 
+    // Agrupar dispositivos que comparten ubicación.
     const gruposPorUbicacion = new Map();
 
     for (const registro of dispositivos) {
@@ -270,7 +338,8 @@ export default async () => {
 
       gruposPorUbicacion
         .get(id)
-        .dispositivos.push(registro);
+        .dispositivos
+        .push(registro);
     }
 
     const grupos = Array.from(
@@ -293,13 +362,14 @@ export default async () => {
 
         try {
           climas = await consultarClima(lote);
+
           contadores.ubicacionesConsultadas += lote.length;
 
         } catch (error) {
           contadores.errores += lote.length;
 
           console.error(
-            "Error consultando un lote meteorológico:",
+            "Error consultando datos meteorológicos:",
             error?.message || error
           );
 
@@ -308,7 +378,13 @@ export default async () => {
 
         for (let i = 0; i < lote.length; i++) {
           const grupo = lote[i];
-          const alerta = obtenerAlerta(climas[i]);
+          const clima = climas[i];
+
+          // ÚNICO motor que decide las alertas.
+          const evaluacion = evaluarClima(clima);
+
+          contadores.alertasEvaluadas +=
+            evaluacion.alertCount;
 
           await ejecutarConLimite(
             grupo.dispositivos,
@@ -320,7 +396,7 @@ export default async () => {
                 await procesarDispositivo(
                   registro.item,
                   registro.dispositivo,
-                  alerta,
+                  evaluacion,
                   contadores
                 );
 
@@ -347,11 +423,14 @@ export default async () => {
     return new Response(
       JSON.stringify({
         success: true,
+        version: "1.0.0",
         ...contadores
       }),
       {
         status: 200,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json"
+        }
       }
     );
 
@@ -369,7 +448,9 @@ export default async () => {
       }),
       {
         status: 500,
-        headers: { "Content-Type": "application/json" }
+        headers: {
+          "Content-Type": "application/json"
+        }
       }
     );
   }
