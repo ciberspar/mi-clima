@@ -1,21 +1,36 @@
-name: Actualizar RGB Clima G
+
+name: Validar Clima G RGB
+
 on:
-  schedule:
-    - cron: '*/15 * * * *'
+  push:
+    paths:
+      - "scripts/generar_rgb.py"
+      - ".github/workflows/update_rgb.yml"
+  pull_request:
+    paths:
+      - "scripts/generar_rgb.py"
+      - ".github/workflows/update_rgb.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  update:
+  validar:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - run: python3 scripts/generar_rgb.py
-      - run: |
-          git config user.name "Clima G Bot"
-          git config user.email "bot@climag.duckdns.org"
-          git add rgb.json
-          git commit -m "Actualizar rgb.json" || exit 0
-          git push
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Comprobar sintaxis
+        run: python -m py_compile scripts/generar_rgb.py
+
+      - name: Ejecutar autopruebas
+        run: python scripts/generar_rgb.py --self-test
+
