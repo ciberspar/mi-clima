@@ -1,19 +1,48 @@
+
 name: 🤖 Auto-responder de Issues
 
 on:
   issues:
-    types: [opened]
+    types:
+      - opened
+
+permissions:
+  issues: write
+
+concurrency:
+  group: issue-responder-${{ github.event.issue.number }}
+  cancel-in-progress: false
 
 jobs:
   responder:
+    name: Responder nuevo Issue
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
+    timeout-minutes: 2
+
     steps:
-      - name: Comentar automáticamente en el Issue
-        uses: peter-evans/create-issue-response@v3
+      - name: Enviar respuesta automática
+        uses: actions/github-script@v7
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          issue-number: ${{ github.event.issue.number }}
-          body: |
-            Gracias por este comentario 🐢🐢🫃🏻🇺🇸👹🫃🏻🫃🏻
+          script: |
+            const issue = context.payload.issue;
+
+            if (!issue) {
+              core.setFailed("No se encontró el Issue.");
+              return;
+            }
+
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issue.number,
+              body: [
+                "¡Gracias por comunicarte con Clima G! 🐢🌦️",
+                "",
+                "Tu Issue fue recibido correctamente.",
+                "Nuestro equipo revisará tu reporte o sugerencia.",
+                "",
+                "¡Gracias por ayudar a mejorar Clima G!"
+              ].join("\n")
+            });
+
+            console.log(`Respuesta enviada al Issue #${issue.number}.`);
