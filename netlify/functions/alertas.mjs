@@ -1,7 +1,7 @@
 
 import { getStore } from "@netlify/blobs";
 import webpush from "web-push";
-import { evaluarClima } from "../../docs/clima-g-core.mjs";
+import { evaluarClima } from "./clima-g-core.mjs";
 
 export const config = {
   schedule: "0 * * * *"
@@ -130,6 +130,7 @@ async function procesarDispositivo(
   const idsActuales = obtenerIds(alertas);
   const firmaActual = crearFirma(idsActuales);
 
+  // Si no hay alertas, no enviar notificaciones.
   if (alertas.length === 0) {
     if (
       dispositivo.lastAlertSignature != null ||
@@ -157,7 +158,7 @@ async function procesarDispositivo(
     idsAnteriores
   );
 
-  // No repetir notificaciones de alertas que ya estaban activas.
+  // No repetir alertas que ya estaban activas.
   if (alertasNuevas.length === 0) {
     if (firmaActual !== dispositivo.lastAlertSignature) {
       dispositivo.lastAlertSignature = firmaActual;
@@ -175,12 +176,9 @@ async function procesarDispositivo(
   const payload = {
     title: `${principal.emoji} ${principal.title} - Clima G`,
     body: crearMensaje(alertasNuevas),
-
     url: "/",
-
     source: "Clima G",
     version: evaluacion.version,
-
     severity: principal.severity,
     color: principal.color,
 
@@ -380,7 +378,7 @@ export default async () => {
           const grupo = lote[i];
           const clima = climas[i];
 
-          // ÚNICO motor que decide las alertas.
+          // Único motor que decide las alertas.
           const evaluacion = evaluarClima(clima);
 
           contadores.alertasEvaluadas +=
