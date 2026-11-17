@@ -1,34 +1,62 @@
-name: Lighthouse CI
+
+name: 🔎 Lighthouse - Rendimiento Clima G
 
 on:
   push:
-    branches: [ "main", "master" ]
+    branches:
+      - main
+      - master
+
+  pull_request:
+    branches:
+      - main
+      - master
+
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: lighthouse-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lighthouse:
+    name: Auditar página web
     runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+    timeout-minutes: 15
 
-      - name: Use Node.js
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "22"
 
-      - name: Install Lighthouse CI
-        run: npm install -g @lhci/cli
-
-      - name: Run Lighthouse Audit
+      - name: Comprobar página principal
         run: |
-          # Audita directamente la carpeta docs localmente antes de publicar
-          lhci collect --static-dist-dir=docs
+          test -f docs/index.html
+          echo "Página principal encontrada."
 
-      - name: Upload Lighthouse Report Artifacts
+      - name: Instalar Lighthouse CI
+        run: npm install --global @lhci/cli@0.15.x
+
+      - name: Ejecutar auditoría
+        run: |
+          lhci collect \
+            --staticDistDir=docs \
+            --numberOfRuns=1 \
+            --maxAutodiscoverUrls=10 \
+            --staticDirFileDiscoveryDepth=4
+
+      - name: Guardar informes
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-report
           path: .lighthouseci/
+          if-no-files-found: warn
           retention-days: 30
