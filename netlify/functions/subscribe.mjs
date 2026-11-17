@@ -6,7 +6,9 @@ const store = getStore("clima-g-suscripciones");
 
 const ORIGENES_PERMITIDOS = new Set([
   "https://ciberspar.github.io",
-  "https://climag.duckdns.org"
+  "https://climag.duckdns.org",
+  "https://www.climag.duckdns.org",
+  "https://radiant-meringue-1bb8c2.netlify.app"
 ]);
 
 function responder(status, data, origin = "") {
@@ -31,11 +33,24 @@ function responder(status, data, origin = "") {
 export default async (request) => {
   const origin = request.headers.get("origin") || "";
 
-  if (!ORIGENES_PERMITIDOS.has(origin)) {
-    return responder(403, { error: "Origen no autorizado." });
+  // GET sin Origin permite comprobar la clave pública
+  // desde la barra de direcciones del navegador.
+  if (
+    origin &&
+    !ORIGENES_PERMITIDOS.has(origin)
+  ) {
+    return responder(403, {
+      error: "Origen no autorizado."
+    });
   }
 
   if (request.method === "OPTIONS") {
+    if (!ORIGENES_PERMITIDOS.has(origin)) {
+      return responder(403, {
+        error: "Origen no autorizado."
+      });
+    }
+
     return responder(204, {}, origin);
   }
 
@@ -51,8 +66,17 @@ export default async (request) => {
     return responder(200, { publicKey }, origin);
   }
 
+  // POST siempre exige un origen autorizado.
+  if (!ORIGENES_PERMITIDOS.has(origin)) {
+    return responder(403, {
+      error: "Origen no autorizado."
+    });
+  }
+
   if (request.method !== "POST") {
-    return responder(405, { error: "Método no permitido." }, origin);
+    return responder(405, {
+      error: "Método no permitido."
+    }, origin);
   }
 
   try {
@@ -123,7 +147,10 @@ export default async (request) => {
     }, origin);
 
   } catch (error) {
-    console.error("Error registrando suscripción Push:", error);
+    console.error(
+      "Error registrando suscripción Push:",
+      error
+    );
 
     return responder(500, {
       error: "No se pudo registrar el dispositivo. Revisá la configuración de Netlify Blobs."
