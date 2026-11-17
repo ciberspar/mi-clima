@@ -7,9 +7,6 @@ claves.env
 # Dependencias
 node_modules/
 
-reportes
-lighthouse/
-
 # Archivos temporales
 *.log
 .DS_Store
