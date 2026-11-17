@@ -1,30 +1,84 @@
-name: 🚀 Monitoreo Web Push y Resumen de Baco
+
+name: 🌦️ Clima Alerta - Validación
 
 on:
-  schedule:
-    # Corre cada 20 minutos (minutos 0, 20, 40 de cada hora)
-    - cron: '0,20,40 * * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/alertas.mjs"
+      - "netlify/functions/clima-g-core.mjs"
+      - ".github/workflows/clima-alerta.yml"
+
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "netlify/functions/alertas.mjs"
+      - "netlify/functions/clima-g-core.mjs"
+      - ".github/workflows/clima-alerta.yml"
+
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+concurrency:
+  group: clima-alerta-validacion
+  cancel-in-progress: true
+
 jobs:
-  enviar-push:
+  validar:
+    name: Comprobar sistema de alertas
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
-      - name: 📥 Clonar repositorio
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: ⚙️ Configurar Node.js
+      - name: Preparar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: "22"
 
-      - name: 📦 Instalar dependencias necesarias
+      - name: Comprobar sintaxis
         run: |
-          npm install web-push
+          node --check netlify/functions/alertas.mjs
+          node --check netlify/functions/clima-g-core.mjs
 
-      - name: 🌤️ Consultar Clima y Enviar Web Push Nativo
-        env:
-          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+      - name: Verificar integración de alertas
         run: |
-          node .github/scripts/send-push.js
+          python3 - <<'PY'
+          from pathlib import Path
+
+          archivo = Path("netlify/functions/alertas.mjs")
+          codigo = archivo.read_text(encoding="utf-8")
+
+          comprobaciones = {
+              "Programación horaria de Netlify":
+                  'schedule: "0 * * * *"' in codigo,
+              "Motor meteorológico":
+                  "evaluarClima" in codigo,
+              "Sistema Web Push":
+                  "webpush.sendNotification(" in codigo,
+              "Almacenamiento de suscripciones":
+                  'getStore("clima-g-suscripciones")' in codigo,
+              "Control de alertas nuevas":
+                  "obtenerAlertasNuevas" in codigo
+          }
+
+          errores = []
+
+          for nombre, resultado in comprobaciones.items():
+              print(("OK" if resultado else "ERROR") + " - " + nombre)
+              if not resultado:
+                  errores.append(nombre)
+
+          if errores:
+              raise SystemExit(
+                  "Fallaron las comprobaciones: " + ", ".join(errores)
+              )
+
+          print("Todas las comprobaciones finalizaron correctamente.")
+          PY
