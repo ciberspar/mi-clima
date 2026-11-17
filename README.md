@@ -68,7 +68,7 @@ Características:
 
 ---
 
-## 🤖 2. Automatización y Robots (GitHub Actions)
+## 🤖 2. Esclavos trabajadores (GitHub Actions)
 
 Clima G utiliza seis workflows automatizados en `.github/workflows/`.
 
