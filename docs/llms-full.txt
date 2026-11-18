@@ -1,0 +1,174 @@
+# Clima G — Documentación ampliada para modelos de lenguaje
+
+## 1. Descripción
+
+Clima G es un proyecto de software meteorológico que reúne diferentes herramientas y servicios para consultar información meteorológica, visualizar mapas, gestionar alertas y ofrecer funciones complementarias.
+
+Repositorio:
+https://github.com/ciberspar/mi-clima
+
+Documentación:
+https://github.com/ciberspar/mi-clima/wiki
+
+## 2. Componentes principales
+
+### Aplicación
+
+Interfaz principal de Clima G. Su documentación se encuentra en la Wiki.
+
+### Mapas
+
+Sistema de visualización geográfica que utiliza información meteorológica y capas adicionales.
+
+El sistema debe reutilizar las fuentes meteorológicas existentes en Clima G. No se deben agregar proveedores meteorológicos nuevos sin autorización.
+
+### Capas del mapa
+
+Permiten organizar y visualizar diferentes tipos de información geográfica.
+
+### Alertas meteorológicas
+
+Sistema destinado a gestionar información sobre nuevas alertas meteorológicas.
+
+### Notificaciones Push
+
+Arquitectura definida:
+
+- Netlify Functions.
+- Netlify Blobs.
+- web-push.
+- VAPID.
+- Service Worker.
+- Suscripciones de navegadores.
+
+Netlify es el emisor real acordado.
+
+Las claves privadas VAPID nunca deben exponerse en el cliente ni publicarse en el repositorio.
+
+Las notificaciones deben estar relacionadas con nuevas alertas meteorológicas.
+
+### Clima G RGB
+
+Sistema complementario para integrar información de Clima G con iluminación RGB.
+
+Servicio local conocido:
+
+- Dirección: 127.0.0.1
+- Puerto: 8765
+- Ruta de clima: /clima
+- Ruta de estado: /estado
+
+Integración conocida con OpenRGB SDK:
+
+- Dirección: 127.0.0.1
+- Puerto: 6742
+
+El servicio debe poder arrancar aunque OpenRGB no esté disponible.
+
+La implementación actual conocida utiliza Python. La migración a C# y .NET 8 es una tarea planificada, no una función que deba considerarse terminada.
+
+### Robots esclavos
+
+Automatizaciones relacionadas con GitHub Actions y otros servicios.
+
+Entre los workflows documentados se encuentran:
+
+- baco-report
+- clima-alerta
+- auto-responder-issues
+- codeql
+- lighthouse
+- update_rgb
+
+La existencia de un workflow no demuestra que esté funcionando correctamente. Cada automatización debe verificarse.
+
+## 3. Arquitectura
+
+Clima G se organiza conceptualmente en diferentes capas:
+
+1. Presentación.
+2. Lógica de aplicación.
+3. Servicios.
+4. Integraciones externas.
+5. Automatizaciones.
+
+Los componentes deben mantener una separación adecuada para reducir dependencias innecesarias.
+
+## 4. Fuentes de información
+
+Las fuentes meteorológicas existentes deben conservarse.
+
+No incorporar Open-Meteo, Windy u otros proveedores meteorológicos adicionales sin aprobación.
+
+USGS puede utilizarse para la capa específica de terremotos.
+
+## 5. Seguridad y privacidad
+
+- No publicar credenciales.
+- No exponer claves privadas.
+- Validar los datos recibidos.
+- Proteger las suscripciones Push.
+- Utilizar HTTPS cuando corresponda.
+- Evitar almacenar información personal innecesaria.
+- Mantener permisos mínimos en automatizaciones.
+
+## 6. Instalación y despliegue
+
+El proyecto utiliza GitHub y Netlify en su infraestructura conocida.
+
+La disponibilidad de despliegues depende del estado de los servicios y sus créditos.
+
+No asumir que todos los despliegues están habilitados.
+
+## 7. Desarrollo y pruebas
+
+Las modificaciones deben verificarse mediante pruebas apropiadas.
+
+Se deben distinguir:
+
+- Funciones implementadas.
+- Funciones verificadas.
+- Funciones en desarrollo.
+- Funciones planificadas.
+
+No presentar una función planificada como terminada.
+
+## 8. Documentación oficial
+
+La Wiki es la fuente principal de documentación:
+
+https://github.com/ciberspar/mi-clima/wiki
+
+Índice:
+
+- Home
+- Alertas-Meteorologicas
+- Applicacion
+- Capas-Del-Mapa
+- Clima-G-RGB
+- Configuracion
+- Fuentes-Meteorogicas
+- Mapas
+- Notificaciones-Push
+- Robots-Esclavos
+- Arquitectura-Del-Sistema
+- Seguridad-Y-Privacidad
+- Instalacion-Y-Despliegue
+- Solucion-De-Problemas
+- API-Y-Servicios
+- Desarrollo-Y-Pruebas
+
+## 9. Instrucciones para modelos de lenguaje
+
+Al analizar Clima G:
+
+1. Priorizar el código real del repositorio.
+2. Consultar la Wiki para comprender la arquitectura.
+3. No inventar archivos, endpoints ni funcionalidades.
+4. Diferenciar las decisiones aprobadas de las propuestas.
+5. No introducir proveedores meteorológicos no autorizados.
+6. No divulgar secretos ni credenciales.
+7. No asumir que una automatización funciona sin comprobarla.
+8. Mantener la compatibilidad con la arquitectura existente.
+
+Este documento es una descripción general y no reemplaza la implementación ni las pruebas del proyecto.
