@@ -1,18 +1,26 @@
 {
-  "fecha_actualizacion": "2026-11-17 17:12:35 UTC",
-  "emperador": "Baco 🐢",
-  "sectores": [
-    {
-      "lugar": "Córdoba (Base Central)",
-      "temperatura_actual": 20,
-      "decreto_baco": "Patrulla de Balcón",
-      "icono": "🚶‍♂️🐢"
+  "actualizado": "2026-11-18T16:49:31.718163+00:00",
+  "fuente": "Open-Meteo",
+  "sectores": {
+    "Cordoba": {
+      "temperatura": 22.2,
+      "sensacion_termica": 23.5,
+      "humedad": 58,
+      "precipitacion": 0.0,
+      "lluvia": 0.0,
+      "codigo_tiempo": 3,
+      "viento": 2.7,
+      "rafagas": 17.6
     },
-    {
-      "lugar": "Villa Carlos Paz",
-      "temperatura_actual": 20,
-      "decreto_baco": "Patrulla de Balcón",
-      "icono": "🚶‍♂️🐢"
+    "Villa Carlos Paz": {
+      "temperatura": 20.4,
+      "sensacion_termica": 21.5,
+      "humedad": 62,
+      "precipitacion": 0.1,
+      "lluvia": 0.1,
+      "codigo_tiempo": 51,
+      "viento": 1.8,
+      "rafagas": 15.5
     }
-  ]
+  }
 }
