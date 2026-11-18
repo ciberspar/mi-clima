@@ -1,0 +1,40 @@
+# Clima G
+
+> Clima G es una plataforma meteorológica que integra información del clima, mapas, alertas, notificaciones y herramientas complementarias.
+
+## Información general
+
+- Proyecto: Clima G
+- Repositorio: https://github.com/ciberspar/mi-clima
+- Documentación: https://github.com/ciberspar/mi-clima/wiki
+
+## Documentación oficial
+
+- [Inicio](https://github.com/ciberspar/mi-clima/wiki)
+- [Alertas Meteorológicas](https://github.com/ciberspar/mi-clima/wiki/Alertas-Meteorologicas)
+- [Aplicación](https://github.com/ciberspar/mi-clima/wiki/Applicacion)
+- [Capas del Mapa](https://github.com/ciberspar/mi-clima/wiki/Capas-Del-Mapa)
+- [Clima G RGB](https://github.com/ciberspar/mi-clima/wiki/Clima-G-RGB)
+- [Configuración](https://github.com/ciberspar/mi-clima/wiki/Configuracion)
+- [Fuentes Meteorológicas](https://github.com/ciberspar/mi-clima/wiki/Fuentes-Meteorogicas)
+- [Mapas](https://github.com/ciberspar/mi-clima/wiki/Mapas)
+- [Notificaciones Push](https://github.com/ciberspar/mi-clima/wiki/Notificaciones-Push)
+- [Robots Esclavos](https://github.com/ciberspar/mi-clima/wiki/Robots-Esclavos)
+- [Arquitectura del Sistema](https://github.com/ciberspar/mi-clima/wiki/Arquitectura-Del-Sistema)
+- [Seguridad y Privacidad](https://github.com/ciberspar/mi-clima/wiki/Seguridad-Y-Privacidad)
+- [Instalación y Despliegue](https://github.com/ciberspar/mi-clima/wiki/Instalacion-Y-Despliegue)
+- [Solución de Problemas](https://github.com/ciberspar/mi-clima/wiki/Solucion-De-Problemas)
+- [API y Servicios](https://github.com/ciberspar/mi-clima/wiki/API-Y-Servicios)
+- [Desarrollo y Pruebas](https://github.com/ciberspar/mi-clima/wiki/Desarrollo-Y-Pruebas)
+
+## Principios
+
+- Reutilizar las fuentes meteorológicas ya integradas.
+- No incorporar proveedores meteorológicos sin aprobación.
+- Proteger las credenciales y claves privadas.
+- Mantener separados los servicios independientes.
+- Documentar las funciones verificadas y distinguirlas de las planificadas.
+
+## Documentación ampliada
+
+Consultar `llms-full.txt` para una descripción más extensa.
