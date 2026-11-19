@@ -9,9 +9,11 @@ on:
     paths:
       - "android/**"
       - ".github/workflows/android-native.yml"
+
   pull_request:
     branches:
       - main
+
   workflow_dispatch:
 
 permissions:
@@ -19,7 +21,7 @@ permissions:
 
 jobs:
   build-android:
-    name: Build Clima G APK
+    name: Build Clima G
     runs-on: ubuntu-latest
 
     steps:
@@ -48,11 +50,41 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
+      - name: Diagnose project structure
+        working-directory: android
+        run: |
+          echo "===== DIRECTORY ====="
+          pwd
+
+          echo "===== FILES ====="
+          find . -maxdepth 7 -type f | sort
+
+          echo "===== SETTINGS ====="
+          cat settings.gradle.kts
+
+          echo "===== ROOT BUILD ====="
+          cat build.gradle.kts
+
+          echo "===== APP BUILD ====="
+          cat app/build.gradle.kts
+
+      - name: Diagnose Gradle projects
+        working-directory: android
+        run: |
+          gradle projects --stacktrace
+
+      - name: List Gradle tasks
+        working-directory: android
+        run: |
+          gradle tasks --all
+
       - name: Build debug APK
         working-directory: android
-        run: gradle assembleDebug
+        run: |
+          gradle :app:assembleDebug --stacktrace
 
       - name: Upload Clima G APK
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Clima-G-Android-0.1.0
