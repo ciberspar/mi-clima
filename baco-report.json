@@ -1,26 +1,26 @@
 {
-  "actualizado": "2026-11-19T16:55:55.770659+00:00",
+  "actualizado": "2026-11-19T21:44:43.570408+00:00",
   "fuente": "Open-Meteo",
   "sectores": {
     "Cordoba": {
-      "temperatura": 20.9,
-      "sensacion_termica": 22.5,
-      "humedad": 81,
-      "precipitacion": 0.3,
-      "lluvia": 0.0,
-      "codigo_tiempo": 55,
-      "viento": 6.9,
-      "rafagas": 25.2
+      "temperatura": 20.4,
+      "sensacion_termica": 21.9,
+      "humedad": 86,
+      "precipitacion": 0.1,
+      "lluvia": 0.1,
+      "codigo_tiempo": 51,
+      "viento": 9.7,
+      "rafagas": 23.8
     },
     "Villa Carlos Paz": {
-      "temperatura": 19.0,
+      "temperatura": 18.2,
       "sensacion_termica": 20.1,
-      "humedad": 82,
-      "precipitacion": 0.6,
+      "humedad": 93,
+      "precipitacion": 0.1,
       "lluvia": 0.1,
-      "codigo_tiempo": 80,
-      "viento": 5.7,
-      "rafagas": 21.2
+      "codigo_tiempo": 51,
+      "viento": 3.4,
+      "rafagas": 12.6
     }
   }
 }
