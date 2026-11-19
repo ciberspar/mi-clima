@@ -72,12 +72,6 @@
   button:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #fbbf24;outline-offset:3px;}
   .skip-link{position:fixed;left:12px;top:12px;z-index:9999;padding:10px 14px;background:#fff;color:#0f1730;border-radius:10px;transform:translateY(-160%);}
   .skip-link:focus{transform:translateY(0);}
-  .system-status{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;padding:9px 12px;background:linear-gradient(110deg,#075985,#0284c7 55%,#38bdf8);border-bottom:1px solid rgba(255,255,255,.22);font-size:.72rem;color:#fff;}
-  .status-pill{display:inline-flex;align-items:center;gap:5px;padding:5px 9px;border-radius:999px;background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.24);color:#fff;backdrop-filter:blur(8px);}
-  .status-pill strong{color:#fff;font-weight:800;}
-  .status-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;display:inline-block;}
-  .status-dot.offline{background:#dc2626;}
-  .status-dot.pending{background:#d97706;}
   .install-btn{display:none;background:rgba(255,255,255,.2);color:#fff;border:1px solid rgba(255,255,255,.55);padding:7px 12px;border-radius:999px;font-size:.75rem;font-weight:700;cursor:pointer;margin:8px auto 0;}
   .install-btn.visible{display:inline-flex;}
   .map-note,.integration-note{font-size:.75rem;color:var(--muted);line-height:1.5;padding:10px 12px;background:var(--mist);border-radius:12px;margin:10px 0;}
@@ -401,17 +395,173 @@
   .contacto{text-align:center;font-size:0.75rem;color:var(--muted);padding:0 24px 4px;font-weight: 600;}
   .contacto a{color:var(--sky-600);text-decoration:none;font-weight:700;}
   .footer-info{text-align:center;font-size:0.7rem;color:var(--muted);padding:0 24px 18px;font-weight: 600;}
+
+
+  /* Ajustes específicos para iPhone y otros móviles */
+  @media (max-width: 600px) {
+    .header-actions {
+      top: max(12px, env(safe-area-inset-top));
+      left: 12px;
+      right: 12px;
+      align-items: center;
+      pointer-events: none;
+    }
+    .header-actions .icon-btn {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      min-height: 44px;
+      font-size: 1.35rem;
+      line-height: 1;
+      pointer-events: auto;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+    #btnConfig {
+      font-size: 1.55rem;
+      letter-spacing: 1px;
+      padding-bottom: 3px;
+    }
+
+    .menu-dropdown {
+      position: fixed;
+      top: calc(max(12px, env(safe-area-inset-top)) + 54px);
+      right: 12px;
+      left: auto;
+      width: min(320px, calc(100vw - 24px));
+      max-height: calc(100dvh - max(82px, env(safe-area-inset-top) + 82px));
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 16px;
+      z-index: 1200;
+    }
+    .menu-item {
+      min-height: 48px;
+      padding: 13px 15px;
+      gap: 12px;
+      line-height: 1.35;
+      font-size: 0.9rem;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+    }
+
+    .cities-view {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100vh;
+      height: 100dvh;
+      max-height: 100dvh;
+      padding: calc(12px + env(safe-area-inset-top)) 14px calc(12px + env(safe-area-inset-bottom));
+      overflow: hidden;
+      z-index: 1300;
+    }
+    .cities-header {
+      flex: 0 0 auto;
+      min-height: 52px;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+    .cities-title {
+      font-size: 1.55rem;
+      line-height: 1.2;
+    }
+    .cities-list {
+      min-height: 0;
+      flex: 1 1 auto;
+      padding: 2px 2px 12px;
+      gap: 9px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+    }
+    .city-card-item {
+      min-height: 76px;
+      padding: 13px 12px;
+      gap: 10px;
+      border-radius: 14px;
+      touch-action: manipulation;
+    }
+    .city-card-info {
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .city-card-info h4,
+    .city-card-info p {
+      overflow-wrap: anywhere;
+    }
+    .city-card-temp {
+      flex: 0 0 auto;
+      font-size: 1.5rem;
+    }
+    .search-bottom-bar {
+      position: relative;
+      flex: 0 0 auto;
+      left: auto;
+      right: auto;
+      bottom: auto;
+      padding: 8px 0 2px;
+      margin-top: 8px;
+      background: var(--sky-950);
+    }
+    .search-input-box {
+      min-height: 50px;
+    }
+    .search-input-box input {
+      min-height: 50px;
+      padding: 12px 15px 12px 42px;
+      font-size: 16px;
+      line-height: 1.3;
+      border-radius: 15px;
+      -webkit-appearance: none;
+      appearance: none;
+    }
+    #sugerencias-box {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: calc(100% + 8px);
+      max-height: min(42dvh, 320px);
+      margin-bottom: 0;
+      border-radius: 14px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      -webkit-overflow-scrolling: touch;
+      z-index: 1400;
+    }
+    .sugerencia-item {
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      padding: 12px 13px;
+      font-size: 0.9rem;
+      line-height: 1.35;
+      overflow-wrap: anywhere;
+      -webkit-tap-highlight-color: rgba(56, 189, 248, 0.18);
+      touch-action: manipulation;
+    }
+    .sugerencias-empty {
+      padding: 14px;
+      line-height: 1.45;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .cities-view { padding-left: 11px; padding-right: 11px; }
+    .city-card-item { padding: 11px 9px; }
+    .city-card-temp { font-size: 1.3rem; }
+    .menu-dropdown { width: calc(100vw - 20px); right: 10px; }
+  }
+
 </style>
 </head>
 <body>
 <a class="skip-link" href="#weatherView">Saltar al contenido principal</a>
 <main class="card">
-  <div class="system-status" role="status" aria-live="polite">
-    <span class="status-pill"><span id="networkDot" class="status-dot"></span><span id="networkStatus">Conectando…</span></span>
-    <span class="status-pill">Actualizado: <strong id="lastUpdated">—</strong></span>
-    <span class="status-pill" id="dataStatus">Datos pendientes</span>
-  </div>
-
   <div class="header-actions">
     <button class="icon-btn" onclick="abrirListaCiudades()" title="Mis ciudades" aria-label="Abrir mis ciudades">📋</button>
     <button class="icon-btn" id="btnConfig" onclick="toggleMenuConfig(event)" title="Configuración" aria-label="Abrir configuración">•••</button>
