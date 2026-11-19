@@ -1,8 +1,14 @@
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
 }
+
+val releaseKeystorePath = System.getenv("CLIMAG_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("CLIMAG_STORE_PASSWORD")
+val releaseKeyAlias = System.getenv("CLIMAG_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("CLIMAG_KEY_PASSWORD")
 
 android {
     namespace = "com.bacus.climag"
@@ -12,8 +18,29 @@ android {
         applicationId = "com.bacus.climag"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 2
+        versionName = "0.2.0"
+    }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file(
+                releaseKeystorePath ?: "missing-release-key.jks"
+            )
+            storePassword = releaseStorePassword ?: ""
+            keyAlias = releaseKeyAlias ?: ""
+            keyPassword = releaseKeyPassword ?: ""
+        }
+    }
+
+    buildTypes {
+        getByName("debug") {
+        }
+
+        getByName("release") {
+            isMinifyEnabled = false
+            signingConfig = signingConfigs.getByName("release")
+        }
     }
 
     buildFeatures {
