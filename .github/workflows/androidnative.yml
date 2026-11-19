@@ -8,7 +8,7 @@ on:
       - pruebas
     paths:
       - "android/**"
-      - ".github/workflows/android-native.yml"
+      - ".github/workflows/androidnative.yml"
 
   pull_request:
     branches:
@@ -23,6 +23,12 @@ jobs:
   build-android:
     name: Build Clima G
     runs-on: ubuntu-latest
+
+    env:
+      CLIMAG_KEYSTORE_PATH: ${{ github.workspace }}/android/app/climag-release.jks
+      CLIMAG_STORE_PASSWORD: ${{ secrets.CLIMAG_STORE_PASSWORD }}
+      CLIMAG_KEY_ALIAS: ${{ secrets.CLIMAG_KEY_ALIAS }}
+      CLIMAG_KEY_PASSWORD: ${{ secrets.CLIMAG_KEY_PASSWORD }}
 
     steps:
       - name: Checkout repository
@@ -50,12 +56,9 @@ jobs:
         with:
           gradle-version: "8.11.1"
 
-      - name: Diagnose project structure
+      - name: Diagnose project
         working-directory: android
         run: |
-          echo "===== DIRECTORY ====="
-          pwd
-
           echo "===== FILES ====="
           find . -maxdepth 7 -type f | sort
 
@@ -68,25 +71,69 @@ jobs:
           echo "===== APP BUILD ====="
           cat app/build.gradle.kts
 
-      - name: Diagnose Gradle projects
+      - name: Build Debug APK
+        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/pruebas'
         working-directory: android
         run: |
-          gradle projects --stacktrace
+          gradle :app:assembleDebug \
+            -Pandroid.useAndroidX=true \
+            --stacktrace
 
-      - name: List Gradle tasks
-        working-directory: android
-        run: |
-          gradle tasks --all
-
-      - name: Build debug APK
-        working-directory: android
-        run: |
-          gradle :app:assembleDebug -Pandroid.useAndroidX=true --stacktrace
-
-      - name: Upload Clima G APK
-        if: success()
+      - name: Upload Debug APK
+        if: success() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/pruebas')
         uses: actions/upload-artifact@v4
         with:
-          name: Clima-G-Android-0.1.0
+          name: Clima-G-Android-0.2.0-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Validate signing secrets
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CLIMAG_KEYSTORE_BASE64: ${{ secrets.CLIMAG_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$CLIMAG_KEYSTORE_BASE64"
+          test -n "$CLIMAG_STORE_PASSWORD"
+          test -n "$CLIMAG_KEY_ALIAS"
+          test -n "$CLIMAG_KEY_PASSWORD"
+
+      - name: Restore release keystore
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          CLIMAG_KEYSTORE_BASE64: ${{ secrets.CLIMAG_KEYSTORE_BASE64 }}
+        run: |
+          mkdir -p "$(dirname "$CLIMAG_KEYSTORE_PATH")"
+
+          printf '%s' "$CLIMAG_KEYSTORE_BASE64" \
+            | base64 --decode > "$CLIMAG_KEYSTORE_PATH"
+
+          chmod 600 "$CLIMAG_KEYSTORE_PATH"
+
+          test -s "$CLIMAG_KEYSTORE_PATH"
+
+      - name: Build signed Release APK
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        working-directory: android
+        run: |
+          gradle :app:assembleRelease \
+            -Pandroid.useAndroidX=true \
+            --stacktrace
+
+      - name: Verify APK signature
+        if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: |
+          apksigner verify --verbose \
+            android/app/build/outputs/apk/release/app-release.apk
+
+      - name: Remove temporary keystore
+        if: always()
+        run: |
+          rm -f android/app/climag-release.jks
+
+      - name: Upload signed Release APK
+        if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clima-G-Android-0.2.0-Release
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
