@@ -6,9 +6,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.*
@@ -24,7 +24,11 @@ import androidx.compose.ui.unit.sp
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ClimaGTheme { ClimaGApp() } }
+        setContent {
+            ClimaGTheme {
+                ClimaGApp()
+            }
+        }
     }
 }
 
@@ -117,20 +121,30 @@ fun ClimaGApp() {
                 when (selectedTab) {
                     "Hoy" -> {
                         WeatherHero(city, unit)
-                        Text("Tu clima", fontSize = 21.sp, fontWeight = FontWeight.Bold)
+
+                        Text(
+                            "Tu clima",
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+
                         SectionCard("Condiciones actuales") {
                             MetricGrid()
                         }
+
                         SectionCard("Pronóstico por horas") {
                             HourForecast()
                         }
+
                         SectionCard("Alertas meteorológicas") {
                             Text("Esperando datos meteorológicos.")
                         }
+
                         SectionCard("Calidad del aire") {
                             Text("Índice AQI: --")
                             Text("PM2.5: --     PM10: --")
                         }
+
                         SectionCard("Astronomía") {
                             Text("☀ Amanecer: --")
                             Text("🌇 Atardecer: --")
@@ -140,6 +154,7 @@ fun ClimaGApp() {
 
                     "Por horas" -> {
                         PageTitle("Pronóstico por horas")
+
                         SectionCard("Próximas horas") {
                             HourForecast()
                         }
@@ -147,11 +162,17 @@ fun ClimaGApp() {
 
                     "Semana" -> {
                         PageTitle("Pronóstico semanal")
+
                         repeat(7) { index ->
                             SectionCard(
                                 listOf(
-                                    "Hoy", "Mañana", "Miércoles",
-                                    "Jueves", "Viernes", "Sábado", "Domingo"
+                                    "Hoy",
+                                    "Mañana",
+                                    "Miércoles",
+                                    "Jueves",
+                                    "Viernes",
+                                    "Sábado",
+                                    "Domingo"
                                 )[index]
                             ) {
                                 Text("☀️  --° / --°     Precipitación: --")
@@ -161,9 +182,10 @@ fun ClimaGApp() {
 
                     "Mapa" -> {
                         PageTitle("Mapa meteorológico")
+
                         SectionCard("Mapa de Clima G") {
                             Box(
-                                Modifier
+                                modifier = Modifier
                                     .fillMaxWidth()
                                     .height(260.dp)
                                     .background(
@@ -172,16 +194,27 @@ fun ClimaGApp() {
                                     ),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text("🌎\nMapa interactivo pendiente", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                                Text(
+                                    "🌎\nMapa interactivo pendiente",
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                                )
                             }
-                            Text("Capas: temperatura · lluvia · viento · aire · sismos")
+
+                            Text(
+                                "Capas: temperatura · lluvia · viento · aire · sismos"
+                            )
                         }
                     }
 
                     "Aire" -> {
                         PageTitle("Calidad del aire")
+
                         SectionCard("Índice de calidad del aire") {
-                            Text("AQI: --", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+                            Text(
+                                "AQI: --",
+                                fontSize = 32.sp,
+                                fontWeight = FontWeight.Bold
+                            )
                             Text("PM2.5: -- µg/m³")
                             Text("PM10: -- µg/m³")
                             Text("Monóxido de carbono: --")
@@ -190,10 +223,12 @@ fun ClimaGApp() {
 
                     "Astronomía" -> {
                         PageTitle("Astronomía")
+
                         SectionCard("Sol") {
                             Text("🌅 Amanecer: --")
                             Text("🌇 Atardecer: --")
                         }
+
                         SectionCard("Luna") {
                             Text("🌕 Fase lunar: --")
                             Text("Iluminación: --")
@@ -203,13 +238,17 @@ fun ClimaGApp() {
 
                     "Ciudades" -> {
                         PageTitle("Mis ciudades")
+
                         SectionCard("Buscar ubicación") {
                             BasicTextField(
                                 value = search,
                                 onValueChange = { search = it },
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(Fondo, RoundedCornerShape(12.dp))
+                                    .background(
+                                        Fondo,
+                                        RoundedCornerShape(12.dp)
+                                    )
                                     .padding(14.dp),
                                 singleLine = true,
                                 decorationBox = { inner ->
@@ -219,6 +258,7 @@ fun ClimaGApp() {
                                     inner()
                                 }
                             )
+
                             Button(
                                 onClick = {
                                     if (search.isNotBlank()) {
@@ -231,29 +271,40 @@ fun ClimaGApp() {
                             ) {
                                 Text("Seleccionar ciudad")
                             }
-                            Text("La búsqueda meteorológica se conectará en la siguiente etapa.")
+
+                            Text(
+                                "La búsqueda meteorológica se conectará en la siguiente etapa."
+                            )
                         }
                     }
 
                     "Ajustes" -> {
                         PageTitle("Configuración")
+
                         SectionCard("Unidad de temperatura") {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Text("Celsius")
+
                                 Spacer(Modifier.width(8.dp))
+
                                 Switch(
                                     checked = unit == "°F",
                                     onCheckedChange = {
                                         unit = if (it) "°F" else "°C"
                                     }
                                 )
+
                                 Text("Fahrenheit")
                             }
                         }
+
                         SectionCard("Clima G") {
                             Text("Clima G · Bacus")
                             Text("Versión 0.2.0 en desarrollo")
                         }
+
                         SectionCard("Integraciones") {
                             Text("Android Auto: próximamente")
                             Text("Notificaciones: próximamente")
@@ -266,6 +317,7 @@ fun ClimaGApp() {
                 }
 
                 Spacer(Modifier.height(12.dp))
+
                 Text(
                     "Clima G · Bacus",
                     modifier = Modifier.fillMaxWidth(),
@@ -293,8 +345,14 @@ fun Header() {
                 fontSize = 27.sp,
                 fontWeight = FontWeight.Bold
             )
-            Text("BACUS WEATHER", fontSize = 10.sp, color = Color.Gray)
+
+            Text(
+                "BACUS WEATHER",
+                fontSize = 10.sp,
+                color = Color.Gray
+            )
         }
+
         Text("🐢", fontSize = 27.sp)
     }
 }
@@ -304,30 +362,46 @@ fun WeatherHero(city: String, unit: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(26.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
+        colors = CardDefaults.cardColors(
+            containerColor = Color.Transparent
+        )
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(
                     Brush.linearGradient(
-                        listOf(Color(0xFF087DB5), Color(0xFF38BDF8))
+                        listOf(
+                            Color(0xFF087DB5),
+                            Color(0xFF38BDF8)
+                        )
                     )
                 )
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text("📍 $city", color = Color.White, fontSize = 16.sp)
+
             Spacer(Modifier.height(12.dp))
+
             Text("☀️", fontSize = 55.sp)
+
             Text(
                 "--$unit",
                 color = Color.White,
                 fontSize = 62.sp,
                 fontWeight = FontWeight.Light
             )
-            Text("Esperando datos meteorológicos", color = Color.White)
-            Text("Sensación térmica: --", color = Color.White.copy(alpha = 0.85f))
+
+            Text(
+                "Esperando datos meteorológicos",
+                color = Color.White
+            )
+
+            Text(
+                "Sensación térmica: --",
+                color = Color.White.copy(alpha = 0.85f)
+            )
         }
     }
 }
@@ -345,16 +419,30 @@ fun MetricGrid() {
 
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         metrics.chunked(2).forEach { row ->
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
                 row.forEach { metric ->
                     Column(
                         modifier = Modifier
                             .weight(1f)
-                            .background(Fondo, RoundedCornerShape(14.dp))
+                            .background(
+                                Fondo,
+                                RoundedCornerShape(14.dp)
+                            )
                             .padding(14.dp)
                     ) {
-                        Text(metric.first, color = Color.Gray, fontSize = 12.sp)
-                        Text(metric.second, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+                        Text(
+                            metric.first,
+                            color = Color.Gray,
+                            fontSize = 12.sp
+                        )
+
+                        Text(
+                            metric.second,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 17.sp
+                        )
                     }
                 }
             }
@@ -368,14 +456,24 @@ fun HourForecast() {
         modifier = Modifier.horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        listOf("Ahora", "09:00", "12:00", "15:00", "18:00", "21:00").forEach {
+        listOf(
+            "Ahora",
+            "09:00",
+            "12:00",
+            "15:00",
+            "18:00",
+            "21:00"
+        ).forEach { hour ->
             Column(
                 modifier = Modifier
-                    .background(Fondo, RoundedCornerShape(14.dp))
+                    .background(
+                        Fondo,
+                        RoundedCornerShape(14.dp)
+                    )
                     .padding(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(it, fontSize = 12.sp)
+                Text(hour, fontSize = 12.sp)
                 Text("☀️", fontSize = 22.sp)
                 Text("--°", fontWeight = FontWeight.Bold)
             }
@@ -384,18 +482,30 @@ fun HourForecast() {
 }
 
 @Composable
-fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+fun SectionCard(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        colors = CardDefaults.cardColors(
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp
+        )
     ) {
         Column(
             modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Text(title, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+            Text(
+                title,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.Bold
+            )
+
             content()
         }
     }
@@ -410,4 +520,3 @@ fun PageTitle(title: String) {
         modifier = Modifier.padding(vertical = 8.dp)
     )
 }
-
