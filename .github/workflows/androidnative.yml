@@ -51,6 +51,13 @@ jobs:
             "platforms;android-35" \
             "build-tools;35.0.0"
 
+          echo "$ANDROID_HOME/build-tools/35.0.0" >> "$GITHUB_PATH"
+
+      - name: Check Android tools
+        run: |
+          test -x "$ANDROID_HOME/build-tools/35.0.0/apksigner"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" version
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -65,14 +72,10 @@ jobs:
           echo "===== SETTINGS ====="
           cat settings.gradle.kts
 
-          echo "===== ROOT BUILD ====="
-          cat build.gradle.kts
-
           echo "===== APP BUILD ====="
           cat app/build.gradle.kts
 
       - name: Build Debug APK
-        if: github.event_name == 'pull_request' || github.ref == 'refs/heads/pruebas'
         working-directory: android
         run: |
           gradle :app:assembleDebug \
@@ -80,7 +83,6 @@ jobs:
             --stacktrace
 
       - name: Upload Debug APK
-        if: success() && (github.event_name == 'pull_request' || github.ref == 'refs/heads/pruebas')
         uses: actions/upload-artifact@v4
         with:
           name: Clima-G-Android-0.2.0-Debug
@@ -108,7 +110,6 @@ jobs:
             | base64 --decode > "$CLIMAG_KEYSTORE_PATH"
 
           chmod 600 "$CLIMAG_KEYSTORE_PATH"
-
           test -s "$CLIMAG_KEYSTORE_PATH"
 
       - name: Build signed Release APK
@@ -122,7 +123,7 @@ jobs:
       - name: Verify APK signature
         if: success() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          apksigner verify --verbose \
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose \
             android/app/build/outputs/apk/release/app-release.apk
 
       - name: Remove temporary keystore
