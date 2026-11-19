@@ -1,3 +1,4 @@
+
 pluginManagement {
     repositories {
         google()
@@ -15,4 +16,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "ClimaG"
+
 include(":app")
