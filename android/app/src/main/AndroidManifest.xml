@@ -10,6 +10,7 @@
         android:allowBackup="false"
         android:label="Clima G"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <activity
@@ -22,6 +23,5 @@
             </intent-filter>
 
         </activity>
-
     </application>
 </manifest>
