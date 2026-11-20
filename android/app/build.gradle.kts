@@ -24,18 +24,23 @@ android {
 
     signingConfigs {
         create("release") {
-            storeFile = file(
-                releaseKeystorePath ?: "missing-release-key.jks"
-            )
-            storePassword = releaseStorePassword ?: ""
-            keyAlias = releaseKeyAlias ?: ""
-            keyPassword = releaseKeyPassword ?: ""
+            if (
+                !releaseKeystorePath.isNullOrBlank() &&
+                !releaseStorePassword.isNullOrBlank() &&
+                !releaseKeyAlias.isNullOrBlank() &&
+                !releaseKeyPassword.isNullOrBlank()
+            ) {
+                storeFile = file(releaseKeystorePath)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
         }
     }
 
     buildTypes {
         getByName("debug") {
-            // Sin firma permanente: Android usa la clave debug local.
+            // Firma debug automática de Android.
         }
 
         getByName("release") {
