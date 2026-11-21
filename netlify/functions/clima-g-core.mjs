@@ -1,19 +1,7 @@
-
 /**
  * CLIMA G CORE
  * Motor meteorológico central de Clima G.
- *
- * Responsabilidades:
- * - Interpretar datos meteorológicos.
- * - Detectar condiciones adversas.
- * - Clasificar gravedad.
- * - Generar mensajes y colores oficiales.
- *
- * No consulta proveedores externos.
- * No envía notificaciones.
- * No controla directamente el hardware RGB.
- *
- * Compatible con navegador y Node.js.
+ * No consulta proveedores externos y no envía notificaciones.
  */
 
 export const CLIMA_G_VERSION = "1.0.0";
@@ -26,19 +14,10 @@ export const CLIMA_G_CONFIG = Object.freeze({
     windHigh: 60,
     heavyRain: 35
   },
-
   weatherCodes: {
-    rain: [
-      51, 53, 55,
-      56, 57,
-      61, 63, 65,
-      66, 67,
-      80, 81, 82
-    ],
-
+    rain: [51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82],
     storms: [95, 96, 99]
   },
-
   colors: {
     none: "#64748b",
     info: "#38bdf8",
@@ -56,30 +35,12 @@ const GRAVEDAD = Object.freeze({
 });
 
 function numero(valor) {
-  if (
-    valor === null ||
-    valor === undefined ||
-    valor === ""
-  ) {
-    return null;
-  }
-
+  if (valor === null || valor === undefined || valor === "") return null;
   const resultado = Number(valor);
-
-  return Number.isFinite(resultado)
-    ? resultado
-    : null;
+  return Number.isFinite(resultado) ? resultado : null;
 }
 
-function crearAlerta({
-  id,
-  type,
-  severity,
-  title,
-  message,
-  emoji,
-  value = null
-}) {
+function crearAlerta({ id, type, severity, title, message, emoji, value = null }) {
   return {
     id,
     type,
@@ -93,47 +54,15 @@ function crearAlerta({
   };
 }
 
-/**
- * Interpreta los datos meteorológicos.
- *
- * Formato esperado:
- * {
- *   current: {
- *     temperature_2m,
- *     weather_code,
- *     wind_speed_10m
- *   },
- *   daily: {
- *     precipitation_sum: [],
- *     uv_index_max: [],
- *     time: []
- *   }
- * }
- *
- * También acepta precipitationToday y uvIndex
- * directamente en el objeto principal.
- */
-
 export function evaluarClima(datos = {}) {
   const actual = datos.current || {};
   const diario = datos.daily || {};
 
-  const temperatura = numero(
-    actual.temperature_2m
-  );
+  const temperatura = numero(actual.temperature_2m);
+  const viento = numero(actual.wind_speed_10m);
+  const codigo = numero(actual.weather_code);
 
-  const viento = numero(
-    actual.wind_speed_10m
-  );
-
-  const codigo = numero(
-    actual.weather_code
-  );
-
-  const fecha = actual.time
-    ? actual.time.slice(0, 10)
-    : null;
-
+  const fecha = actual.time ? actual.time.slice(0, 10) : null;
   let indiceDia = fecha && Array.isArray(diario.time)
     ? diario.time.indexOf(fecha)
     : 0;
@@ -141,22 +70,13 @@ export function evaluarClima(datos = {}) {
   if (indiceDia < 0) indiceDia = 0;
 
   const precipitacion = numero(
-    datos.precipitationToday ??
-    diario.precipitation_sum?.[indiceDia]
+    datos.precipitationToday ?? diario.precipitation_sum?.[indiceDia]
   );
-
-  const uv = numero(
-    datos.uvIndex ??
-    diario.uv_index_max?.[indiceDia]
-  );
+  const uv = numero(datos.uvIndex ?? diario.uv_index_max?.[indiceDia]);
 
   const alertas = [];
 
-  // LLUVIA
-  if (
-    codigo !== null &&
-    CLIMA_G_CONFIG.weatherCodes.rain.includes(codigo)
-  ) {
+  if (codigo !== null && CLIMA_G_CONFIG.weatherCodes.rain.includes(codigo)) {
     alertas.push(crearAlerta({
       id: "lluvia",
       type: "precipitation",
@@ -168,11 +88,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // TORMENTAS ELÉCTRICAS
-  if (
-    codigo !== null &&
-    CLIMA_G_CONFIG.weatherCodes.storms.includes(codigo)
-  ) {
+  if (codigo !== null && CLIMA_G_CONFIG.weatherCodes.storms.includes(codigo)) {
     alertas.push(crearAlerta({
       id: "tormenta",
       type: "storm",
@@ -184,11 +100,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // TEMPERATURA ALTA
-  if (
-    temperatura !== null &&
-    temperatura >= CLIMA_G_CONFIG.thresholds.temperatureHigh
-  ) {
+  if (temperatura !== null && temperatura >= CLIMA_G_CONFIG.thresholds.temperatureHigh) {
     alertas.push(crearAlerta({
       id: "calor",
       type: "temperature",
@@ -200,11 +112,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // TEMPERATURA BAJA
-  if (
-    temperatura !== null &&
-    temperatura <= CLIMA_G_CONFIG.thresholds.temperatureLow
-  ) {
+  if (temperatura !== null && temperatura <= CLIMA_G_CONFIG.thresholds.temperatureLow) {
     alertas.push(crearAlerta({
       id: "frio",
       type: "temperature",
@@ -216,11 +124,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // ÍNDICE UV
-  if (
-    uv !== null &&
-    uv >= CLIMA_G_CONFIG.thresholds.uvHigh
-  ) {
+  if (uv !== null && uv >= CLIMA_G_CONFIG.thresholds.uvHigh) {
     alertas.push(crearAlerta({
       id: "uv",
       type: "uv",
@@ -232,11 +136,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // VIENTO
-  if (
-    viento !== null &&
-    viento >= CLIMA_G_CONFIG.thresholds.windHigh
-  ) {
+  if (viento !== null && viento >= CLIMA_G_CONFIG.thresholds.windHigh) {
     alertas.push(crearAlerta({
       id: "viento",
       type: "wind",
@@ -248,11 +148,7 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // LLUVIA INTENSA
-  if (
-    precipitacion !== null &&
-    precipitacion >= CLIMA_G_CONFIG.thresholds.heavyRain
-  ) {
+  if (precipitacion !== null && precipitacion >= CLIMA_G_CONFIG.thresholds.heavyRain) {
     alertas.push(crearAlerta({
       id: "lluvia-intensa",
       type: "precipitation",
@@ -264,59 +160,31 @@ export function evaluarClima(datos = {}) {
     }));
   }
 
-  // ORDENAR POR GRAVEDAD
-  alertas.sort(
-    (a, b) => b.severityLevel - a.severityLevel
-  );
-
+  alertas.sort((a, b) => b.severityLevel - a.severityLevel);
   const principal = alertas[0] || null;
 
   return {
     source: "Clima G",
     version: CLIMA_G_VERSION,
     evaluatedAt: new Date().toISOString(),
-
     hasAlerts: alertas.length > 0,
-
     alertCount: alertas.length,
-
-    highestSeverity: principal
-      ? principal.severity
-      : "none",
-
-    highestSeverityLevel: principal
-      ? principal.severityLevel
-      : 0,
-
-    color: principal
-      ? principal.color
-      : CLIMA_G_CONFIG.colors.none,
-
-    emoji: principal
-      ? principal.emoji
-      : "🌤️",
-
+    highestSeverity: principal ? principal.severity : "none",
+    highestSeverityLevel: principal ? principal.severityLevel : 0,
+    color: principal ? principal.color : CLIMA_G_CONFIG.colors.none,
+    emoji: principal ? principal.emoji : "🌤️",
     alerts
   };
 }
 
-/**
- * Devuelve únicamente las alertas activas.
- */
 export function obtenerAlertas(datos) {
   return evaluarClima(datos).alerts;
 }
 
-/**
- * Devuelve el color principal de Clima G.
- */
 export function obtenerColorClimaG(datos) {
   return evaluarClima(datos).color;
 }
 
-/**
- * Devuelve un resumen listo para mostrar.
- */
 export function obtenerResumenClimaG(datos) {
   const resultado = evaluarClima(datos);
 
@@ -330,7 +198,6 @@ export function obtenerResumenClimaG(datos) {
   }
 
   const principal = resultado.alerts[0];
-
   return {
     title: principal.title,
     message: principal.message,
@@ -339,28 +206,13 @@ export function obtenerResumenClimaG(datos) {
   };
 }
 
-/**
- * Compara dos evaluaciones y detecta cambios.
- */
-export function compararAlertasClimaG(
-  anterior,
-  actual
-) {
-  const anteriores = new Set(
-    (anterior?.alerts || []).map(a => a.id)
-  );
-
-  const actuales = new Set(
-    (actual?.alerts || []).map(a => a.id)
-  );
+export function compararAlertasClimaG(anterior, actual) {
+  const anteriores = new Set((anterior?.alerts || []).map(a => a.id));
+  const actuales = new Set((actual?.alerts || []).map(a => a.id));
 
   return {
-    nuevas: [...actuales]
-      .filter(id => !anteriores.has(id)),
-
-    finalizadas: [...anteriores]
-      .filter(id => !actuales.has(id)),
-
+    nuevas: [...actuales].filter(id => !anteriores.has(id)),
+    finalizadas: [...anteriores].filter(id => !actuales.has(id)),
     sinCambios:
       anterior?.hasAlerts === actual?.hasAlerts &&
       [...actuales].every(id => anteriores.has(id))
