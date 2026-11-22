@@ -1,4 +1,3 @@
-
 'use strict';
 
 // ==========================================
@@ -350,7 +349,11 @@ function obtenerDatosPush(event) {
         ? new URL(datos.url, self.location.origin).href
         : self.registration.scope;
 
-    return { titulo, cuerpo, destino };
+    const etiqueta = typeof datos.tag === 'string' && datos.tag.length > 0
+      ? datos.tag.slice(0, 120)
+      : 'clima-g-alerta';
+
+    return { titulo, cuerpo, destino, etiqueta };
 
   } catch {
     return null;
@@ -375,7 +378,7 @@ self.addEventListener('push', (event) => {
           body: datos.cuerpo,
           icon: icono,
           badge: icono,
-          tag: 'clima-g-alerta',
+          tag: datos.etiqueta,
           renotify: false,
           data: {
             url: datos.destino
