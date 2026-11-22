@@ -2,7 +2,7 @@
 
 from PyQt6.QtCore import QEvent, QObject
 from PyQt6.QtGui import QFont
-from PyQt6.QtWidgets import QApplication, QDialog, QWidget
+from PyQt6.QtWidgets import QApplication, QDialog, QFrame, QWidget
 
 
 CLIMAG_WEB_STYLESHEET = """
