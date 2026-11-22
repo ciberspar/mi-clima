@@ -1,84 +1,62 @@
-
-name: 🌦️ Clima Alerta - Validación
-
+name: 🌦️ Clima G - Validación Push y resumen semanal
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
+      - "docs/index.html"
+      - "docs/sw.js"
+      - "netlify/functions/subscribe.mjs"
+      - "netlify/functions/registrar-datos.mjs"
       - "netlify/functions/alertas.mjs"
-      - "netlify/functions/clima-g-core.mjs"
+      - "netlify/functions/resumen-semanal.mjs"
       - ".github/workflows/clima-alerta.yml"
-
   pull_request:
-    branches:
-      - main
+    branches: [main]
     paths:
-      - "netlify/functions/alertas.mjs"
-      - "netlify/functions/clima-g-core.mjs"
+      - "docs/index.html"
+      - "docs/sw.js"
+      - "netlify/functions/**"
       - ".github/workflows/clima-alerta.yml"
-
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
-  group: clima-alerta-validacion
+  group: clima-g-push-validation
   cancel-in-progress: true
-
 jobs:
-  validar:
-    name: Comprobar sistema de alertas
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-
+    timeout-minutes: 8
     steps:
-      - name: Descargar repositorio
-        uses: actions/checkout@v4
-
-      - name: Preparar Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: "22"
-
-      - name: Comprobar sintaxis
+      - name: Check JavaScript syntax
         run: |
+          node --check netlify/functions/subscribe.mjs
+          node --check netlify/functions/registrar-datos.mjs
           node --check netlify/functions/alertas.mjs
+          node --check netlify/functions/resumen-semanal.mjs
           node --check netlify/functions/clima-g-core.mjs
-
-      - name: Verificar integración de alertas
+          node --check docs/sw.js
+      - name: Verify integrations
         run: |
           python3 - <<'PY'
           from pathlib import Path
-
-          archivo = Path("netlify/functions/alertas.mjs")
-          codigo = archivo.read_text(encoding="utf-8")
-
-          comprobaciones = {
-              "Programación horaria de Netlify":
-                  'schedule: "0 * * * *"' in codigo,
-              "Motor meteorológico":
-                  "evaluarClima" in codigo,
-              "Sistema Web Push":
-                  "webpush.sendNotification(" in codigo,
-              "Almacenamiento de suscripciones":
-                  'getStore("clima-g-suscripciones")' in codigo,
-              "Control de alertas nuevas":
-                  "obtenerAlertasNuevas" in codigo
+          required = {
+            "multi-location subscription": ("netlify/functions/subscribe.mjs", "locations"),
+            "personalized alerts": ("netlify/functions/alertas.mjs", "device.locations"),
+            "weather history": ("netlify/functions/registrar-datos.mjs", "history"),
+            "weekly summary retention": ("netlify/functions/resumen-semanal.mjs", "RETENTION=7*DAY"),
+            "weekly schedule": ("netlify/functions/resumen-semanal.mjs", 'schedule:"0 * * * *"'),
+            "push event": ("docs/sw.js", "addEventListener('push'"),
+            "weekly summary UI": ("docs/index.html", "climaGResumenesSemanales"),
           }
-
-          errores = []
-
-          for nombre, resultado in comprobaciones.items():
-              print(("OK" if resultado else "ERROR") + " - " + nombre)
-              if not resultado:
-                  errores.append(nombre)
-
-          if errores:
-              raise SystemExit(
-                  "Fallaron las comprobaciones: " + ", ".join(errores)
-              )
-
-          print("Todas las comprobaciones finalizaron correctamente.")
+          failed=[]
+          for label,(file,needle) in required.items():
+            ok=needle in Path(file).read_text(encoding="utf-8")
+            print(("OK" if ok else "FAIL")+" - "+label)
+            if not ok: failed.append(label)
+          if failed: raise SystemExit("Failed: "+", ".join(failed))
           PY
