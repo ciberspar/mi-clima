@@ -1,9 +1,8 @@
-
 {
   "id": "./",
   "name": "Clima G — Pronóstico del tiempo",
   "short_name": "Clima G",
-  "description": "Consulta el clima, pronósticos, calidad del aire y alertas meteorológicas. Disponible también sin conexión con los últimos datos guardados.",
+  "description": "Consulta el clima, pronósticos, calidad del aire y alertas meteorológicas. Disponible también sin conexión con los últimos datos guardados, y te gusta la mascota baco.",
   "lang": "es-AR",
   "dir": "ltr",
 
