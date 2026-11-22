@@ -1,28 +1,31 @@
 name: 🌦️ Clima G - Validación Push y resumen semanal
+
 on:
   push:
     branches: [main]
     paths:
       - "docs/index.html"
       - "docs/sw.js"
-      - "netlify/functions/subscribe.mjs"
-      - "netlify/functions/registrar-datos.mjs"
-      - "netlify/functions/alertas.mjs"
-      - "netlify/functions/resumen-semanal.mjs"
+      - "docs/manifest.json"
+      - "netlify/functions/**"
       - ".github/workflows/clima-alerta.yml"
   pull_request:
     branches: [main]
     paths:
       - "docs/index.html"
       - "docs/sw.js"
+      - "docs/manifest.json"
       - "netlify/functions/**"
       - ".github/workflows/clima-alerta.yml"
   workflow_dispatch:
+
 permissions:
   contents: read
+
 concurrency:
   group: clima-g-push-validation
   cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest
@@ -32,7 +35,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Check JavaScript syntax
+
+      - name: Validar sintaxis JavaScript
         run: |
           node --check netlify/functions/subscribe.mjs
           node --check netlify/functions/registrar-datos.mjs
@@ -40,23 +44,33 @@ jobs:
           node --check netlify/functions/resumen-semanal.mjs
           node --check netlify/functions/clima-g-core.mjs
           node --check docs/sw.js
-      - name: Verify integrations
+          python3 -m json.tool docs/manifest.json > /dev/null
+
+      - name: Validar integraciones y conservación de archivos
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          required = {
-            "multi-location subscription": ("netlify/functions/subscribe.mjs", "locations"),
-            "personalized alerts": ("netlify/functions/alertas.mjs", "device.locations"),
-            "weather history": ("netlify/functions/registrar-datos.mjs", "history"),
-            "weekly summary retention": ("netlify/functions/resumen-semanal.mjs", "RETENTION=7*DAY"),
-            "weekly schedule": ("netlify/functions/resumen-semanal.mjs", 'schedule:"0 * * * *"'),
-            "push event": ("docs/sw.js", "addEventListener('push'"),
-            "weekly summary UI": ("docs/index.html", "climaGResumenesSemanales"),
+          checks = {
+            "suscripciones con varias ubicaciones": ("netlify/functions/subscribe.mjs", "validarUbicaciones"),
+            "token privado por dispositivo": ("netlify/functions/subscribe.mjs", "accessToken"),
+            "alertas personalizadas por ubicación": ("netlify/functions/alertas.mjs", "dispositivo.locations"),
+            "archivo meteorológico diario": ("netlify/functions/registrar-datos.mjs", "history"),
+            "evaluación de condiciones": ("netlify/functions/registrar-datos.mjs", "evaluarClima"),
+            "retención semanal de siete días": ("netlify/functions/resumen-semanal.mjs", "RETENTION_MS = 7 * DAY_MS"),
+            "limpieza exclusiva de resúmenes": ("netlify/functions/resumen-semanal.mjs", "summariesStore.delete"),
+            "ejecución semanal horaria": ("netlify/functions/resumen-semanal.mjs", 'schedule: "0 * * * *"'),
+            "motor offline preservado": ("docs/sw.js", "async function obtenerDatosAPI"),
+            "interceptor offline preservado": ("docs/sw.js", "async function obtenerPagina"),
+            "Push preservado": ("docs/sw.js", "addEventListener('push'"),
+            "manifest en ubicación correcta": ("docs/manifest.json", '"short_name": "Clima G"'),
+            "panel de resúmenes": ("docs/index.html", "climaGResumenesSemanales"),
           }
-          failed=[]
-          for label,(file,needle) in required.items():
-            ok=needle in Path(file).read_text(encoding="utf-8")
-            print(("OK" if ok else "FAIL")+" - "+label)
-            if not ok: failed.append(label)
-          if failed: raise SystemExit("Failed: "+", ".join(failed))
+          failed = []
+          for label, (file, needle) in checks.items():
+            ok = needle in Path(file).read_text(encoding="utf-8")
+            print(("OK" if ok else "FAIL") + " - " + label)
+            if not ok:
+              failed.append(label)
+          if failed:
+            raise SystemExit("Fallaron comprobaciones: " + ", ".join(failed))
           PY
