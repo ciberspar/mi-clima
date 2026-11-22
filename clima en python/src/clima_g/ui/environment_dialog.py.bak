@@ -1,0 +1,128 @@
+"""Diálogo de búsqueda de ciudades para Clima G."""
+
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtWidgets import (
+    QDialog, QHBoxLayout, QLabel, QLineEdit, QListWidget,
+    QListWidgetItem, QPushButton, QVBoxLayout,
+)
+
+from clima_g.services.environment import EnvironmentService
+
+
+class CitySearchWorker(QThread):
+    results_ready = pyqtSignal(list)
+    error = pyqtSignal(str)
+
+    def __init__(self, query, parent=None):
+        super().__init__(parent)
+        self.query = query
+
+    def run(self):
+        try:
+            results = EnvironmentService().search_cities(self.query)
+            self.results_ready.emit(results)
+        except Exception as exc:
+            self.error.emit(str(exc))
+
+
+class CitySearchDialog(QDialog):
+    city_selected = pyqtSignal(dict)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.worker = None
+        self.setWindowTitle("Buscar ciudad")
+        self.resize(420, 520)
+
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("Buscá por ciudad, provincia o país:"))
+
+        search_row = QHBoxLayout()
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Ej.: Córdoba, Argentina")
+        self.search_input.returnPressed.connect(self.search)
+
+        self.search_button = QPushButton("Buscar")
+        self.search_button.clicked.connect(self.search)
+
+        search_row.addWidget(self.search_input)
+        search_row.addWidget(self.search_button)
+        layout.addLayout(search_row)
+
+        self.status_label = QLabel("Ingresá al menos dos caracteres.")
+        self.status_label.setWordWrap(True)
+        layout.addWidget(self.status_label)
+
+        self.results_list = QListWidget()
+        self.results_list.itemDoubleClicked.connect(self.select_city)
+        layout.addWidget(self.results_list)
+
+        close_button = QPushButton("Cerrar")
+        close_button.clicked.connect(self.reject)
+        layout.addWidget(close_button)
+
+    def search(self):
+        query = self.search_input.text().strip()
+
+        if len(query) < 2:
+            self.status_label.setText(
+                "Ingresá al menos dos caracteres para buscar."
+            )
+            return
+
+        if self.worker is not None and self.worker.isRunning():
+            return
+
+        self.results_list.clear()
+        self.search_button.setEnabled(False)
+        self.status_label.setText("Buscando ciudades...")
+
+        self.worker = CitySearchWorker(query, self)
+        self.worker.results_ready.connect(self.show_results)
+        self.worker.error.connect(self.show_error)
+        self.worker.finished.connect(self.search_finished)
+        self.worker.start()
+
+    def show_results(self, results):
+        self.results_list.clear()
+
+        for city in results:
+            name = city.get("name") or "Ciudad"
+            admin = city.get("admin1") or city.get("admin2") or ""
+            country = city.get("country") or ""
+            description = ", ".join(
+                part for part in (admin, country) if part
+            )
+            text = f"{name} — {description}" if description else name
+
+            item = QListWidgetItem(text)
+            item.setData(Qt.ItemDataRole.UserRole, {
+                "latitude": float(city["latitude"]),
+                "longitude": float(city["longitude"]),
+                "name": name,
+            })
+            self.results_list.addItem(item)
+
+        count = len(results)
+        self.status_label.setText(
+            f"Se encontraron {count} ciudades."
+            if count else "No se encontraron ciudades."
+        )
+
+    def show_error(self, message):
+        self.status_label.setText(f"No se pudo buscar: {message}")
+
+    def search_finished(self):
+        self.search_button.setEnabled(True)
+        self.worker = None
+
+    def select_city(self, item):
+        city = item.data(Qt.ItemDataRole.UserRole)
+        if isinstance(city, dict):
+            self.city_selected.emit(city)
+            self.accept()
+
+    def closeEvent(self, event):
+        if self.worker is not None and self.worker.isRunning():
+            self.worker.wait(16000)
+        event.accept()

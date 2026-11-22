@@ -1,0 +1,1193 @@
+"""Ventana principal nativa de Clima G."""
+
+from datetime import datetime
+import math
+
+from PyQt6.QtCore import Qt, QThread, pyqtSignal
+from PyQt6.QtWidgets import (
+    QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
+    QGridLayout, QFrame, QScrollArea, QStackedWidget,
+    QSizePolicy, QMessageBox
+)
+
+from clima_g.config import APP_NAME, APP_VERSION, DEFAULT_LOCATION
+from clima_g.services.weather import WeatherService, WeatherError
+from clima_g.services.weather_codes import describe_weather
+from clima_g.services.baco import generar_decreto
+from clima_g.ui.components.weather_header import WeatherHeader
+
+
+class WeatherWorker(QThread):
+    """Consulta meteorológica fuera del hilo de interfaz."""
+
+    data_ready = pyqtSignal(dict)
+    error = pyqtSignal(str)
+
+    def __init__(self, latitude, longitude):
+        super().__init__()
+        self.latitude = latitude
+        self.longitude = longitude
+
+    def run(self):
+        try:
+            service = WeatherService()
+            result = service.get_complete_weather(
+                self.latitude, self.longitude
+            )
+            self.data_ready.emit(result)
+        except (WeatherError, ValueError) as exc:
+            self.error.emit(str(exc))
+        except Exception as exc:
+            self.error.emit(f"Error inesperado: {exc}")
+
+
+class MainWindow(QWidget):
+    TABS = ("hoy", "semana", "aire", "mapa", "resumen")
+
+    def __init__(self):
+        super().__init__()
+
+        self.worker = None
+        self.weather_data = None
+        self.latitude = DEFAULT_LOCATION["latitude"]
+        self.longitude = DEFAULT_LOCATION["longitude"]
+        self.location_name = DEFAULT_LOCATION["name"]
+
+        self.setWindowTitle(f"{APP_NAME} {APP_VERSION}")
+        self.resize(520, 900)
+        self.setMinimumSize(360, 620)
+
+        self.init_ui()
+        self.refresh_weather()
+
+    def init_ui(self):
+        self.setStyleSheet("""
+            QWidget {
+                background: #eef2f8;
+                color: #12203a;
+                font-family: sans-serif;
+                font-size: 13px;
+            }
+
+            QScrollArea {
+                border: none;
+                background: transparent;
+            }
+
+            QFrame[card="true"] {
+                background: white;
+                border: 1px solid #cbd5e1;
+                border-radius: 16px;
+            }
+
+            QLabel[sectionTitle="true"] {
+                color: #12203a;
+                font-size: 15px;
+                font-weight: 700;
+            }
+
+            QLabel[muted="true"] {
+                color: #64748b;
+                font-size: 12px;
+            }
+
+            QLabel[metricValue="true"] {
+                color: #12203a;
+                font-size: 19px;
+                font-weight: 700;
+            }
+
+            QPushButton {
+                background: #1c2a4f;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                padding: 9px 13px;
+                font-weight: 600;
+            }
+
+            QPushButton:hover {
+                background: #33507f;
+            }
+
+            QPushButton:disabled {
+                background: #94a3b8;
+            }
+        """)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        content = QWidget()
+        content.setStyleSheet("background: #eef2f8;")
+
+        layout = QVBoxLayout(content)
+        layout.setContentsMargins(0, 0, 0, 18)
+        layout.setSpacing(0)
+
+        self.header = WeatherHeader()
+        self.header.city_requested.connect(self.show_cities_info)
+        self.header.settings_requested.connect(self.show_settings_info)
+        self.header.tab_changed.connect(self.change_tab)
+        layout.addWidget(self.header)
+
+        self.pages = QStackedWidget()
+        self.pages.setStyleSheet("background: #eef2f8;")
+
+        self.page_widgets = {}
+        self.build_today_page()
+        self.build_week_page()
+        self.build_air_page()
+        self.build_map_page()
+        self.build_summary_page()
+
+        for key in self.TABS:
+            self.pages.addWidget(self.page_widgets[key])
+
+        layout.addWidget(self.pages)
+
+        self.status_label = QLabel("Preparando Clima G...")
+        self.status_label.setProperty("muted", True)
+        self.status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.status_label.setContentsMargins(12, 10, 12, 10)
+        layout.addWidget(self.status_label)
+
+        footer = QLabel(
+            f"Clima G {APP_VERSION} · Datos meteorológicos de Open-Meteo"
+        )
+        footer.setProperty("muted", True)
+        footer.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        footer.setContentsMargins(8, 4, 8, 12)
+        layout.addWidget(footer)
+
+        scroll.setWidget(content)
+        outer.addWidget(scroll)
+
+        self.change_tab("hoy")
+
+    # ---------------------------------------------------------
+    # COMPONENTES NATIVOS
+    # ---------------------------------------------------------
+
+    def make_page(self, compact=False):
+        page = QWidget()
+        page.setStyleSheet("background: #eef2f8;")
+
+        layout = QVBoxLayout(page)
+        if compact:
+            layout.setContentsMargins(12, 10, 12, 12)
+            layout.setSpacing(9)
+        else:
+            layout.setContentsMargins(18, 18, 18, 22)
+            layout.setSpacing(14)
+
+        return page, layout
+
+    def create_card(self, title, compact=False):
+        card = QFrame()
+        card.setProperty("card", True)
+
+        layout = QVBoxLayout(card)
+        if compact:
+            layout.setContentsMargins(12, 10, 12, 10)
+            layout.setSpacing(7)
+        else:
+            layout.setContentsMargins(16, 14, 16, 16)
+            layout.setSpacing(11)
+
+        heading = QLabel(title)
+        heading.setProperty("sectionTitle", True)
+        layout.addWidget(heading)
+
+        return card, layout
+
+    def add_metric(self, grid, index, title, value="--", compact=False):
+        cell = QFrame()
+        cell.setStyleSheet("""
+            QFrame {
+                background: #eef2f8;
+                border: none;
+                border-radius: 12px;
+            }
+        """)
+
+        box = QVBoxLayout(cell)
+        if compact:
+            box.setContentsMargins(8, 6, 8, 6)
+            box.setSpacing(3)
+        else:
+            box.setContentsMargins(10, 10, 8, 10)
+            box.setSpacing(5)
+
+        name = QLabel(title)
+        name.setProperty("muted", True)
+
+        result = QLabel(value)
+        result.setProperty("metricValue", True)
+        result.setWordWrap(True)
+
+        box.addWidget(name)
+        box.addWidget(result)
+
+        grid.addWidget(cell, index // 3, index % 3)
+        return result
+
+    def make_action_button(self, text, callback):
+        button = QPushButton(text)
+        button.clicked.connect(callback)
+        return button
+
+    def change_tab(self, tab):
+        if tab not in self.page_widgets:
+            return
+
+        self.pages.setCurrentWidget(self.page_widgets[tab])
+
+    def show_cities_info(self):
+        QMessageBox.information(
+            self,
+            "Mis ciudades",
+            "La selección y administración de ciudades "
+            "se integrará con el servicio de geocodificación de Clima G."
+        )
+
+    def show_settings_info(self):
+        QMessageBox.information(
+            self,
+            "Configuración",
+            "El panel de configuración nativo está pendiente de integración."
+        )
+
+    # ---------------------------------------------------------
+    # PESTAÑA HOY
+    # ---------------------------------------------------------
+
+    def build_today_page(self):
+        page, layout = self.make_page()
+        self.page_widgets["hoy"] = page
+
+        # Pronóstico horario
+        hourly_card, hourly_layout = self.create_card(
+            "Pronóstico por horas"
+        )
+
+        self.hourly_description = QLabel("Temperatura")
+        self.hourly_description.setProperty("muted", True)
+        hourly_layout.addWidget(self.hourly_description)
+
+        self.hourly_scroll = QScrollArea()
+        self.hourly_scroll.setWidgetResizable(True)
+        self.hourly_scroll.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
+        self.hourly_scroll.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.hourly_scroll.setFixedHeight(125)
+
+        self.hourly_content = QWidget()
+        self.hourly_row = QHBoxLayout(self.hourly_content)
+        self.hourly_row.setContentsMargins(2, 2, 2, 8)
+        self.hourly_row.setSpacing(9)
+
+        self.hourly_scroll.setWidget(self.hourly_content)
+        hourly_layout.addWidget(self.hourly_scroll)
+
+        layout.addWidget(hourly_card)
+
+        # Astronomía
+        astronomy_card, astronomy_layout = self.create_card(
+            "🌙 Astronomía"
+        )
+
+        self.moon_phase_label = QLabel("Fase lunar: --")
+        self.moon_illumination_label = QLabel("Iluminación aproximada: --")
+        self.moonrise_label = QLabel("Salida de Luna: --")
+        self.moonset_label = QLabel("Puesta de Luna: --")
+        self.sunrise_label = QLabel("Salida del Sol: --")
+        self.sunset_label = QLabel("Puesta del Sol: --")
+
+        for label in (
+            self.moon_phase_label,
+            self.moon_illumination_label,
+            self.moonrise_label,
+            self.moonset_label,
+            self.sunrise_label,
+            self.sunset_label,
+        ):
+            astronomy_layout.addWidget(label)
+
+        layout.addWidget(astronomy_card)
+
+        # Condiciones actuales
+        metrics_card, metrics_layout = self.create_card(
+            "Condiciones actuales"
+        )
+
+        grid = QGridLayout()
+        grid.setSpacing(9)
+
+        self.metric_labels = {}
+        metrics = [
+            ("feels", "Sensación térmica"),
+            ("humidity", "Humedad"),
+            ("wind", "Viento"),
+            ("direction", "Dirección"),
+            ("maxmin", "Máx. / Mín."),
+            ("precip", "Precipitación"),
+            ("pressure", "Presión"),
+            ("uv", "Índice UV"),
+            ("clouds", "Nubosidad"),
+        ]
+
+        for index, (key, label) in enumerate(metrics):
+            self.metric_labels[key] = self.add_metric(
+                grid, index, label
+            )
+
+        metrics_layout.addLayout(grid)
+        layout.addWidget(metrics_card)
+
+        self.alert_card, alert_layout = self.create_card(
+            "⚠️ Alertas meteorológicas"
+        )
+        self.alert_label = QLabel(
+            "Esperando datos meteorológicos..."
+        )
+        self.alert_label.setWordWrap(True)
+        alert_layout.addWidget(self.alert_label)
+        layout.addWidget(self.alert_card)
+
+        layout.addWidget(
+            self.make_action_button(
+                "↻ Actualizar clima", self.refresh_weather
+            )
+        )
+
+    # ---------------------------------------------------------
+    # PESTAÑA SEMANA
+    # ---------------------------------------------------------
+
+    def build_week_page(self):
+        page, layout = self.make_page(compact=True)
+        self.page_widgets["semana"] = page
+
+        card, card_layout = self.create_card(
+            "📅 Pronóstico de siete días", compact=True
+        )
+
+        self.daily_container = QVBoxLayout()
+        self.daily_container.setSpacing(8)
+        card_layout.addLayout(self.daily_container)
+
+        self.daily_empty = QLabel(
+            "Esperando el pronóstico..."
+        )
+        self.daily_empty.setProperty("muted", True)
+        card_layout.addWidget(self.daily_empty)
+
+        layout.addWidget(card)
+        layout.addWidget(
+            self.make_action_button(
+                "↻ Actualizar clima", self.refresh_weather
+            )
+        )
+
+    # ---------------------------------------------------------
+    # PESTAÑA AIRE
+    # ---------------------------------------------------------
+
+    def build_air_page(self):
+        page, layout = self.make_page(compact=True)
+        self.page_widgets["aire"] = page
+
+        self.aqi_banner = QFrame()
+        self.aqi_banner.setStyleSheet("""
+            QFrame {
+                background: #15803d;
+                border-radius: 16px;
+            }
+            QLabel {
+                color: white;
+            }
+        """)
+
+        banner_layout = QVBoxLayout(self.aqi_banner)
+        banner_layout.setContentsMargins(12, 10, 12, 10)
+
+        title = QLabel("ÍNDICE DE CALIDAD DEL AIRE")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.aqi_value = QLabel("--")
+        self.aqi_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.aqi_value.setStyleSheet(
+            "font-size: 36px; font-weight: 700; color: white;"
+        )
+
+        self.aqi_description = QLabel("Esperando datos...")
+        self.aqi_description.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        banner_layout.addWidget(title)
+        banner_layout.addWidget(self.aqi_value)
+        banner_layout.addWidget(self.aqi_description)
+
+        layout.addWidget(self.aqi_banner)
+
+        card, card_layout = self.create_card(
+            "Contaminantes", compact=True
+        )
+
+        grid = QGridLayout()
+        grid.setSpacing(9)
+
+        self.air_labels = {}
+        for index, (key, label) in enumerate((
+            ("pm25", "PM2.5"),
+            ("pm10", "PM10"),
+            ("co", "Monóxido de carbono"),
+        )):
+            self.air_labels[key] = self.add_metric(
+                grid, index, label, compact=True
+            )
+
+        card_layout.addLayout(grid)
+        layout.addWidget(card)
+
+        pollen_card, pollen_layout = self.create_card(
+            "Polen y alérgenos", compact=True
+        )
+        pollen = QLabel(
+            "No disponible en los datos actuales del servicio meteorológico."
+        )
+        pollen.setWordWrap(True)
+        pollen.setProperty("muted", True)
+        pollen_layout.addWidget(pollen)
+        layout.addWidget(pollen_card)
+
+        self.air_updated = QLabel("Esperando datos de calidad del aire.")
+        self.air_updated.setProperty("muted", True)
+        layout.addWidget(self.air_updated)
+
+        layout.addWidget(
+            self.make_action_button(
+                "↻ Actualizar calidad del aire", self.refresh_weather
+            )
+        )
+
+    # ---------------------------------------------------------
+    # PESTAÑA MAPA
+    # ---------------------------------------------------------
+
+    def build_map_page(self):
+        page, layout = self.make_page(compact=True)
+        self.page_widgets["mapa"] = page
+
+        intro, intro_layout = self.create_card(
+            "🌍 Mapa meteorológico", compact=True
+        )
+
+        description = QLabel(
+            "Explorá el mundo, compará condiciones y consultá "
+            "el pronóstico de distintas ubicaciones."
+        )
+        description.setWordWrap(True)
+        intro_layout.addWidget(description)
+        layout.addWidget(intro)
+
+        controls, controls_layout = self.create_card(
+            "Capas del mapa", compact=True
+        )
+
+        self.map_layer_label = QLabel(
+            "Capa seleccionada: Precipitación"
+        )
+        self.map_layer_label.setProperty("muted", True)
+
+        self.map_layer_buttons = {}
+        row = QGridLayout()
+
+        for index, (key, label) in enumerate((
+            ("rain", "🌧️ Precipitación"),
+            ("temp", "🌡️ Temperatura"),
+            ("wind", "🌬️ Viento"),
+            ("air", "🌫️ Calidad del aire"),
+            ("quakes", "🌎 Sismos"),
+        )):
+            button = QPushButton(label)
+            button.setCheckable(True)
+            button.setChecked(index == 0)
+            button.clicked.connect(
+                lambda checked=False, k=key, name=label:
+                self.select_map_layer(k, name)
+            )
+            row.addWidget(button, index // 2, index % 2)
+            self.map_layer_buttons[key] = button
+
+        controls_layout.addLayout(row)
+        controls_layout.addWidget(self.map_layer_label)
+        layout.addWidget(controls)
+
+        map_card, map_layout = self.create_card(
+            "Vista del mapa", compact=True
+        )
+
+        map_notice = QLabel(
+            "El mapa nativo todavía no está integrado.\n\n"
+            "Las capas meteorológicas deberán reutilizar los datos "
+            "y servicios de Clima G. La capa de sismos utilizará "
+            "la fuente USGS aprobada por el proyecto.\n\n"
+            "No se muestran datos simulados ni capas de proveedores "
+            "meteorológicos adicionales."
+        )
+        map_notice.setWordWrap(True)
+        map_notice.setAlignment(
+            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
+        )
+        map_notice.setStyleSheet("""
+            QLabel {
+                background: #eef2f8;
+                border-radius: 12px;
+                padding: 10px;
+                color: #334155;
+            }
+        """)
+
+        map_layout.addWidget(map_notice)
+        layout.addWidget(map_card)
+
+    def select_map_layer(self, key, label):
+        for name, button in self.map_layer_buttons.items():
+            button.setChecked(name == key)
+
+        self.map_layer_label.setText(
+            f"Capa seleccionada: {label}"
+        )
+
+    # ---------------------------------------------------------
+    # PESTAÑA RESUMEN
+    # ---------------------------------------------------------
+
+    def build_summary_page(self):
+        page, layout = self.make_page(compact=True)
+        self.page_widgets["resumen"] = page
+
+        card, card_layout = self.create_card(
+            "Resumen del tiempo", compact=True
+        )
+
+        self.summary_text = QLabel(
+            "El resumen aparecerá cuando Clima G termine de cargar "
+            "el pronóstico."
+        )
+        self.summary_text.setWordWrap(True)
+        self.summary_text.setTextInteractionFlags(
+            Qt.TextInteractionFlag.TextSelectableByMouse
+        )
+
+        self.summary_updated = QLabel(
+            "Esperando datos meteorológicos..."
+        )
+        self.summary_updated.setProperty("muted", True)
+
+        card_layout.addWidget(self.summary_text)
+        card_layout.addWidget(self.summary_updated)
+
+        layout.addWidget(card)
+
+        layout.addWidget(
+            self.make_action_button(
+                "↻ Actualizar clima", self.refresh_weather
+            )
+        )
+
+    # ---------------------------------------------------------
+    # FORMATO Y UTILIDADES
+    # ---------------------------------------------------------
+
+    @staticmethod
+    def format_value(value, suffix=""):
+        if value is None:
+            return "--"
+
+        try:
+            return f"{round(float(value))}{suffix}"
+        except (ValueError, TypeError):
+            return "--"
+
+    @staticmethod
+    def format_time(value):
+        if not value:
+            return "--:--"
+
+        try:
+            return str(value)[11:16]
+        except (TypeError, IndexError):
+            return "--:--"
+
+    @staticmethod
+    def compass_direction(degrees):
+        if degrees is None:
+            return "--"
+
+        directions = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"]
+
+        try:
+            return directions[round(float(degrees) / 45) % 8]
+        except (ValueError, TypeError):
+            return "--"
+
+    @staticmethod
+    def moon_phase_name(value):
+        if value is None:
+            return "--"
+
+        try:
+            phase = float(value) % 1
+            phases = [
+                (0.0625, "🌑 Luna nueva"),
+                (0.1875, "🌒 Luna creciente"),
+                (0.3125, "🌓 Cuarto creciente"),
+                (0.4375, "🌔 Gibosa creciente"),
+                (0.5625, "🌕 Luna llena"),
+                (0.6875, "🌖 Gibosa menguante"),
+                (0.8125, "🌗 Cuarto menguante"),
+                (0.9375, "🌘 Luna menguante"),
+                (1.0001, "🌑 Luna nueva"),
+            ]
+
+            for limit, name in phases:
+                if phase < limit:
+                    return name
+        except (ValueError, TypeError):
+            pass
+
+        return "--"
+
+    @staticmethod
+    def get_daily_value(daily, key, index):
+        values = daily.get(key, [])
+        return values[index] if 0 <= index < len(values) else None
+
+    @staticmethod
+    def weekday_name(date_value):
+        try:
+            date = datetime.strptime(date_value, "%Y-%m-%d")
+            names = [
+                "Lunes", "Martes", "Miércoles", "Jueves",
+                "Viernes", "Sábado", "Domingo"
+            ]
+            return names[date.weekday()]
+        except (ValueError, TypeError):
+            return str(date_value)
+
+    @staticmethod
+    def air_quality_description(value):
+        if value is None:
+            return "Calidad del aire no disponible"
+
+        try:
+            value = float(value)
+        except (ValueError, TypeError):
+            return "Calidad del aire no disponible"
+
+        if value <= 20:
+            return "Muy buena"
+        if value <= 40:
+            return "Buena"
+        if value <= 60:
+            return "Moderada"
+        if value <= 80:
+            return "Mala"
+        if value <= 100:
+            return "Muy mala"
+        return "Extremadamente mala"
+
+    # ---------------------------------------------------------
+    # ACTUALIZACIÓN METEOROLÓGICA
+    # ---------------------------------------------------------
+
+    def refresh_weather(self):
+        if self.worker is not None and self.worker.isRunning():
+            return
+
+        self.status_label.setText("Consultando Open-Meteo...")
+
+        self.worker = WeatherWorker(
+            self.latitude, self.longitude
+        )
+        self.worker.data_ready.connect(self.update_weather)
+        self.worker.error.connect(self.show_error)
+        self.worker.finished.connect(self.worker_finished)
+        self.worker.start()
+
+    def worker_finished(self):
+        self.worker = None
+
+    def show_error(self, message):
+        self.status_label.setText(
+            f"No se pudieron actualizar los datos: {message}"
+        )
+
+    def update_weather(self, result):
+        self.weather_data = result
+
+        weather = result["weather"]
+        current = weather["current"]
+        hourly = weather["hourly"]
+        daily = weather["daily"]
+
+        temperature = current.get("temperature_2m")
+        weather_code = current.get("weather_code")
+        description, emoji = describe_weather(weather_code)
+
+        current_time = current.get("time", "")
+        today = current_time[:10]
+        daily_times = daily.get("time", [])
+
+        today_index = (
+            daily_times.index(today)
+            if today in daily_times
+            else 0
+        )
+
+        # Cabecera
+        self.header.update_weather(
+            self.format_value(temperature),
+            description,
+            emoji,
+            self.location_name,
+        )
+
+        # Baco
+        uv_values = daily.get("uv_index_max", [])
+        uv_index = (
+            uv_values[today_index]
+            if today_index < len(uv_values)
+            else None
+        )
+
+        if temperature is not None and weather_code is not None:
+            decree = generar_decreto(
+                temperature,
+                weather_code,
+                uv_index if uv_index is not None else 0,
+            )
+            self.header.update_baco(decree)
+
+        self.header.update_atmosphere(
+            f"{emoji} {description}",
+            f"Condiciones actuales en {self.location_name}",
+        )
+
+        # Datos de ayer
+        yesterday_index = today_index - 1
+        if yesterday_index >= 0:
+            yesterday_max = self.get_daily_value(
+                daily, "temperature_2m_max", yesterday_index
+            )
+            yesterday_min = self.get_daily_value(
+                daily, "temperature_2m_min", yesterday_index
+            )
+            if yesterday_max is not None and yesterday_min is not None:
+                self.header.update_yesterday(
+                    f"Ayer: Máx. {self.format_value(yesterday_max, '°')} "
+                    f"· Mín. {self.format_value(yesterday_min, '°')}"
+                )
+
+        # Métricas de hoy
+        self.metric_labels["feels"].setText(
+            self.format_value(
+                current.get("apparent_temperature"), " °C"
+            )
+        )
+        self.metric_labels["humidity"].setText(
+            self.format_value(
+                current.get("relative_humidity_2m"), "%"
+            )
+        )
+        self.metric_labels["wind"].setText(
+            self.format_value(current.get("wind_speed_10m"), " km/h")
+        )
+        self.metric_labels["direction"].setText(
+            self.compass_direction(
+                current.get("wind_direction_10m")
+            )
+        )
+
+        maximum = self.get_daily_value(
+            daily, "temperature_2m_max", today_index
+        )
+        minimum = self.get_daily_value(
+            daily, "temperature_2m_min", today_index
+        )
+
+        self.metric_labels["maxmin"].setText(
+            f"{self.format_value(maximum, '°')} / "
+            f"{self.format_value(minimum, '°')}"
+        )
+
+        precipitation = self.get_daily_value(
+            daily, "precipitation_sum", today_index
+        )
+        self.metric_labels["precip"].setText(
+            self.format_value(precipitation, " mm")
+        )
+
+        self.metric_labels["pressure"].setText(
+            self.format_value(
+                current.get("surface_pressure"), " hPa"
+            )
+        )
+        self.metric_labels["uv"].setText(
+            self.format_value(uv_index)
+        )
+        self.metric_labels["clouds"].setText(
+            self.format_value(current.get("cloud_cover"), "%")
+        )
+
+        self.update_alerts(
+            weather_code, temperature, uv_index, precipitation
+        )
+
+        self.update_astronomy(daily, today_index)
+        self.update_hourly(hourly, current_time)
+        self.update_daily(daily, today_index)
+        self.update_air_quality(result.get("air_quality"))
+        self.update_summary(
+            current, daily, today_index, description,
+            temperature, precipitation, uv_index
+        )
+
+        self.status_label.setText(
+            f"Actualizado: {self.format_time(current_time)}"
+            f" · {self.location_name}"
+        )
+
+    # ---------------------------------------------------------
+    # ASTRONOMÍA
+    # ---------------------------------------------------------
+
+    def update_astronomy(self, daily, index):
+        phase = self.get_daily_value(daily, "moon_phase", index)
+
+        self.moon_phase_label.setText(
+            "Fase lunar: " + self.moon_phase_name(phase)
+        )
+
+        if phase is not None:
+            try:
+                illumination = (
+                    1 - math.cos(2 * math.pi * float(phase))
+                ) / 2 * 100
+                self.moon_illumination_label.setText(
+                    f"Iluminación aproximada: {round(illumination)}%"
+                )
+            except (ValueError, TypeError):
+                self.moon_illumination_label.setText(
+                    "Iluminación aproximada: --"
+                )
+
+        self.moonrise_label.setText(
+            "Salida de Luna: " + self.format_time(
+                self.get_daily_value(daily, "moonrise", index)
+            )
+        )
+        self.moonset_label.setText(
+            "Puesta de Luna: " + self.format_time(
+                self.get_daily_value(daily, "moonset", index)
+            )
+        )
+        self.sunrise_label.setText(
+            "Salida del Sol: " + self.format_time(
+                self.get_daily_value(daily, "sunrise", index)
+            )
+        )
+        self.sunset_label.setText(
+            "Puesta del Sol: " + self.format_time(
+                self.get_daily_value(daily, "sunset", index)
+            )
+        )
+
+    # ---------------------------------------------------------
+    # PRONÓSTICO HORARIO
+    # ---------------------------------------------------------
+
+    def update_hourly(self, hourly, current_time):
+        while self.hourly_row.count():
+            item = self.hourly_row.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        times = hourly.get("time", [])
+        temperatures = hourly.get("temperature_2m", [])
+        codes = hourly.get("weather_code", [])
+        rain = hourly.get("precipitation_probability", [])
+        winds = hourly.get("wind_speed_10m", [])
+
+        start = 0
+        for index, value in enumerate(times):
+            if value >= current_time:
+                start = index
+                break
+
+        count = 0
+
+        for index in range(start, min(start + 12, len(times))):
+            _, icon = describe_weather(
+                codes[index] if index < len(codes) else None
+            )
+
+            temp = self.format_value(
+                temperatures[index]
+                if index < len(temperatures) else None,
+                "°",
+            )
+
+            probability = self.format_value(
+                rain[index] if index < len(rain) else None,
+                "%",
+            )
+
+            wind = self.format_value(
+                winds[index] if index < len(winds) else None,
+                " km/h",
+            )
+
+            tile = QFrame()
+            tile.setStyleSheet("""
+                QFrame {
+                    background: #eef2f8;
+                    border-radius: 12px;
+                }
+            """)
+            tile.setFixedWidth(86)
+
+            box = QVBoxLayout(tile)
+            box.setContentsMargins(5, 8, 5, 8)
+            box.setSpacing(4)
+
+            hour = QLabel(self.format_time(times[index]))
+            icon_label = QLabel(icon)
+            temp_label = QLabel(temp)
+            rain_label = QLabel(f"💧 {probability}")
+            wind_label = QLabel(f"🌬️ {wind}")
+
+            for label in (hour, icon_label, temp_label,
+                          rain_label, wind_label):
+                label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                box.addWidget(label)
+
+            temp_label.setStyleSheet("font-weight: 700; font-size: 15px;")
+            self.hourly_row.addWidget(tile)
+            count += 1
+
+        self.hourly_row.addStretch()
+
+        if count == 0:
+            self.hourly_description.setText(
+                "No hay datos horarios disponibles."
+            )
+
+    # ---------------------------------------------------------
+    # PRONÓSTICO DIARIO
+    # ---------------------------------------------------------
+
+    def update_daily(self, daily, today_index):
+        while self.daily_container.count():
+            item = self.daily_container.takeAt(0)
+            widget = item.widget()
+            if widget:
+                widget.deleteLater()
+
+        self.daily_empty.setVisible(False)
+
+        times = daily.get("time", [])
+        maximums = daily.get("temperature_2m_max", [])
+        minimums = daily.get("temperature_2m_min", [])
+        rain = daily.get("precipitation_sum", [])
+        codes = daily.get("weather_code", [])
+
+        for index in range(
+            today_index, min(today_index + 7, len(times))
+        ):
+            code = codes[index] if index < len(codes) else None
+            _, icon = describe_weather(code)
+
+            maximum = self.format_value(
+                maximums[index] if index < len(maximums) else None,
+                "°",
+            )
+            minimum = self.format_value(
+                minimums[index] if index < len(minimums) else None,
+                "°",
+            )
+            rainfall = self.format_value(
+                rain[index] if index < len(rain) else None,
+                " mm",
+            )
+
+            row = QFrame()
+            row.setStyleSheet("""
+                QFrame {
+                    background: #eef2f8;
+                    border-radius: 11px;
+                }
+            """)
+
+            row_layout = QHBoxLayout(row)
+            row_layout.setContentsMargins(8, 5, 8, 5)
+
+            day = QLabel(self.weekday_name(times[index]))
+            weather_icon = QLabel(icon)
+            temperatures = QLabel(
+                f"Máx. {maximum}   Mín. {minimum}"
+            )
+            precipitation = QLabel(f"💧 {rainfall}")
+
+            day.setMinimumWidth(85)
+            temperatures.setProperty("metricValue", True)
+
+            row_layout.addWidget(day)
+            row_layout.addWidget(weather_icon)
+            row_layout.addWidget(temperatures, 1)
+            row_layout.addWidget(precipitation)
+
+            self.daily_container.addWidget(row)
+
+    # ---------------------------------------------------------
+    # CALIDAD DEL AIRE
+    # ---------------------------------------------------------
+
+    def update_air_quality(self, air):
+        if not air or not isinstance(air.get("current"), dict):
+            self.aqi_value.setText("--")
+            self.aqi_description.setText(
+                "Calidad del aire no disponible"
+            )
+            self.air_labels["pm25"].setText("--")
+            self.air_labels["pm10"].setText("--")
+            self.air_labels["co"].setText("--")
+            self.air_updated.setText(
+                "No se recibieron datos de calidad del aire."
+            )
+            return
+
+        values = air["current"]
+        aqi = values.get("european_aqi")
+
+        self.aqi_value.setText(self.format_value(aqi))
+        self.aqi_description.setText(
+            self.air_quality_description(aqi)
+        )
+
+        if aqi is not None:
+            try:
+                value = float(aqi)
+                if value <= 20:
+                    color = "#15803d"
+                elif value <= 40:
+                    color = "#65a30d"
+                elif value <= 60:
+                    color = "#ca8a04"
+                elif value <= 80:
+                    color = "#ea580c"
+                else:
+                    color = "#b91c1c"
+
+                self.aqi_banner.setStyleSheet(
+                    f"QFrame {{ background: {color}; border-radius: 16px; }}"
+                    "QLabel { color: white; }"
+                )
+            except (ValueError, TypeError):
+                pass
+
+        self.air_labels["pm25"].setText(
+            self.format_value(values.get("pm2_5"), " µg/m³")
+        )
+        self.air_labels["pm10"].setText(
+            self.format_value(values.get("pm10"), " µg/m³")
+        )
+        self.air_labels["co"].setText(
+            self.format_value(
+                values.get("carbon_monoxide"), " µg/m³"
+            )
+        )
+
+        self.air_updated.setText(
+            "Datos de calidad del aire recibidos correctamente."
+        )
+
+    # ---------------------------------------------------------
+    # ALERTAS Y RESUMEN
+    # ---------------------------------------------------------
+
+    def update_alerts(self, code, temperature, uv, precipitation):
+        warnings = []
+
+        if code in {95, 96, 99}:
+            warnings.append("Tormenta: prestá atención a las condiciones.")
+        elif code in {65, 82}:
+            warnings.append("Se registran condiciones de lluvia intensa.")
+        elif code in {61, 63, 80, 81}:
+            warnings.append("Hay precipitaciones previstas o actuales.")
+
+        if uv is not None:
+            try:
+                if float(uv) >= 8:
+                    warnings.append("Índice UV muy alto.")
+                elif float(uv) >= 6:
+                    warnings.append("Índice UV alto.")
+            except (ValueError, TypeError):
+                pass
+
+        if temperature is not None:
+            try:
+                if float(temperature) >= 35:
+                    warnings.append("Temperatura elevada.")
+                elif float(temperature) <= 0:
+                    warnings.append("Temperatura cercana o inferior a 0 °C.")
+            except (ValueError, TypeError):
+                pass
+
+        self.alert_label.setText(
+            "\n".join("• " + item for item in warnings)
+            if warnings else
+            "🟢 No se detectan condiciones destacadas en los datos actuales."
+        )
+
+    def update_summary(
+        self, current, daily, index, description,
+        temperature, precipitation, uv
+    ):
+        maximum = self.get_daily_value(
+            daily, "temperature_2m_max", index
+        )
+        minimum = self.get_daily_value(
+            daily, "temperature_2m_min", index
+        )
+
+        humidity = current.get("relative_humidity_2m")
+        wind = current.get("wind_speed_10m")
+
+        parts = [
+            f"En {self.location_name} hay {description.lower()} "
+            f"y una temperatura de {self.format_value(temperature, ' °C')}.",
+            f"La temperatura máxima prevista es "
+            f"{self.format_value(maximum, ' °C')} y la mínima "
+            f"{self.format_value(minimum, ' °C')}.",
+            f"La humedad es {self.format_value(humidity, '%')} "
+            f"y el viento alcanza "
+            f"{self.format_value(wind, ' km/h')}.",
+            f"La precipitación diaria prevista es "
+            f"{self.format_value(precipitation, ' mm')}.",
+            f"El índice UV máximo es {self.format_value(uv)}.",
+        ]
+
+        self.summary_text.setText(" ".join(parts))
+        self.summary_updated.setText(
+            f"Resumen actualizado: {self.format_time(current.get('time'))}"
+        )

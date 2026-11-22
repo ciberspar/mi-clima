@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: clima-g
+Version: 1.34.0
+Summary: Clima G Desktop - Aplicación meteorológica multiplataforma
+Requires-Python: >=3.10
+Requires-Dist: PyQt6<7,>=6.7
+Requires-Dist: requests<3,>=2.32
+Provides-Extra: dev
+Requires-Dist: pytest<10,>=8; extra == "dev"
+Requires-Dist: pyinstaller<7,>=6; extra == "dev"

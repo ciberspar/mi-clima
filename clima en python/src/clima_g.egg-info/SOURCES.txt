@@ -1,0 +1,17 @@
+pyproject.toml
+src/clima_g/__init__.py
+src/clima_g/app.py
+src/clima_g/config.py
+src/clima_g.egg-info/PKG-INFO
+src/clima_g.egg-info/SOURCES.txt
+src/clima_g.egg-info/dependency_links.txt
+src/clima_g.egg-info/entry_points.txt
+src/clima_g.egg-info/requires.txt
+src/clima_g.egg-info/top_level.txt
+src/clima_g/services/__init__.py
+src/clima_g/services/baco.py
+src/clima_g/services/weather_codes.py
+src/clima_g/storage/__init__.py
+src/clima_g/ui/__init__.py
+src/clima_g/ui/main_window.py
+tests/test_baco.py
