@@ -812,6 +812,7 @@
       <button type="button" onclick="actualizarClimaActual()">↻ Actualizar clima</button>
     </div>
   </section>
+  <section id="climaGResumenesSemanales" aria-live="polite" style="padding:0 14px 14px;"></section>
   <p class="integration-note" style="margin:0 14px 14px;">
     Este resumen utiliza los datos que Clima G ya cargó para la ubicación seleccionada. Alexa se conectará por separado mediante un feed HTTPS compatible.
   </p>
@@ -822,16 +823,17 @@
     ¿Tenés consultas, sugerencias o encontraste un problema? <a href="https://github.com/ciberspar/mi-clima/issues" target="_blank" rel="noopener noreferrer">Abrí un Issue en GitHub</a>
   </div>
   <div class="footer-info">
-    Clima G • GitHub Pages • Netlify reservado para Push • v1.33.0
+    Clima G • GitHub Pages • Netlify reservado para Push • v1.34.0
   </div>
 
 </main>
 
 <script>
-// 🔔 PUSH REAL DE CLIMA G — SERVICE WORKER + NETLIFY
-// El navegador conserva la suscripción; Netlify guarda el endpoint y las claves
-// públicas de autenticación en el almacén de suscripciones.
+// 🔔 PUSH + REGISTRO METEOROLÓGICO PERSONALIZADO DE CLIMA G
 const CLIMAG_PUSH_ENDPOINT = 'https://radiant-meringue-1bb8c2.netlify.app/.netlify/functions/subscribe';
+const CLIMAG_DATOS_ENDPOINT = 'https://radiant-meringue-1bb8c2.netlify.app/.netlify/functions/registrar-datos';
+const CLIMAG_RESUMEN_ENDPOINT = 'https://radiant-meringue-1bb8c2.netlify.app/.netlify/functions/resumen-semanal';
+const CLIMAG_TOKEN_KEY = 'clima_g_push_access_token';
 
 function convertirClaveVapid(base64String) {
   const normalizada = String(base64String || '').replace(/-/g, '+').replace(/_/g, '/');
@@ -844,110 +846,105 @@ function convertirClaveVapid(base64String) {
 
 async function obtenerClavePublicaPush() {
   const response = await fetchConTiempo(CLIMAG_PUSH_ENDPOINT, { method: 'GET', cache: 'no-store' });
-  if (!response.ok) throw new Error('Netlify no pudo entregar la clave pública VAPID (HTTP ' + response.status + ').');
+  if (!response.ok) throw new Error('No se pudo obtener la clave pública VAPID (HTTP ' + response.status + ').');
   const data = await response.json();
-  if (!data || typeof data.publicKey !== 'string' || !data.publicKey.trim()) {
-    throw new Error('Falta configurar VAPID_PUBLIC_KEY en Netlify.');
-  }
-  return data.publicKey.trim();
+  if (!data?.publicKey) throw new Error('Falta configurar VAPID_PUBLIC_KEY en Netlify.');
+  return data.publicKey;
 }
 
-function obtenerCoordenadasPush() {
-  const lat = Number(currentLat);
-  const lon = Number(currentLon);
-  if (!Number.isFinite(lat) || !Number.isFinite(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-    throw new Error('Clima G todavía no tiene una ubicación válida. Esperá a que cargue el pronóstico.');
-  }
-  return { latitude: lat, longitude: lon };
+function obtenerUbicacionesUsuarioPush() {
+  const lista = [];
+  const agregar = (nombre, lat, lon, tipo) => {
+    const latitude = Number(lat), longitude = Number(lon);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return;
+    const key = `${latitude.toFixed(4)},${longitude.toFixed(4)}`;
+    if (!lista.some(x => x.key === key)) lista.push({ name: String(nombre || 'Ubicación').slice(0, 100), latitude, longitude, type: tipo, key });
+  };
+  if (ubicacionGPSData) agregar(ubicacionGPSData.nombre || 'Mi ubicación GPS', ubicacionGPSData.lat, ubicacionGPSData.lon, 'gps');
+  else agregar(document.getElementById('place')?.textContent || 'Ubicación actual', currentLat, currentLon, 'current');
+  obtenerFavoritos().forEach(f => agregar(f.nombre, f.lat, f.lon, 'favorite'));
+  return lista.map(({key, ...item}) => item);
 }
 
-async function registrarSuscripcionPush(subscription, coords) {
+async function registrarSuscripcionPush(subscription) {
   const response = await fetchConTiempo(CLIMAG_PUSH_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      subscription: subscription.toJSON(),
-      latitude: coords.latitude,
-      longitude: coords.longitude
-    })
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ subscription: subscription.toJSON(), locations: obtenerUbicacionesUsuarioPush(), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC' })
   });
-  let result = {};
-  try { result = await response.json(); } catch (_) {}
-  if (!response.ok || result.success !== true) {
-    throw new Error(result.error || 'Netlify no pudo guardar la suscripción Push (HTTP ' + response.status + ').');
-  }
+  let result = {}; try { result = await response.json(); } catch (_) {}
+  if (!response.ok || result.success !== true || !result.accessToken) throw new Error(result.error || 'No se pudo registrar la suscripción Push.');
+  try { localStorage.setItem(CLIMAG_TOKEN_KEY, result.accessToken); } catch (_) {}
   return result;
 }
 
-async function actualizarUbicacionPushRegistrada() {
-  // No solicita permisos ni crea suscripciones en segundo plano.
-  // Solo actualiza las coordenadas de una suscripción que el usuario ya activó.
+async function publicarDatosUbicacionClimaG(lat, lon, nombre, weather) {
+  if (!weather?.current || !weather?.daily) return false;
+  try {
+    const response = await fetchConTiempo(CLIMAG_DATOS_ENDPOINT, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source: 'Clima G', version: '2.0.0', latitude: Number(lat), longitude: Number(lon), name: String(nombre || 'Ubicación').slice(0,100), timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC', weather })
+    });
+    return response.ok;
+  } catch (error) { console.warn('No se pudieron publicar los datos para el historial semanal:', error); return false; }
+}
+
+async function sincronizarUbicacionesPush() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false;
   try {
-    const registro = await navigator.serviceWorker.ready;
-    const subscription = await registro.pushManager.getSubscription();
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
     if (!subscription) return false;
-    await registrarSuscripcionPush(subscription, obtenerCoordenadasPush());
+    await registrarSuscripcionPush(subscription);
     return true;
-  } catch (error) {
-    console.warn('No se pudo actualizar la ubicación de la suscripción Push:', error);
-    return false;
-  }
+  } catch (error) { console.warn('No se pudieron sincronizar las ubicaciones Push:', error); return false; }
+}
+
+async function publicarClimasGuardadosParaResumen() {
+  const tareas = obtenerFavoritos().map(async f => {
+    try {
+      const weather = await fetchWeather(Number(f.lat), Number(f.lon));
+      await publicarDatosUbicacionClimaG(f.lat, f.lon, f.nombre, weather);
+    } catch (error) { console.warn('No se pudo actualizar el historial de ' + f.nombre, error); }
+  });
+  await Promise.allSettled(tareas);
 }
 
 async function solicitarPermisoNotificacionesNativas() {
   document.getElementById('menuConfig')?.classList.remove('active');
-
-  if (!window.isSecureContext) {
-    alert('Para activar Push, abrí Clima G mediante HTTPS.');
-    return;
-  }
-  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) {
-    alert('Este navegador no admite notificaciones Push web.');
-    return;
-  }
-  if (!datosClimaGlobal) {
-    alert('Esperá a que Clima G termine de cargar el pronóstico y volvé a activar las notificaciones.');
-    return;
-  }
-
+  if (!window.isSecureContext) return alert('Para activar Push, abrí Clima G mediante HTTPS.');
+  if (!('Notification' in window) || !('serviceWorker' in navigator) || !('PushManager' in window)) return alert('Este navegador no admite notificaciones Push web.');
+  if (!datosClimaGlobal) return alert('Esperá a que Clima G cargue el pronóstico y volvé a intentarlo.');
   try {
-    const permiso = Notification.permission === 'granted'
-      ? 'granted'
-      : await Notification.requestPermission();
-
-    if (permiso !== 'granted') {
-      alert('No se concedió el permiso. Podés habilitarlo desde la configuración del navegador.');
-      return;
-    }
-
-    const registro = await navigator.serviceWorker.ready;
+    const permiso = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if (permiso !== 'granted') return alert('No se concedió el permiso de notificaciones.');
+    const registration = await navigator.serviceWorker.ready;
     const publicKey = await obtenerClavePublicaPush();
-    let subscription = await registro.pushManager.getSubscription();
-
-    if (subscription) {
-      // Si ya existe, se conserva y se vuelve a registrar con la ubicación actual.
-      await registrarSuscripcionPush(subscription, obtenerCoordenadasPush());
-    } else {
-      subscription = await registro.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: convertirClaveVapid(publicKey)
-      });
-      try {
-        await registrarSuscripcionPush(subscription, obtenerCoordenadasPush());
-      } catch (errorRegistro) {
-        // Evita dejar una suscripción local sin registrar en el servidor.
-        try { await subscription.unsubscribe(); } catch (_) {}
-        throw errorRegistro;
-      }
-    }
-
-    alert('🔔 ¡Notificaciones Push activadas! Este dispositivo quedó registrado en Clima G y recibirá las alertas que envíe el servidor.');
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: convertirClaveVapid(publicKey) });
+    await registrarSuscripcionPush(subscription);
+    await publicarDatosUbicacionClimaG(currentLat, currentLon, document.getElementById('place')?.textContent, datosClimaGlobal);
+    await publicarClimasGuardadosParaResumen();
+    await cargarResumenesSemanales();
+    alert('🔔 Push activado. Clima G vigilará tu ubicación y tus ciudades guardadas.');
   } catch (error) {
-    console.error('Error al activar Push de Clima G:', error);
-    alert('No se pudo activar Push: ' + (error.message || 'error desconocido') +
-      '\n\nComprobá que Netlify tenga VAPID_PUBLIC_KEY configurada y que la función subscribe esté publicada.');
+    console.error('Error al activar Push:', error);
+    alert('No se pudo activar Push: ' + (error.message || 'error desconocido') + '\nComprobá las variables VAPID y las funciones de Netlify.');
   }
+}
+
+async function cargarResumenesSemanales() {
+  const contenedor = document.getElementById('climaGResumenesSemanales');
+  if (!contenedor) return;
+  try {
+    const token = localStorage.getItem(CLIMAG_TOKEN_KEY);
+    if (!token) { contenedor.innerHTML = '<p class="integration-note">Activá las notificaciones Push para recibir y consultar tus resúmenes semanales en este dispositivo.</p>'; return; }
+    const response = await fetchConTiempo(`${CLIMAG_RESUMEN_ENDPOINT}?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
+    if (!response.ok) throw new Error('HTTP ' + response.status);
+    const data = await response.json();
+    const items = Array.isArray(data.summaries) ? data.summaries : [];
+    if (!items.length) { contenedor.innerHTML = '<p class="integration-note">Todavía no hay resúmenes semanales. Se generarán al finalizar la semana.</p>'; return; }
+    contenedor.innerHTML = '<h2>📅 Tus resúmenes semanales</h2>' + items.map(item => `<article class="summary-card"><h2>${escapeHTML(item.locationName || 'Ubicación')}</h2><p>${escapeHTML(item.text || '')}</p><span class="summary-updated">Semana: ${escapeHTML(item.weekLabel || '')} · Disponible hasta ${escapeHTML(new Date(item.expiresAt).toLocaleDateString('es-AR'))}</span></article>`).join('');
+  } catch (error) { console.warn('No se pudieron cargar los resúmenes semanales:', error); contenedor.innerHTML = '<p class="integration-note">No se pudieron cargar los resúmenes. Intentá nuevamente más tarde.</p>'; }
 }
 
 function escapeHTML(str) {
@@ -1252,7 +1249,10 @@ async function cargarClima(lat, lon, nombreLugar, esGPS = false) {
     actualizarUbicacionActiva(currentLat, currentLon, place);
     // Si el usuario ya activó Push, actualizamos su ubicación registrada
     // sin volver a pedir permisos ni crear una nueva suscripción.
-    actualizarUbicacionPushRegistrada();
+    publicarDatosUbicacionClimaG(currentLat, currentLon, place, weather);
+    sincronizarUbicacionesPush();
+    publicarClimasGuardadosParaResumen();
+    cargarResumenesSemanales();
     const ahora = new Date();
     const hora = ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
     const updated = document.getElementById('lastUpdated');
@@ -1350,6 +1350,8 @@ function guardarEnFavoritos(nombre, lat, lon) {
   if (!favs.some(f => f.coords === coords)) {
     favs.push({ nombre, coords, lat, lon });
     try { localStorage.setItem('clima_favoritos', JSON.stringify(favs)); } catch(e) {}
+    sincronizarUbicacionesPush();
+    publicarClimasGuardadosParaResumen();
   }
 }
 
@@ -1358,6 +1360,7 @@ function eliminarFavorito(idx, event) {
   let favs = obtenerFavoritos();
   favs.splice(idx, 1);
   try { localStorage.setItem('clima_favoritos', JSON.stringify(favs)); } catch(e) {}
+  sincronizarUbicacionesPush();
   renderCiudadesGuardadas();
 }
 
