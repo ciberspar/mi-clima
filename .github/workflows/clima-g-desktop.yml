@@ -237,6 +237,25 @@ jobs:
           name: clima-g-windows
           path: windows-build
 
+      - name: Inspect Windows application
+        shell: pwsh
+        run: |
+          Write-Host "Contenido del artefacto descargado:"
+          Get-ChildItem "windows-build" -Recurse
+
+          $exe = Get-ChildItem `
+            -Path "windows-build" `
+            -Filter "Clima G.exe" `
+            -File `
+            -Recurse |
+            Select-Object -First 1
+
+          if (!$exe) {
+            throw "No se encontró Clima G.exe en el artefacto descargado."
+          }
+
+          Write-Host "Ejecutable encontrado: $($exe.FullName)"
+
       - name: Install Inno Setup
         shell: pwsh
         run: |
@@ -245,19 +264,75 @@ jobs:
       - name: Build Windows installer
         shell: pwsh
         run: |
-          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          $isccCandidates = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          )
 
-          if (!(Test-Path $iscc)) {
-            throw "No se encontró Inno Setup: $iscc"
+          $iscc = $isccCandidates |
+            Where-Object { Test-Path $_ } |
+            Select-Object -First 1
+
+          if (!$iscc) {
+            $iscc = Get-ChildItem `
+              -Path "$env:ProgramFiles(x86)", "$env:ProgramFiles" `
+              -Filter "ISCC.exe" `
+              -File `
+              -Recurse `
+              -ErrorAction SilentlyContinue |
+              Select-Object -First 1 -ExpandProperty FullName
           }
 
-          & $iscc `
-            /DSourceDir="windows-build\Clima G" `
-            installer\windows\ClimaG.iss
+          if (!$iscc) {
+            throw "No se encontró ISCC.exe. Inno Setup no está instalado correctamente."
+          }
+
+          Write-Host "Inno Setup: $iscc"
+
+          $exe = Get-ChildItem `
+            -Path "windows-build" `
+            -Filter "Clima G.exe" `
+            -File `
+            -Recurse |
+            Select-Object -First 1
+
+          if (!$exe) {
+            throw "No se encontró Clima G.exe."
+          }
+
+          $sourceDir = $exe.Directory.FullName
+          $script = Join-Path $env:GITHUB_WORKSPACE "installer\windows\ClimaG.iss"
+
+          if (!(Test-Path $sourceDir)) {
+            throw "No existe la carpeta de la aplicación: $sourceDir"
+          }
+
+          if (!(Test-Path $script)) {
+            throw "No se encontró el script de Inno Setup: $script"
+          }
+
+          New-Item `
+            -ItemType Directory `
+            -Force `
+            -Path "installer\windows\output" |
+            Out-Null
+
+          Write-Host "Carpeta de Clima G: $sourceDir"
+          Write-Host "Script del instalador: $script"
+
+          & $iscc "/DSourceDir=$sourceDir" $script
 
           if ($LASTEXITCODE -ne 0) {
             throw "Falló la compilación del instalador."
           }
+
+          $setup = "installer\windows\output\Clima-G-Setup.exe"
+
+          if (!(Test-Path $setup)) {
+            throw "Inno Setup terminó sin generar Clima-G-Setup.exe."
+          }
+
+          Write-Host "Instalador generado correctamente."
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
