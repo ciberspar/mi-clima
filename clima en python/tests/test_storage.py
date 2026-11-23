@@ -1,3 +1,7 @@
+
+from pathlib import Path
+
+from clima_g.config import APP_NAME
 from clima_g.storage.settings import SettingsStore, data_directory
 
 
@@ -7,7 +11,9 @@ def test_windows_data_directory(tmp_path):
         environ={"APPDATA": "C:/Users/Test/AppData/Roaming"},
         home=tmp_path,
     )
-    assert str(result).startswith("C:/Users/Test/AppData/Roaming")
+
+    expected = Path("C:/Users/Test/AppData/Roaming") / APP_NAME
+    assert result == expected
 
 
 def test_macos_data_directory(tmp_path):
@@ -16,7 +22,7 @@ def test_macos_data_directory(tmp_path):
         environ={},
         home=tmp_path,
     )
-    assert result == tmp_path / "Library" / "Application Support" / "Clima G"
+    assert result == tmp_path / "Library" / "Application Support" / APP_NAME
 
 
 def test_linux_data_directory(tmp_path):
@@ -55,10 +61,7 @@ def test_invalid_location_rejected(tmp_path):
 
 
 def test_location_metadata_defaults(tmp_path):
-    from clima_g.storage.settings import SettingsStore
-
     store = SettingsStore(tmp_path)
-
     metadata = store.get_location_metadata()
 
     assert metadata["source"] == "default"
@@ -66,18 +69,14 @@ def test_location_metadata_defaults(tmp_path):
 
 
 def test_manual_location_records_source(tmp_path):
-    from clima_g.storage.settings import SettingsStore
-
     store = SettingsStore(tmp_path)
     store.set_location(-31.4, -64.1, "Córdoba")
 
     metadata = store.get_location_metadata()
-
     assert metadata["source"] == "manual"
 
 
 def test_detected_location_is_saved(tmp_path):
-    from clima_g.storage.settings import SettingsStore
     from clima_g.services.location import Location
 
     store = SettingsStore(tmp_path)
@@ -103,8 +102,6 @@ def test_detected_location_is_saved(tmp_path):
 
 def test_old_settings_remain_compatible(tmp_path):
     import json
-
-    from clima_g.storage.settings import SettingsStore
 
     path = tmp_path / "settings.json"
     path.write_text(
