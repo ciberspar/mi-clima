@@ -13,6 +13,7 @@ AppId={{9B8E6D31-4F72-4D96-A315-7C2F1E8B604A}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
+SetupIconFile=imagen-setup-de-clima-g-para-windows.ico
 
 DefaultDirName={localappdata}\Programs\Clima G
 DefaultGroupName=Clima G
