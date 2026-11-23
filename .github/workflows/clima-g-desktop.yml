@@ -1,5 +1,5 @@
 
-name: Clima G Desktop - CI and Multi-platform Build
+name: Clima G - Desktop Installers
 
 on:
   push:
@@ -8,7 +8,6 @@ on:
       - pruebas
     paths:
       - "clima en python/**"
-      - "installer/windows/**"
       - ".github/workflows/clima-g-desktop.yml"
 
   pull_request:
@@ -16,7 +15,6 @@ on:
       - main
     paths:
       - "clima en python/**"
-      - "installer/windows/**"
       - ".github/workflows/clima-g-desktop.yml"
 
   workflow_dispatch:
@@ -26,19 +24,20 @@ on:
       - published
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: clima-g-desktop-${{ github.ref }}
+  group: clima-g-installers-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.12"
+  APP_VERSION: "1.34.0"
 
 jobs:
 
   # =====================================================
-  # 1. TESTS MULTIPLATAFORMA
+  # 1. TESTS
   # =====================================================
 
   test:
@@ -65,8 +64,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-          cache: pip
-          cache-dependency-path: "clima en python/pyproject.toml"
 
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
@@ -84,7 +81,7 @@ jobs:
             libxcb-xinerama0 \
             libxcb-xfixes0
 
-      - name: Install project and development dependencies
+      - name: Install project and test dependencies
         run: |
           python -m pip install --upgrade pip
           python -m pip install -e ".[dev]"
@@ -99,40 +96,14 @@ jobs:
         run: |
           python -m pytest -q
 
-      - name: Build Python distributions
-        run: |
-          python -m pip install build
-          python -m build
-
-      - name: Upload Python distributions
-        uses: actions/upload-artifact@v4
-        with:
-          name: clima-g-python-${{ runner.os }}
-          path: clima en python/dist/*
-          if-no-files-found: error
-          retention-days: 14
-
   # =====================================================
-  # 2. APLICACIÓN DE ESCRITORIO
+  # 2. WINDOWS - SETUP.EXE
   # =====================================================
 
-  build:
-    name: Desktop - ${{ matrix.platform_name }}
+  windows:
+    name: Windows - Clima-G-Setup.exe
     needs: test
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: windows-latest
-            platform_name: windows
-
-          - os: ubuntu-24.04
-            platform_name: linux
-
-          - os: macos-latest
-            platform_name: macos
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -143,33 +114,14 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Linux dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libegl1 \
-            libgl1 \
-            libxkbcommon-x11-0 \
-            libdbus-1-3 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-keysyms1 \
-            libxcb-shape0 \
-            libxcb-xinerama0 \
-            libxcb-xfixes0
-
-      - name: Install Clima G
+      - name: Install Clima G and PyInstaller
         working-directory: clima en python
         run: |
           python -m pip install --upgrade pip
           python -m pip install .
-
-      - name: Install PyInstaller
-        run: |
           python -m pip install "pyinstaller>=6,<7"
 
-      - name: Create temporary launcher
+      - name: Create launcher
         working-directory: clima en python
         shell: bash
         run: |
@@ -179,9 +131,7 @@ jobs:
             '    raise SystemExit(main())' \
             > clima_g_launcher.py
 
-      # Windows
-      - name: Build Windows executable
-        if: runner.os == 'Windows'
+      - name: Build Windows application
         working-directory: clima en python
         shell: pwsh
         run: |
@@ -190,78 +140,12 @@ jobs:
             --collect-all clima_g `
             clima_g_launcher.py
 
-      # Linux
-      - name: Build Linux executable
-        if: runner.os == 'Linux'
-        working-directory: clima en python
-        run: |
-          pyinstaller --noconfirm --clean --windowed \
-            --name "Clima-G" \
-            --collect-all clima_g \
-            clima_g_launcher.py
-
-      # macOS
-      - name: Build macOS application
-        if: runner.os == 'macOS'
-        working-directory: clima en python
-        run: |
-          pyinstaller --noconfirm --clean --windowed \
-            --name "Clima G" \
-            --collect-all clima_g \
-            clima_g_launcher.py
-
-      - name: Upload desktop application
-        uses: actions/upload-artifact@v4
-        with:
-          name: clima-g-${{ matrix.platform_name }}
-          path: clima en python/dist/
-          if-no-files-found: error
-          retention-days: 14
-
-  # =====================================================
-  # 3. INSTALADOR WINDOWS
-  # =====================================================
-
-  windows-installer:
-    name: Windows Setup.exe
-    needs: build
-    runs-on: windows-latest
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Download Windows application
-        uses: actions/download-artifact@v4
-        with:
-          name: clima-g-windows
-          path: windows-build
-
-      - name: Inspect Windows application
-        shell: pwsh
-        run: |
-          Write-Host "Contenido del artefacto descargado:"
-          Get-ChildItem "windows-build" -Recurse
-
-          $exe = Get-ChildItem `
-            -Path "windows-build" `
-            -Filter "Clima G.exe" `
-            -File `
-            -Recurse |
-            Select-Object -First 1
-
-          if (!$exe) {
-            throw "No se encontró Clima G.exe en el artefacto descargado."
-          }
-
-          Write-Host "Ejecutable encontrado: $($exe.FullName)"
-
       - name: Install Inno Setup
         shell: pwsh
         run: |
           choco install innosetup --no-progress -y
 
-      - name: Build Windows installer
+      - name: Compile Windows installer
         shell: pwsh
         run: |
           $isccCandidates = @(
@@ -274,101 +158,293 @@ jobs:
             Select-Object -First 1
 
           if (!$iscc) {
-            $iscc = Get-ChildItem `
-              -Path "$env:ProgramFiles(x86)", "$env:ProgramFiles" `
-              -Filter "ISCC.exe" `
-              -File `
-              -Recurse `
-              -ErrorAction SilentlyContinue |
-              Select-Object -First 1 -ExpandProperty FullName
+            throw "No se encontró ISCC.exe."
           }
 
-          if (!$iscc) {
-            throw "No se encontró ISCC.exe. Inno Setup no está instalado correctamente."
-          }
-
-          Write-Host "Inno Setup: $iscc"
-
-          $exe = Get-ChildItem `
-            -Path "windows-build" `
-            -Filter "Clima G.exe" `
-            -File `
-            -Recurse |
-            Select-Object -First 1
-
-          if (!$exe) {
-            throw "No se encontró Clima G.exe."
-          }
-
-          $sourceDir = $exe.Directory.FullName
-          $script = Join-Path $env:GITHUB_WORKSPACE "clima en python\installer\windows\ClimaG.iss"
+          $projectDir = Join-Path $env:GITHUB_WORKSPACE "clima en python"
+          $sourceDir = Join-Path $projectDir "dist\Clima G"
+          $issDir = Join-Path $projectDir "installer\windows"
+          $script = Join-Path $issDir "ClimaG.iss"
 
           if (!(Test-Path $sourceDir)) {
-            throw "No existe la carpeta de la aplicación: $sourceDir"
+            throw "No se encontró la aplicación: $sourceDir"
           }
 
           if (!(Test-Path $script)) {
-            throw "No se encontró el script de Inno Setup: $script"
+            throw "No se encontró el script: $script"
           }
 
-          New-Item `
-            -ItemType Directory `
-            -Force `
-            -Path "installer\windows\output" |
-            Out-Null
-
-          Write-Host "Carpeta de Clima G: $sourceDir"
-          Write-Host "Script del instalador: $script"
-
-          & $iscc "/DSourceDir=$sourceDir" $script
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "Falló la compilación del instalador."
+          if (!(Test-Path (Join-Path $sourceDir "Clima G.exe"))) {
+            throw "No se encontró Clima G.exe."
           }
 
-          $setup = "installer\windows\output\Clima-G-Setup.exe"
+          Write-Host "Inno Setup: $iscc"
+          Write-Host "Aplicación: $sourceDir"
+          Write-Host "Script: $script"
+
+          Push-Location $issDir
+
+          try {
+            $sourceArgument = "/DSourceDir=`"$sourceDir`""
+            & $iscc $sourceArgument "ClimaG.iss"
+
+            if ($LASTEXITCODE -ne 0) {
+              throw "Falló la compilación de Inno Setup."
+            }
+          }
+          finally {
+            Pop-Location
+          }
+
+          $setup = Join-Path $issDir "output\Clima-G-Setup.exe"
 
           if (!(Test-Path $setup)) {
-            throw "Inno Setup terminó sin generar Clima-G-Setup.exe."
+            throw "No se generó Clima-G-Setup.exe."
           }
-
-          Write-Host "Instalador generado correctamente."
 
       - name: Upload Windows installer
         uses: actions/upload-artifact@v4
         with:
-          name: clima-g-windows-installer
-          path: installer/windows/output/Clima-G-Setup.exe
+          name: Clima-G-Windows-Setup
+          path: clima en python/installer/windows/output/Clima-G-Setup.exe
           if-no-files-found: error
           retention-days: 30
 
   # =====================================================
-  # 4. PAQUETE PORTÁTIL LINUX
+  # 3. LINUX - DEB
   # =====================================================
 
-  linux-packages:
-    name: Linux portable package
-    needs: build
+  linux:
+    name: Linux - DEB
+    needs: test
     runs-on: ubuntu-24.04
 
     steps:
-      - name: Download Linux build
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          name: clima-g-linux
-          path: linux-build
+          python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Prepare portable archive
+      - name: Install Linux dependencies
         run: |
-          mkdir -p packages
+          sudo apt-get update
+          sudo apt-get install -y \
+            libegl1 \
+            libgl1 \
+            libxkbcommon-x11-0 \
+            libdbus-1-3 \
+            libxcb-cursor0 \
+            libxcb-icccm4 \
+            libxcb-keysyms1 \
+            libxcb-shape0 \
+            libxcb-xinerama0 \
+            libxcb-xfixes0 \
+            ruby \
+            ruby-dev \
+            build-essential
 
-          tar -czf packages/clima-g-linux-x86_64.tar.gz \
-            -C linux-build .
+      - name: Install Clima G and PyInstaller
+        working-directory: clima en python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+          python -m pip install "pyinstaller>=6,<7"
 
-      - name: Upload Linux portable package
+      - name: Create launcher
+        working-directory: clima en python
+        shell: bash
+        run: |
+          printf '%s\n' \
+            'from clima_g.app import main' \
+            'if __name__ == "__main__":' \
+            '    raise SystemExit(main())' \
+            > clima_g_launcher.py
+
+      - name: Build Linux application
+        working-directory: clima en python
+        run: |
+          pyinstaller --noconfirm --clean --windowed \
+            --name "Clima-G" \
+            --collect-all clima_g \
+            clima_g_launcher.py
+
+      - name: Install FPM
+        run: |
+          sudo gem install --no-document fpm
+
+      - name: Prepare Debian package
+        shell: bash
+        run: |
+          set -e
+
+          PROJECT="clima en python"
+          ROOT="debian-package"
+
+          mkdir -p "$ROOT/opt/clima-g"
+          mkdir -p "$ROOT/usr/bin"
+          mkdir -p "$ROOT/usr/share/applications"
+
+          cp -a "$PROJECT/dist/Clima-G/." "$ROOT/opt/clima-g/"
+
+          cat > "$ROOT/usr/bin/clima-g" <<'EOF'
+          #!/bin/sh
+          exec /opt/clima-g/Clima-G "$@"
+          EOF
+
+          chmod 755 "$ROOT/usr/bin/clima-g"
+
+          cat > "$ROOT/usr/share/applications/clima-g.desktop" <<'EOF'
+          [Desktop Entry]
+          Type=Application
+          Name=Clima G
+          Comment=Aplicación meteorológica Clima G
+          Exec=clima-g
+          Terminal=false
+          Categories=Utility;Weather;
+          EOF
+
+      - name: Build DEB package
+        run: |
+          fpm \
+            --input-type dir \
+            --output-type deb \
+            --name clima-g \
+            --version "$APP_VERSION" \
+            --architecture amd64 \
+            --description "Clima G Desktop" \
+            --maintainer "Clima G" \
+            --license "MIT" \
+            --depends libglib2.0-0 \
+            --depends libgl1 \
+            --depends libegl1 \
+            --depends libxkbcommon0 \
+            --depends libdbus-1-3 \
+            --chdir debian-package \
+            --package "clima-g_${APP_VERSION}_amd64.deb" \
+            opt usr
+
+      - name: Upload Linux installer
         uses: actions/upload-artifact@v4
         with:
-          name: clima-g-linux-portable
-          path: packages/*.tar.gz
+          name: Clima-G-Linux-DEB
+          path: clima-g_${{ env.APP_VERSION }}_amd64.deb
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
+
+  # =====================================================
+  # 4. MACOS - DMG
+  # =====================================================
+
+  macos:
+    name: macOS - DMG
+    needs: test
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install Clima G and PyInstaller
+        working-directory: clima en python
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install .
+          python -m pip install "pyinstaller>=6,<7"
+
+      - name: Create launcher
+        working-directory: clima en python
+        shell: bash
+        run: |
+          printf '%s\n' \
+            'from clima_g.app import main' \
+            'if __name__ == "__main__":' \
+            '    raise SystemExit(main())' \
+            > clima_g_launcher.py
+
+      - name: Build macOS application
+        working-directory: clima en python
+        run: |
+          pyinstaller --noconfirm --clean --windowed \
+            --name "Clima G" \
+            --collect-all clima_g \
+            clima_g_launcher.py
+
+      - name: Create DMG
+        working-directory: clima en python
+        run: |
+          test -d "dist/Clima G.app"
+
+          hdiutil create \
+            -volname "Clima G" \
+            -srcfolder "dist/Clima G.app" \
+            -ov \
+            -format UDZO \
+            "dist/Clima-G.dmg"
+
+          test -f "dist/Clima-G.dmg"
+
+      - name: Upload macOS installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clima-G-macOS-DMG
+          path: clima en python/dist/Clima-G.dmg
+          if-no-files-found: error
+          retention-days: 30
+
+  # =====================================================
+  # 5. PUBLICAR SOLO LOS TRES INSTALADORES EN RELEASES
+  # =====================================================
+
+  publish-release:
+    name: Publish three installers
+    if: github.event_name == 'release'
+    needs:
+      - windows
+      - linux
+      - macos
+
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Download Windows installer
+        uses: actions/download-artifact@v4
+        with:
+          name: Clima-G-Windows-Setup
+          path: release-files
+
+      - name: Download Linux installer
+        uses: actions/download-artifact@v4
+        with:
+          name: Clima-G-Linux-DEB
+          path: release-files
+
+      - name: Download macOS installer
+        uses: actions/download-artifact@v4
+        with:
+          name: Clima-G-macOS-DMG
+          path: release-files
+
+      - name: Verify release files
+        run: |
+          ls -lh release-files
+          test -f release-files/Clima-G-Setup.exe
+          test -f release-files/clima-g_${APP_VERSION}_amd64.deb
+          test -f release-files/Clima-G.dmg
+
+      - name: Upload installers to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release-files/Clima-G-Setup.exe
+            release-files/clima-g_${{ env.APP_VERSION }}_amd64.deb
+            release-files/Clima-G.dmg
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
