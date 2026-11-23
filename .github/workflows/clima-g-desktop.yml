@@ -1,3 +1,4 @@
+
 name: Clima G Desktop - CI and Multi-platform Build
 
 on:
@@ -7,6 +8,7 @@ on:
       - pruebas
     paths:
       - "clima en python/**"
+      - "installer/windows/**"
       - ".github/workflows/clima-g-desktop.yml"
 
   pull_request:
@@ -14,6 +16,7 @@ on:
       - main
     paths:
       - "clima en python/**"
+      - "installer/windows/**"
       - ".github/workflows/clima-g-desktop.yml"
 
   workflow_dispatch:
@@ -176,6 +179,7 @@ jobs:
             '    raise SystemExit(main())' \
             > clima_g_launcher.py
 
+      # Windows
       - name: Build Windows executable
         if: runner.os == 'Windows'
         working-directory: clima en python
@@ -183,27 +187,26 @@ jobs:
         run: |
           pyinstaller --noconfirm --clean --windowed `
             --name "Clima G" `
-            --collect-all PyQt6 `
             --collect-all clima_g `
             clima_g_launcher.py
 
+      # Linux
       - name: Build Linux executable
         if: runner.os == 'Linux'
         working-directory: clima en python
         run: |
           pyinstaller --noconfirm --clean --windowed \
             --name "Clima-G" \
-            --collect-all PyQt6 \
             --collect-all clima_g \
             clima_g_launcher.py
 
+      # macOS
       - name: Build macOS application
         if: runner.os == 'macOS'
         working-directory: clima en python
         run: |
           pyinstaller --noconfirm --clean --windowed \
             --name "Clima G" \
-            --collect-all PyQt6 \
             --collect-all clima_g \
             clima_g_launcher.py
 
@@ -216,7 +219,56 @@ jobs:
           retention-days: 14
 
   # =====================================================
-  # 3. PAQUETE PORTÁTIL LINUX
+  # 3. INSTALADOR WINDOWS
+  # =====================================================
+
+  windows-installer:
+    name: Windows Setup.exe
+    needs: build
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download Windows application
+        uses: actions/download-artifact@v4
+        with:
+          name: clima-g-windows
+          path: windows-build
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup --no-progress -y
+
+      - name: Build Windows installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+
+          if (!(Test-Path $iscc)) {
+            throw "No se encontró Inno Setup: $iscc"
+          }
+
+          & $iscc `
+            /DSourceDir="windows-build\Clima G" `
+            installer\windows\ClimaG.iss
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Falló la compilación del instalador."
+          }
+
+      - name: Upload Windows installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: clima-g-windows-installer
+          path: installer/windows/output/Clima-G-Setup.exe
+          if-no-files-found: error
+          retention-days: 30
+
+  # =====================================================
+  # 4. PAQUETE PORTÁTIL LINUX
   # =====================================================
 
   linux-packages:
