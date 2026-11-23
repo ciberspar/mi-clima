@@ -4,3 +4,6 @@ requests<3,>=2.32
 [dev]
 pytest<10,>=8
 pyinstaller<7,>=6
+
+[location-linux]
+dbus-next<0.3,>=0.2.3

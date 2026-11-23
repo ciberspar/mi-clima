@@ -7,11 +7,13 @@ from PyQt6.QtCore import Qt, QThread, pyqtSignal
 from PyQt6.QtWidgets import (
     QWidget, QLabel, QPushButton, QVBoxLayout, QHBoxLayout,
     QGridLayout, QFrame, QScrollArea, QStackedWidget,
-    QSizePolicy, QMessageBox
+    QSizePolicy, QMessageBox, QDialog, QCheckBox,
+    QDialogButtonBox
 )
 
 from clima_g.config import APP_NAME, APP_VERSION, DEFAULT_LOCATION
 from clima_g.services.weather import WeatherService, WeatherError
+from clima_g.services.location import LocationManager
 from clima_g.services.weather_codes import describe_weather
 from clima_g.services.baco import generar_decreto
 from clima_g.ui.components.weather_header import WeatherHeader
@@ -54,6 +56,14 @@ class MainWindow(QWidget):
         self.pending_weather_refresh = False
 
         self.settings_store = SettingsStore()
+
+        # Inicializa los proveedores sin consultar la ubicación.
+        self.location_manager = LocationManager(
+            location_preferences=(
+                self.settings_store.get_location_preferences()
+            )
+        )
+
         location = self.settings_store.get_location()
         self.latitude = float(location["latitude"])
         self.longitude = float(location["longitude"])
@@ -67,60 +77,6 @@ class MainWindow(QWidget):
         self.refresh_weather()
 
     def init_ui(self):
-        self.setStyleSheet("""
-            QWidget {
-                background: #eef2f8;
-                color: #12203a;
-                font-family: sans-serif;
-                font-size: 13px;
-            }
-
-            QScrollArea {
-                border: none;
-                background: transparent;
-            }
-
-            QFrame[card="true"] {
-                background: white;
-                border: none;
-                border-radius: 16px;
-            }
-
-            QLabel[sectionTitle="true"] {
-                color: #12203a;
-                font-size: 15px;
-                font-weight: 700;
-            }
-
-            QLabel[muted="true"] {
-                color: #64748b;
-                font-size: 12px;
-            }
-
-            QLabel[metricValue="true"] {
-                color: #12203a;
-                font-size: 19px;
-                font-weight: 700;
-            }
-
-            QPushButton {
-                background: #1c2a4f;
-                color: white;
-                border: none;
-                border-radius: 10px;
-                padding: 9px 13px;
-                font-weight: 600;
-            }
-
-            QPushButton:hover {
-                background: #33507f;
-            }
-
-            QPushButton:disabled {
-                background: #94a3b8;
-            }
-        """)
-
         outer = QVBoxLayout(self)
         outer.setContentsMargins(0, 0, 0, 0)
 
@@ -128,7 +84,6 @@ class MainWindow(QWidget):
         scroll.setWidgetResizable(True)
 
         content = QWidget()
-        content.setStyleSheet("background: #eef2f8;")
 
         layout = QVBoxLayout(content)
         layout.setContentsMargins(0, 0, 0, 18)
@@ -141,7 +96,6 @@ class MainWindow(QWidget):
         layout.addWidget(self.header)
 
         self.pages = QStackedWidget()
-        self.pages.setStyleSheet("background: #eef2f8;")
 
         self.page_widgets = {}
         self.build_today_page()
@@ -180,7 +134,6 @@ class MainWindow(QWidget):
 
     def make_page(self, compact=False):
         page = QWidget()
-        page.setStyleSheet("background: #eef2f8;")
 
         layout = QVBoxLayout(page)
         if compact:
@@ -212,13 +165,7 @@ class MainWindow(QWidget):
 
     def add_metric(self, grid, index, title, value="--", compact=False):
         cell = QFrame()
-        cell.setStyleSheet("""
-            QFrame {
-                background: #eef2f8;
-                border: none;
-                border-radius: 12px;
-            }
-        """)
+        cell.setProperty("metricCell", True)
 
         box = QVBoxLayout(cell)
         if compact:
@@ -288,12 +235,157 @@ class MainWindow(QWidget):
                 self, "Ubicación", f"No se pudo guardar la ciudad: {exc}"
             )
 
-    def show_settings_info(self):
-        QMessageBox.information(
-            self,
-            "Configuración",
-            "El panel de configuración nativo está pendiente de integración."
+    def reload_location_manager(self):
+        """Actualiza los proveedores según las preferencias guardadas."""
+        self.location_manager = LocationManager(
+            location_preferences=(
+                self.settings_store.get_location_preferences()
+            )
         )
+
+    def show_settings_info(self):
+        """Configuración de privacidad y geolocalización externa."""
+        preferences = self.settings_store.get_location_preferences()
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle("Configuración de ubicación")
+        dialog.setMinimumWidth(420)
+
+        layout = QVBoxLayout(dialog)
+
+        title = QLabel("Privacidad y ubicación")
+        title.setStyleSheet(
+            "font-size: 17px; font-weight: 700; color: #12203a;"
+        )
+        layout.addWidget(title)
+
+        description = QLabel(
+            "Clima G puede estimar tu ubicación mediante redes Wi-Fi "
+            "cercanas utilizando BeaconDB. Esta función es opcional "
+            "y está desactivada por defecto."
+        )
+        description.setWordWrap(True)
+        layout.addWidget(description)
+
+        privacy = QLabel(
+            "INFORMACIÓN COMPARTIDA\n"
+            "• Identificadores BSSID de redes Wi-Fi cercanas.\n"
+            "• La solicitud también puede revelar tu IP y User-Agent "
+            "al servidor.\n\n"
+            "BeaconDB recibe los identificadores para estimar la "
+            "ubicación. La opción considerIp=False evita utilizar "
+            "la IP como fuente del cálculo, pero no oculta tu IP "
+            "de conexión al servidor."
+        )
+        privacy.setWordWrap(True)
+        privacy.setStyleSheet(
+            "background: white; padding: 12px; border-radius: 10px;"
+        )
+        layout.addWidget(privacy)
+
+        enabled = QCheckBox(
+            "Permitir geolocalización Wi-Fi mediante BeaconDB"
+        )
+        enabled.setChecked(
+            preferences.get("external_wifi_enabled") is True
+            and preferences.get("external_wifi_consent") is True
+            and preferences.get("external_wifi_provider") == "beacondb"
+        )
+        layout.addWidget(enabled)
+
+        status = QLabel(
+            "Estado actual: "
+            + (
+                "Activado"
+                if enabled.isChecked()
+                else "Desactivado"
+            )
+        )
+        status.setWordWrap(True)
+        layout.addWidget(status)
+
+        def update_status(checked):
+            status.setText(
+                "Estado actual: "
+                + ("Activado" if checked else "Desactivado")
+            )
+
+        enabled.toggled.connect(update_status)
+
+        buttons = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save
+            | QDialogButtonBox.StandardButton.Cancel
+        )
+
+        revoke_button = buttons.addButton(
+            "Revocar consentimiento",
+            QDialogButtonBox.ButtonRole.DestructiveRole,
+        )
+
+        revoked = {"value": False}
+
+        def revoke_consent():
+            try:
+                self.settings_store.revoke_external_wifi_consent()
+                self.reload_location_manager()
+                revoked["value"] = True
+                dialog.accept()
+            except (OSError, ValueError, TypeError) as exc:
+                QMessageBox.warning(
+                    dialog,
+                    "Privacidad",
+                    f"No se pudo revocar el consentimiento: {exc}",
+                )
+
+        revoke_button.clicked.connect(revoke_consent)
+        buttons.accepted.connect(dialog.accept)
+        buttons.rejected.connect(dialog.reject)
+
+        layout.addWidget(buttons)
+
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        if revoked["value"]:
+            QMessageBox.information(
+                self,
+                "Privacidad",
+                "Consentimiento revocado. BeaconDB quedó desactivado.",
+            )
+            return
+
+        try:
+            if enabled.isChecked():
+                self.settings_store.set_external_wifi_location(
+                    enabled=True,
+                    provider="beacondb",
+                    consent=True,
+                )
+            else:
+                self.settings_store.set_external_wifi_location(
+                    enabled=False,
+                    provider="beacondb",
+                    consent=False,
+                )
+
+            self.reload_location_manager()
+
+            QMessageBox.information(
+                self,
+                "Configuración",
+                (
+                    "BeaconDB está activado."
+                    if enabled.isChecked()
+                    else "La geolocalización Wi-Fi está desactivada."
+                ),
+            )
+
+        except (OSError, ValueError, TypeError, PermissionError) as exc:
+            QMessageBox.warning(
+                self,
+                "Configuración",
+                f"No se pudieron guardar las preferencias: {exc}",
+            )
 
     # ---------------------------------------------------------
     # PESTAÑA HOY
@@ -439,15 +531,6 @@ class MainWindow(QWidget):
         self.page_widgets["aire"] = page
 
         self.aqi_banner = QFrame()
-        self.aqi_banner.setStyleSheet("""
-            QFrame {
-                background: #15803d;
-                border-radius: 16px;
-            }
-            QLabel {
-                color: white;
-            }
-        """)
 
         banner_layout = QVBoxLayout(self.aqi_banner)
         banner_layout.setContentsMargins(12, 10, 12, 10)
@@ -457,9 +540,7 @@ class MainWindow(QWidget):
 
         self.aqi_value = QLabel("--")
         self.aqi_value.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.aqi_value.setStyleSheet(
-            "font-size: 36px; font-weight: 700; color: white;"
-        )
+        self.aqi_value.setProperty("aqiValue", True)
 
         self.aqi_description = QLabel("Esperando datos...")
         self.aqi_description.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -580,15 +661,7 @@ class MainWindow(QWidget):
         map_notice.setAlignment(
             Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
         )
-        map_notice.setStyleSheet("""
-            QLabel {
-                background: #eef2f8;
-                border-radius: 12px;
-                padding: 10px;
-                color: #334155;
-            }
-        """)
-
+        self.map_notice = map_notice
         map_layout.addWidget(map_notice)
         layout.addWidget(map_card)
 
@@ -1008,12 +1081,7 @@ class MainWindow(QWidget):
             )
 
             tile = QFrame()
-            tile.setStyleSheet("""
-                QFrame {
-                    background: #eef2f8;
-                    border-radius: 12px;
-                }
-            """)
+            tile.setObjectName("hourlyTile")
             tile.setFixedWidth(86)
 
             box = QVBoxLayout(tile)
@@ -1031,7 +1099,7 @@ class MainWindow(QWidget):
                 label.setAlignment(Qt.AlignmentFlag.AlignCenter)
                 box.addWidget(label)
 
-            temp_label.setStyleSheet("font-weight: 700; font-size: 15px;")
+            temp_label.setProperty("hourlyTemperature", True)
             self.hourly_row.addWidget(tile)
             count += 1
 
@@ -1081,12 +1149,7 @@ class MainWindow(QWidget):
             )
 
             row = QFrame()
-            row.setStyleSheet("""
-                QFrame {
-                    background: #eef2f8;
-                    border-radius: 11px;
-                }
-            """)
+            row.setObjectName("dailyRow")
 
             row_layout = QHBoxLayout(row)
             row_layout.setContentsMargins(8, 5, 8, 5)
@@ -1118,6 +1181,9 @@ class MainWindow(QWidget):
             self.aqi_description.setText(
                 "Calidad del aire no disponible"
             )
+            self.aqi_banner.setProperty("aqiLevel", "unknown")
+            self.aqi_banner.style().unpolish(self.aqi_banner)
+            self.aqi_banner.style().polish(self.aqi_banner)
             self.air_labels["pm25"].setText("--")
             self.air_labels["pm10"].setText("--")
             self.air_labels["co"].setText("--")
@@ -1134,24 +1200,27 @@ class MainWindow(QWidget):
             self.air_quality_description(aqi)
         )
 
-        if aqi is not None:
+        if aqi is None:
+            self.aqi_banner.setProperty("aqiLevel", "unknown")
+            self.aqi_banner.style().unpolish(self.aqi_banner)
+            self.aqi_banner.style().polish(self.aqi_banner)
+        else:
             try:
                 value = float(aqi)
                 if value <= 20:
-                    color = "#15803d"
+                    level = "good"
                 elif value <= 40:
-                    color = "#65a30d"
+                    level = "fair"
                 elif value <= 60:
-                    color = "#ca8a04"
+                    level = "moderate"
                 elif value <= 80:
-                    color = "#ea580c"
+                    level = "poor"
                 else:
-                    color = "#b91c1c"
+                    level = "veryPoor"
 
-                self.aqi_banner.setStyleSheet(
-                    f"QFrame {{ background: {color}; border-radius: 16px; }}"
-                    "QLabel { color: white; }"
-                )
+                self.aqi_banner.setProperty("aqiLevel", level)
+                self.aqi_banner.style().unpolish(self.aqi_banner)
+                self.aqi_banner.style().polish(self.aqi_banner)
             except (ValueError, TypeError):
                 pass
 

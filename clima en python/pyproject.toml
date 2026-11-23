@@ -18,6 +18,10 @@ dev = [
     "pyinstaller>=6,<7"
 ]
 
+location-linux = [
+    "dbus-next>=0.2.3,<0.3"
+]
+
 [project.scripts]
 clima-g = "clima_g.app:main"
 bacus-alerts = "clima_g.bacus_alerts_daemon:main"

@@ -8,3 +8,5 @@ Requires-Dist: requests<3,>=2.32
 Provides-Extra: dev
 Requires-Dist: pytest<10,>=8; extra == "dev"
 Requires-Dist: pyinstaller<7,>=6; extra == "dev"
+Provides-Extra: location-linux
+Requires-Dist: dbus-next<0.3,>=0.2.3; extra == "location-linux"

@@ -1,2 +1,3 @@
 [console_scripts]
+bacus-alerts = clima_g.bacus_alerts_daemon:main
 clima-g = clima_g.app:main
