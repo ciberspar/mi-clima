@@ -1,46 +1,39 @@
 
-name: Clima G - Desktop Installers
+name: Clima G Desktop - Tests and Builds
 
 on:
   push:
     branches:
       - main
       - pruebas
-    paths:
-      - "clima en python/**"
-      - ".github/workflows/clima-g-desktop.yml"
-
   pull_request:
     branches:
       - main
-    paths:
-      - "clima en python/**"
-      - ".github/workflows/clima-g-desktop.yml"
-
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: clima-g-installers-${{ github.ref }}
+  group: clima-g-desktop-${{ github.ref }}
   cancel-in-progress: true
 
 env:
   PYTHON_VERSION: "3.12"
   APP_VERSION: "1.34.0"
   APP_NAME: "Clima G"
-  APP_VENDOR: "Clima G"
+  APP_VENDOR: "Ciberspar"
   APP_URL: "https://github.com/ciberspar/mi-clima"
 
 jobs:
 
-  # =====================================================
-  # 1. TESTS MULTIPLATAFORMA
-  # =====================================================
+  # ============================================================
+  # 1. TESTS GENERALES
+  # ============================================================
 
-  test:
-    name: Tests - ${{ matrix.os }}
+  test-desktop:
+    name: Desktop tests - ${{ matrix.os }}
+
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -49,7 +42,8 @@ jobs:
         os:
           - ubuntu-24.04
           - windows-latest
-          - macos-latest
+          - macos-15
+          - macos-15-intel
 
     defaults:
       run:
@@ -59,355 +53,583 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: clima en python/pyproject.toml
 
-      - name: Install Linux dependencies
+      - name: Install system dependencies - Linux
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libegl1 \
             libgl1 \
-            libxkbcommon-x11-0 \
+            libegl1 \
             libdbus-1-3 \
             libxcb-cursor0 \
+            libxkbcommon-x11-0 \
             libxcb-icccm4 \
             libxcb-keysyms1 \
             libxcb-shape0 \
             libxcb-xinerama0 \
-            libxcb-xfixes0
+            libxcb-randr0 \
+            libxcb-render-util0 \
+            libxcb-xfixes0 \
+            libxcb-xkb1
 
-      - name: Install project and test dependencies
+      - name: Install project
         run: |
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev]"
+          python -m pip install -e ".[dev,location-linux]"
 
-      - name: Check Python syntax
-        run: |
-          python -m compileall -q src tests
+      - name: Compile Python
+        run: python -m compileall -q src tests
 
       - name: Run tests
         env:
           QT_QPA_PLATFORM: offscreen
-        run: |
-          python -m pytest -q
+        run: python -m pytest -q
 
-  # =====================================================
-  # 2. WINDOWS - SETUP.EXE
-  # =====================================================
+      - name: Upload test information
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: clima-g-test-${{ runner.os }}-${{ strategy.job-index }}
+          path: |
+            clima en python/.pytest_cache
+          if-no-files-found: ignore
+          retention-days: 7
 
-  windows:
-    name: Windows - Clima-G-Setup.exe
-    needs: test
-    runs-on: windows-latest
+  # ============================================================
+  # 2. TESTS LINUX EN SEIS ARQUITECTURAS
+  # ============================================================
+
+  test-linux-architectures:
+    name: Linux architecture - ${{ matrix.name }}
+
+    runs-on: ubuntu-24.04
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: x86_64
+            platform: linux/amd64
+            deb_arch: amd64
+
+          - name: ARM64
+            platform: linux/arm64
+            deb_arch: arm64
+
+          - name: ARMv7
+            platform: linux/arm/v7
+            deb_arch: armhf
+
+          - name: RISC-V 64
+            platform: linux/riscv64
+            deb_arch: riscv64
+
+          - name: PPC64LE
+            platform: linux/ppc64le
+            deb_arch: ppc64el
+
+          - name: s390x
+            platform: linux/s390x
+            deb_arch: s390x
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Verify architecture and install dependencies
+        env:
+          TARGET_PLATFORM: ${{ matrix.platform }}
+          EXPECTED_ARCH: ${{ matrix.deb_arch }}
+        run: |
+          docker run --rm \
+            --platform "$TARGET_PLATFORM" \
+            -v "${{ github.workspace }}:/workspace" \
+            -w "/workspace/clima en python" \
+            debian:trixie \
+            bash -ec '
+              echo "======================================"
+              echo "Clima G Linux architecture test"
+              echo "======================================"
+
+              apt-get update
+
+              apt-get install -y \
+                python3 \
+                python3-pytest \
+                python3-pyqt6 \
+                python3-requests \
+                python3-dbus-next \
+                python3-pip \
+                python3-venv
+
+              echo ""
+              echo "Detected architecture:"
+              dpkg --print-architecture
+
+              echo ""
+              echo "Python:"
+              python3 --version
+
+              echo ""
+              echo "Checking source..."
+
+              export PYTHONPATH="$PWD/src"
+              export QT_QPA_PLATFORM=offscreen
+
+              python3 -m compileall -q src tests
+
+              echo ""
+              echo "Running tests..."
+
+              python3 -m pytest -q
+
+              echo ""
+              echo "ARCHITECTURE TEST PASSED"
+            '
+
+  # ============================================================
+  # 3. BUILD WINDOWS EXE
+  # ============================================================
+
+  build-windows:
+    name: Windows EXE
+
+    runs-on: windows-latest
+
+    needs:
+      - test-desktop
+
+    defaults:
+      run:
+        working-directory: clima en python
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Clima G and PyInstaller
-        working-directory: clima en python
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .
-          python -m pip install "pyinstaller>=6,<7"
+          python -m pip install -e ".[dev,location-linux]"
 
       - name: Create launcher
-        working-directory: clima en python
-        shell: bash
-        run: |
-          printf '%s\n' \
-            'from clima_g.app import main' \
-            'if __name__ == "__main__":' \
-            '    raise SystemExit(main())' \
-            > clima_g_launcher.py
-
-      - name: Build Windows application
-        working-directory: clima en python
         shell: pwsh
         run: |
-          pyinstaller --noconfirm --clean --windowed `
+          @'
+          from clima_g.app import main
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          '@ | Set-Content -Encoding UTF8 clima_g_launcher.py
+
+      - name: Build EXE
+        run: |
+          python -m PyInstaller `
+            --noconfirm `
+            --clean `
+            --windowed `
             --name "Clima G" `
+            --paths src `
             --collect-all clima_g `
             clima_g_launcher.py
 
       - name: Install Inno Setup
+        run: |
+          choco install innosetup --yes --no-progress
+
+      - name: Build Windows installer
         shell: pwsh
         run: |
-          choco install innosetup --no-progress -y
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
 
-      - name: Compile Windows installer
+          if (!(Test-Path $iscc)) {
+            throw "Inno Setup compiler not found"
+          }
+
+          $source = (Resolve-Path "dist\Clima G").Path
+
+          & $iscc `
+            "/DSourceDir=$source" `
+            "installer\windows\ClimaG.iss"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup failed"
+          }
+
+      - name: Verify installer
         shell: pwsh
         run: |
-          $isccCandidates = @(
-            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
-            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
-          )
+          $installer = "installer\windows\output\Clima-G-Setup.exe"
 
-          $iscc = $isccCandidates |
-            Where-Object { Test-Path $_ } |
-            Select-Object -First 1
-
-          if (!$iscc) {
-            throw "No se encontró ISCC.exe."
+          if (!(Test-Path $installer)) {
+            throw "Windows installer was not generated"
           }
 
-          $projectDir = Join-Path $env:GITHUB_WORKSPACE "clima en python"
-          $sourceDir = Join-Path $projectDir "dist\Clima G"
-          $issDir = Join-Path $projectDir "installer\windows"
-          $script = Join-Path $issDir "ClimaG.iss"
+          Get-Item $installer
 
-          if (!(Test-Path $sourceDir)) {
-            throw "No se encontró la aplicación: $sourceDir"
-          }
-
-          if (!(Test-Path $script)) {
-            throw "No se encontró el script: $script"
-          }
-
-          if (!(Test-Path (Join-Path $sourceDir "Clima G.exe"))) {
-            throw "No se encontró Clima G.exe."
-          }
-
-          Write-Host "Inno Setup: $iscc"
-          Write-Host "Aplicación: $sourceDir"
-          Write-Host "Script: $script"
-
-          Push-Location $issDir
-
-          try {
-            & $iscc "/DSourceDir=$sourceDir" "ClimaG.iss"
-
-            if ($LASTEXITCODE -ne 0) {
-              throw "Falló la compilación de Inno Setup."
-            }
-          }
-          finally {
-            Pop-Location
-          }
-
-          $setup = Join-Path $issDir "output\Clima-G-Setup.exe"
-
-          if (!(Test-Path $setup)) {
-            throw "No se generó Clima-G-Setup.exe."
-          }
-
-      - name: Upload Windows installer
+      - name: Upload Windows EXE
         uses: actions/upload-artifact@v4
         with:
-          name: Clima-G-Windows-Setup
+          name: clima-g-windows-installer
           path: clima en python/installer/windows/output/Clima-G-Setup.exe
           if-no-files-found: error
           retention-days: 30
 
-  # =====================================================
-  # 3. LINUX - DEB
-  # =====================================================
-
-  linux:
-    name: Linux - DEB
-    needs: test
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libegl1 \
-            libgl1 \
-            libxkbcommon-x11-0 \
-            libdbus-1-3 \
-            libxcb-cursor0 \
-            libxcb-icccm4 \
-            libxcb-keysyms1 \
-            libxcb-shape0 \
-            libxcb-xinerama0 \
-            libxcb-xfixes0 \
-            ruby \
-            ruby-dev \
-            build-essential
-
-      - name: Install Clima G and PyInstaller
-        working-directory: clima en python
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install .
-          python -m pip install "pyinstaller>=6,<7"
-
-      - name: Create launcher
-        working-directory: clima en python
-        shell: bash
-        run: |
-          printf '%s\n' \
-            'from clima_g.app import main' \
-            'if __name__ == "__main__":' \
-            '    raise SystemExit(main())' \
-            > clima_g_launcher.py
-
-      - name: Build Linux application
-        working-directory: clima en python
-        run: |
-          pyinstaller --noconfirm --clean --windowed \
-            --name "Clima-G" \
-            --collect-all clima_g \
-            clima_g_launcher.py
-
-      - name: Install FPM
-        run: |
-          sudo gem install --no-document fpm
-
-      - name: Prepare Debian package
-        shell: bash
-        run: |
-          set -e
-
-          PROJECT="clima en python"
-          ROOT="debian-package"
-
-          mkdir -p "$ROOT/opt/clima-g"
-          mkdir -p "$ROOT/usr/bin"
-          mkdir -p "$ROOT/usr/share/applications"
-
-          cp -a "$PROJECT/dist/Clima-G/." "$ROOT/opt/clima-g/"
-
-          cat > "$ROOT/usr/bin/clima-g" <<'EOF'
-          #!/bin/sh
-          exec /opt/clima-g/Clima-G "$@"
-          EOF
-
-          chmod 755 "$ROOT/usr/bin/clima-g"
-
-          cat > "$ROOT/usr/share/applications/clima-g.desktop" <<'EOF'
-          [Desktop Entry]
-          Type=Application
-          Name=Clima G
-          GenericName=Aplicación meteorológica
-          Comment=Consulta el tiempo y recibe alertas meteorológicas con Clima G
-          Exec=clima-g
-          Terminal=false
-          Categories=Utility;Weather;
-          StartupNotify=true
-          EOF
-
-      - name: Build DEB package with metadata
-        shell: bash
-        run: |
-          set -e
-
-          fpm \
-            --input-type dir \
-            --output-type deb \
-            --name "clima-g" \
-            --version "$APP_VERSION" \
-            --architecture amd64 \
-            --description "Clima G Desktop: aplicación meteorológica de escritorio para consultar el tiempo y recibir alertas meteorológicas." \
-            --maintainer "Clima G" \
-            --vendor "Clima G" \
-            --url "$APP_URL" \
-            --license "MIT" \
-            --category "Utility" \
-            --depends libglib2.0-0 \
-            --depends libgl1 \
-            --depends libegl1 \
-            --depends libxkbcommon0 \
-            --depends libdbus-1-3 \
-            --package "clima-g_${APP_VERSION}_amd64.deb" \
-            debian-package/opt \
-            debian-package/usr
-
-          test -f "clima-g_${APP_VERSION}_amd64.deb"
-
-          dpkg-deb --info "clima-g_${APP_VERSION}_amd64.deb"
-          dpkg-deb --contents "clima-g_${APP_VERSION}_amd64.deb"
-
-      - name: Upload Linux installer
+      - name: Upload Windows application
         uses: actions/upload-artifact@v4
         with:
-          name: Clima-G-Linux-DEB
-          path: clima-g_${{ env.APP_VERSION }}_amd64.deb
+          name: clima-g-windows-portable
+          path: clima en python/dist/Clima G/
           if-no-files-found: error
           retention-days: 30
 
-  # =====================================================
-  # 4. MACOS - DMG
-  # =====================================================
+  # ============================================================
+  # 4. BUILD macOS INTEL Y APPLE SILICON
+  # ============================================================
 
-  macos:
-    name: macOS - DMG
-    needs: test
-    runs-on: macos-latest
+  build-macos:
+    name: macOS - ${{ matrix.name }}
+
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Intel
+            runner: macos-15-intel
+            dmg_name: Clima-G-macOS-Intel.dmg
+
+          - name: Apple-Silicon
+            runner: macos-15
+            dmg_name: Clima-G-macOS-ARM64.dmg
+
+    defaults:
+      run:
+        working-directory: clima en python
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up Python
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Install Clima G and PyInstaller
-        working-directory: clima en python
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          python -m pip install .
-          python -m pip install "pyinstaller>=6,<7"
+          python -m pip install -e ".[dev,location-linux]"
 
       - name: Create launcher
-        working-directory: clima en python
-        shell: bash
         run: |
-          printf '%s\n' \
-            'from clima_g.app import main' \
-            'if __name__ == "__main__":' \
-            '    raise SystemExit(main())' \
-            > clima_g_launcher.py
+          cat > clima_g_launcher.py <<'PY'
+          from clima_g.app import main
+
+          if __name__ == "__main__":
+              raise SystemExit(main())
+          PY
 
       - name: Build macOS application
-        working-directory: clima en python
         run: |
-          pyinstaller --noconfirm --clean --windowed \
+          python -m PyInstaller \
+            --noconfirm \
+            --clean \
+            --windowed \
             --name "Clima G" \
+            --paths src \
             --collect-all clima_g \
             clima_g_launcher.py
 
-      - name: Create DMG
-        working-directory: clima en python
+      - name: Verify application
         run: |
-          set -e
-
           test -d "dist/Clima G.app"
+          file "dist/Clima G.app/Contents/MacOS/Clima G"
 
+      - name: Create DMG
+        env:
+          DMG_NAME: ${{ matrix.dmg_name }}
+        run: |
           hdiutil create \
             -volname "Clima G" \
             -srcfolder "dist/Clima G.app" \
             -ov \
             -format UDZO \
-            "dist/Clima-G.dmg"
+            "dist/$DMG_NAME"
 
-          test -f "dist/Clima-G.dmg"
-
-      - name: Upload macOS installer
+      - name: Upload macOS DMG
         uses: actions/upload-artifact@v4
         with:
-          name: Clima-G-macOS-DMG
-          path: clima en python/dist/Clima-G.dmg
+          name: clima-g-macos-${{ matrix.name }}
+          path: clima en python/dist/${{ matrix.dmg_name }}
           if-no-files-found: error
           retention-days: 30
+
+  # ============================================================
+  # 5. PAQUETES LINUX
+  # DEB + RPM + TAR.GZ
+  # ============================================================
+
+  build-linux-packages:
+    name: Linux packages
+
+    runs-on: ubuntu-24.04
+
+    needs:
+      - test-desktop
+      - test-linux-architectures
+
+    defaults:
+      run:
+        working-directory: clima en python
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            ruby \
+            ruby-dev \
+            build-essential \
+            rpm \
+            dpkg-dev \
+            fakeroot
+
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,location-linux]"
+
+      - name: Install FPM
+        run: |
+          sudo gem install --no-document fpm
+
+      - name: Prepare Linux package
+        run: |
+          mkdir -p package-root/opt/clima-g
+          mkdir -p package-root/usr/bin
+          mkdir -p package-root/usr/share/applications
+          mkdir -p package-root/usr/lib/systemd/system
+
+          cp -a src/clima_g package-root/opt/clima-g/
+
+          cp pyproject.toml package-root/opt/clima-g/
+
+          cat > package-root/usr/bin/clima-g <<'SH'
+          #!/bin/sh
+          export PYTHONPATH="/opt/clima-g${PYTHONPATH:+:$PYTHONPATH}"
+          exec python3 -c 'from clima_g.app import main; raise SystemExit(main())'
+          SH
+
+          cat > package-root/usr/bin/bacus-alerts <<'SH'
+          #!/bin/sh
+          export PYTHONPATH="/opt/clima-g${PYTHONPATH:+:$PYTHONPATH}"
+          exec python3 -c 'from clima_g.bacus_alerts_daemon import main; raise SystemExit(main())'
+          SH
+
+          chmod 755 package-root/usr/bin/clima-g
+          chmod 755 package-root/usr/bin/bacus-alerts
+
+          cat > package-root/usr/share/applications/clima-g.desktop <<'DESKTOP'
+          [Desktop Entry]
+          Type=Application
+          Name=Clima G
+          Comment=Aplicación meteorológica Clima G
+          Exec=clima-g
+          Terminal=false
+          Categories=Utility;Weather;
+          DESKTOP
+
+          cat > package-root/usr/lib/systemd/system/bacus-alerts.service <<'SERVICE'
+          [Unit]
+          Description=Bacus Alerts for Clima G Desktop
+          After=graphical.target
+
+          [Service]
+          Type=simple
+          ExecStart=/usr/bin/bacus-alerts
+          Restart=on-failure
+          RestartSec=10
+
+          [Install]
+          WantedBy=default.target
+          SERVICE
+
+      - name: Build DEB
+        run: |
+          fpm \
+            -s dir \
+            -t deb \
+            -n clima-g \
+            -v "${APP_VERSION}" \
+            --architecture all \
+            --description "Clima G Desktop" \
+            --url "${APP_URL}" \
+            --license "Proprietary" \
+            --depends python3 \
+            --depends python3-pyqt6 \
+            --depends python3-requests \
+            --depends python3-dbus-next \
+            --depends libnotify-bin \
+            -C package-root \
+            -p "clima-g_${APP_VERSION}_all.deb" \
+            .
+
+      - name: Build RPM
+        run: |
+          fpm \
+            -s dir \
+            -t rpm \
+            -n clima-g \
+            -v "${APP_VERSION}" \
+            --architecture noarch \
+            --description "Clima G Desktop" \
+            --url "${APP_URL}" \
+            --license "Proprietary" \
+            --depends python3 \
+            --depends python3-qt6 \
+            --depends python3-requests \
+            --depends python3-dbus-next \
+            --depends libnotify \
+            -C package-root \
+            -p "clima-g-${APP_VERSION}.noarch.rpm" \
+            .
+
+      - name: Build portable source TAR.GZ
+        run: |
+          mkdir -p portable/clima-g
+
+          cp -a src portable/clima-g/
+          cp pyproject.toml portable/clima-g/
+          cp requirements.txt portable/clima-g/
+
+          cat > portable/clima-g/README.txt <<'TXT'
+          Clima G Desktop
+
+          Requisitos:
+          - Python 3.10 o superior
+          - PyQt6
+          - requests
+
+          Instalación:
+          python3 -m pip install .
+
+          Ejecución:
+          clima-g
+
+          Bacus Alerts:
+          bacus-alerts
+          TXT
+
+          tar -czf "clima-g-${APP_VERSION}-linux-source.tar.gz" \
+            -C portable clima-g
+
+      - name: Verify Linux packages
+        run: |
+          test -f "clima-g_${APP_VERSION}_all.deb"
+          test -f "clima-g-${APP_VERSION}.noarch.rpm"
+          test -f "clima-g-${APP_VERSION}-linux-source.tar.gz"
+
+          dpkg-deb --info "clima-g_${APP_VERSION}_all.deb"
+          rpm -qip "clima-g-${APP_VERSION}.noarch.rpm"
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: clima-g-linux-deb
+          path: clima en python/clima-g_1.34.0_all.deb
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload RPM
+        uses: actions/upload-artifact@v4
+        with:
+          name: clima-g-linux-rpm
+          path: clima en python/clima-g-1.34.0.noarch.rpm
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload TAR.GZ
+        uses: actions/upload-artifact@v4
+        with:
+          name: clima-g-linux-portable
+          path: clima en python/clima-g-1.34.0-linux-source.tar.gz
+          if-no-files-found: error
+          retention-days: 30
+
+  # ============================================================
+  # 6. RESUMEN
+  # ============================================================
+
+  build-summary:
+    name: Build summary
+
+    runs-on: ubuntu-24.04
+
+    if: always()
+
+    needs:
+      - test-desktop
+      - test-linux-architectures
+      - build-windows
+      - build-macos
+      - build-linux-packages
+
+    steps:
+      - name: Show results
+        env:
+          TESTS: ${{ needs.test-desktop.result }}
+          LINUX_TESTS: ${{ needs.test-linux-architectures.result }}
+          WINDOWS: ${{ needs.build-windows.result }}
+          MACOS: ${{ needs.build-macos.result }}
+          LINUX: ${{ needs.build-linux-packages.result }}
+        run: |
+          echo "======================================"
+          echo "          CLIMA G DESKTOP"
+          echo "======================================"
+
+          echo "Desktop tests: $TESTS"
+          echo "Linux architecture tests: $LINUX_TESTS"
+          echo "Windows EXE: $WINDOWS"
+          echo "macOS DMG: $MACOS"
+          echo "Linux packages: $LINUX"
+
+          echo ""
+          echo "Artifacts are uploaded to GitHub Actions."
+          echo "No GitHub Release is published automatically."
+
+          if [ "$TESTS" != "success" ] || \
+             [ "$LINUX_TESTS" != "success" ] || \
+             [ "$WINDOWS" != "success" ] || \
+             [ "$MACOS" != "success" ] || \
+             [ "$LINUX" != "success" ]; then
+            echo "One or more jobs failed."
+            exit 1
+          fi
+
+          echo "All workflow jobs passed."
