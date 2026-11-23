@@ -33,11 +33,14 @@ concurrency:
 env:
   PYTHON_VERSION: "3.12"
   APP_VERSION: "1.34.0"
+  APP_NAME: "Clima G"
+  APP_VENDOR: "Clima G"
+  APP_URL: "https://github.com/ciberspar/mi-clima"
 
 jobs:
 
   # =====================================================
-  # 1. TESTS
+  # 1. TESTS MULTIPLATAFORMA
   # =====================================================
 
   test:
@@ -185,8 +188,7 @@ jobs:
           Push-Location $issDir
 
           try {
-            $sourceArgument = "/DSourceDir=`"$sourceDir`""
-            & $iscc $sourceArgument "ClimaG.iss"
+            & $iscc "/DSourceDir=$sourceDir" "ClimaG.iss"
 
             if ($LASTEXITCODE -ne 0) {
               throw "Falló la compilación de Inno Setup."
@@ -300,31 +302,48 @@ jobs:
           [Desktop Entry]
           Type=Application
           Name=Clima G
-          Comment=Aplicación meteorológica Clima G
+          GenericName=Aplicación meteorológica
+          Comment=Consulta el tiempo y recibe alertas meteorológicas con Clima G
           Exec=clima-g
           Terminal=false
           Categories=Utility;Weather;
+          StartupNotify=true
           EOF
 
-      - name: Build DEB package
+      - name: Install FPM
         run: |
+          sudo gem install --no-document fpm
+
+      - name: Build DEB package with metadata
+        shell: bash
+        run: |
+          set -e
+
           fpm \
             --input-type dir \
             --output-type deb \
-            --name clima-g \
+            --name "clima-g" \
             --version "$APP_VERSION" \
             --architecture amd64 \
-            --description "Clima G Desktop" \
+            --description "Clima G Desktop: aplicación meteorológica de escritorio para consultar el tiempo y recibir alertas meteorológicas." \
             --maintainer "Clima G" \
+            --vendor "Clima G" \
+            --url "$APP_URL" \
             --license "MIT" \
+            --category "Utility" \
             --depends libglib2.0-0 \
             --depends libgl1 \
             --depends libegl1 \
             --depends libxkbcommon0 \
             --depends libdbus-1-3 \
-            --chdir debian-package \
             --package "clima-g_${APP_VERSION}_amd64.deb" \
-            opt usr
+            debian-package/opt \
+            debian-package/usr
+
+          test -f "clima-g_${APP_VERSION}_amd64.deb"
+
+          dpkg-deb --info "clima-g_${APP_VERSION}_amd64.deb"
+          dpkg-deb --contents "clima-g_${APP_VERSION}_amd64.deb"
 
       - name: Upload Linux installer
         uses: actions/upload-artifact@v4
@@ -380,6 +399,8 @@ jobs:
       - name: Create DMG
         working-directory: clima en python
         run: |
+          set -e
+
           test -d "dist/Clima G.app"
 
           hdiutil create \
@@ -400,7 +421,7 @@ jobs:
           retention-days: 30
 
   # =====================================================
-  # 5. PUBLICAR SOLO LOS TRES INSTALADORES EN RELEASES
+  # 5. PUBLICAR LOS TRES INSTALADORES
   # =====================================================
 
   publish-release:
@@ -434,7 +455,9 @@ jobs:
 
       - name: Verify release files
         run: |
+          set -e
           ls -lh release-files
+
           test -f release-files/Clima-G-Setup.exe
           test -f release-files/clima-g_${APP_VERSION}_amd64.deb
           test -f release-files/Clima-G.dmg
