@@ -301,7 +301,7 @@ jobs:
           }
 
           $sourceDir = $exe.Directory.FullName
-          $script = Join-Path $env:GITHUB_WORKSPACE "installer\windows\ClimaG.iss"
+          $script = Join-Path $env:GITHUB_WORKSPACE "clima en python\installer\windows\ClimaG.iss"
 
           if (!(Test-Path $sourceDir)) {
             throw "No existe la carpeta de la aplicación: $sourceDir"
