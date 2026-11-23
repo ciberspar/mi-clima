@@ -1,0 +1,13 @@
+[Unit]
+Description=Bacus Alerts for Clima G Desktop
+After=graphical-session.target network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/bacus-alerts
+Restart=on-failure
+RestartSec=30
+
+[Install]
+WantedBy=default.target

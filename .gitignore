@@ -10,3 +10,13 @@ node_modules/
 # Archivos temporales
 *.log
 .DS_Store
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+build/
+dist/

@@ -20,6 +20,7 @@ dev = [
 
 [project.scripts]
 clima-g = "clima_g.app:main"
+bacus-alerts = "clima_g.bacus_alerts_daemon:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
