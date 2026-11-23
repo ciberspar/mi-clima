@@ -19,12 +19,8 @@ on:
 
   workflow_dispatch:
 
-  release:
-    types:
-      - published
-
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: clima-g-installers-${{ github.ref }}
@@ -310,10 +306,6 @@ jobs:
           StartupNotify=true
           EOF
 
-      - name: Install FPM
-        run: |
-          sudo gem install --no-document fpm
-
       - name: Build DEB package with metadata
         shell: bash
         run: |
@@ -419,55 +411,3 @@ jobs:
           path: clima en python/dist/Clima-G.dmg
           if-no-files-found: error
           retention-days: 30
-
-  # =====================================================
-  # 5. PUBLICAR LOS TRES INSTALADORES
-  # =====================================================
-
-  publish-release:
-    name: Publish three installers
-    if: github.event_name == 'release'
-    needs:
-      - windows
-      - linux
-      - macos
-
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: Download Windows installer
-        uses: actions/download-artifact@v4
-        with:
-          name: Clima-G-Windows-Setup
-          path: release-files
-
-      - name: Download Linux installer
-        uses: actions/download-artifact@v4
-        with:
-          name: Clima-G-Linux-DEB
-          path: release-files
-
-      - name: Download macOS installer
-        uses: actions/download-artifact@v4
-        with:
-          name: Clima-G-macOS-DMG
-          path: release-files
-
-      - name: Verify release files
-        run: |
-          set -e
-          ls -lh release-files
-
-          test -f release-files/Clima-G-Setup.exe
-          test -f release-files/clima-g_${APP_VERSION}_amd64.deb
-          test -f release-files/Clima-G.dmg
-
-      - name: Upload installers to GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            release-files/Clima-G-Setup.exe
-            release-files/clima-g_${{ env.APP_VERSION }}_amd64.deb
-            release-files/Clima-G.dmg
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
